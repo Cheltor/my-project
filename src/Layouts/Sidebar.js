@@ -1,6 +1,4 @@
-'use client'
-
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogBackdrop,
@@ -10,7 +8,7 @@ import {
   MenuItem,
   MenuItems,
   TransitionChild,
-} from '@headlessui/react'
+} from '@headlessui/react';
 import {
   Bars3Icon,
   BellIcon,
@@ -22,72 +20,116 @@ import {
   HomeIcon,
   UsersIcon,
   XMarkIcon,
-} from '@heroicons/react/24/outline'
-import { ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/20/solid'
+} from '@heroicons/react/24/outline';
+import { ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/20/solid';
+import { Link, useNavigate } from 'react-router-dom'; // Import Link and useNavigate
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon, current: true },
-  { name: 'Team', href: '#', icon: UsersIcon, current: false },
-  { name: 'Addresses', href: '#', icon: BuildingOffice2Icon, current: false },
-  { name: 'Calendar', href: '#', icon: CalendarIcon, current: false },
+  { name: 'About', href: '/about', icon: UsersIcon, current: false },
+  { name: 'Addresses', href: '/due-list', icon: BuildingOffice2Icon, current: false },
+  { name: 'SIR', href: '/sir', icon: CalendarIcon, current: false },
   { name: 'Documents', href: '#', icon: DocumentDuplicateIcon, current: false },
   { name: 'Reports', href: '#', icon: ChartPieIcon, current: false },
-]
+];
+
 const teams = [
   { id: 1, name: 'Heroicons', href: '#', initial: 'H', current: false },
   { id: 2, name: 'Tailwind Labs', href: '#', initial: 'T', current: false },
   { id: 3, name: 'Workcation', href: '#', initial: 'W', current: false },
-]
+];
+
 const userNavigation = [
   { name: 'Your profile', href: '#' },
   { name: 'Sign out', href: '#' },
-]
+];
 
 function classNames(...classes) {
-  return classes.filter(Boolean).join(' ')
+  return classes.filter(Boolean).join(' ');
 }
 
-export default function Example() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+export default function Sidebar({ children }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(''); // State for search input
+  const [addresses, setAddresses] = useState([]); // State to hold all addresses
+  const [filteredAddresses, setFilteredAddresses] = useState([]); // State for filtered addresses
+  const [loading, setLoading] = useState(false); // Loading state for API call
+  const [error, setError] = useState(null); // Error state for API call
+  const [showDropdown, setShowDropdown] = useState(false); // State to show/hide dropdown
+
+  const navigate = useNavigate(); // To navigate programmatically
+
+  // Fetch addresses on component mount
+  useEffect(() => {
+    setLoading(true);
+    fetch('https://www.riverdaleparkcode.com/api/v1/addresses')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch addresses');
+        }
+        return response.json();
+      })
+      .then(data => {
+        setAddresses(data);
+        setLoading(false);
+      })
+      .catch(error => {
+        setError(error.message);
+        setLoading(false);
+      });
+  }, []); // Runs once after the initial render
+
+  // Handle search query change
+  const handleSearchChange = (event) => {
+    const query = event.target.value.toLowerCase();
+    setSearchQuery(query);
+
+    if (query.length >= 4) {
+      const filtered = addresses.filter(address =>
+        (address.combadd && address.combadd.toLowerCase().includes(query)) ||
+        (address.ownername && address.ownername.toLowerCase().includes(query)) ||
+        (address.property_name && address.property_name.toLowerCase().includes(query))
+      );
+      setFilteredAddresses(filtered);
+      setShowDropdown(filtered.length > 0); // Show dropdown if there are matches
+    } else {
+      setShowDropdown(false); // Hide dropdown if less than 3 characters
+      setFilteredAddresses([]); // Clear filtered results
+    }
+  };
+
+  // Handle dropdown selection
+  const handleDropdownSelect = (address) => {
+    setSearchQuery(address.combadd); // Update search query with selected address
+    setFilteredAddresses([address]); // Show only selected address in results
+    setShowDropdown(false); // Hide dropdown
+    navigate(`/address/${address.id}`); // Navigate to the address details page
+  };
 
   return (
     <>
-      {/*
-        This example requires updating your template:
-
-        ```
-        <html class="h-full bg-white">
-        <body class="h-full">
-        ```
-      */}
       <div>
         <Dialog open={sidebarOpen} onClose={setSidebarOpen} className="relative z-50 lg:hidden">
           <DialogBackdrop
             transition
-            className="fixed inset-0 bg-gray-900/80 transition-opacity duration-300 ease-linear data-[closed]:opacity-0"
+            className="fixed inset-0 bg-gray-900/80 transition-opacity duration-300 ease-linear"
           />
-
           <div className="fixed inset-0 flex">
             <DialogPanel
               transition
-              className="relative mr-16 flex w-full max-w-xs flex-1 transform transition duration-300 ease-in-out data-[closed]:-translate-x-full"
+              className="relative mr-16 flex w-full max-w-xs flex-1 transform transition duration-300 ease-in-out"
             >
               <TransitionChild>
-                <div className="absolute left-full top-0 flex w-16 justify-center pt-5 duration-300 ease-in-out data-[closed]:opacity-0">
+                <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
                   <button type="button" onClick={() => setSidebarOpen(false)} className="-m-2.5 p-2.5">
                     <span className="sr-only">Close sidebar</span>
                     <XMarkIcon aria-hidden="true" className="h-6 w-6 text-white" />
                   </button>
                 </div>
               </TransitionChild>
-              {/* Sidebar component, swap this element with another sidebar if you like */}
               <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-900 px-6 pb-4 ring-1 ring-white/10">
                 <div className="flex h-16 shrink-0 items-center">
-                  <img
-                    alt="Your Company"
-                    src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=500"
-                    className="h-8 w-auto"
-                  />
+                    <h1 className="text-white text-2xl font-bold">CodeSoft</h1>
                 </div>
                 <nav className="flex flex-1 flex-col">
                   <ul className="flex flex-1 flex-col gap-y-7">
@@ -95,8 +137,9 @@ export default function Example() {
                       <ul className="-mx-2 space-y-1">
                         {navigation.map((item) => (
                           <li key={item.name}>
-                            <a
-                              href={item.href}
+                            <Link
+                              to={item.href}
+                              onClick={() => setSidebarOpen(false)}  // Close sidebar on click
                               className={classNames(
                                 item.current
                                   ? 'bg-gray-800 text-white'
@@ -106,7 +149,7 @@ export default function Example() {
                             >
                               <item.icon aria-hidden="true" className="h-6 w-6 shrink-0" />
                               {item.name}
-                            </a>
+                            </Link>
                           </li>
                         ))}
                       </ul>
@@ -118,6 +161,7 @@ export default function Example() {
                           <li key={team.name}>
                             <a
                               href={team.href}
+                              onClick={() => setSidebarOpen(false)}  // Close sidebar on click
                               className={classNames(
                                 team.current
                                   ? 'bg-gray-800 text-white'
@@ -137,6 +181,7 @@ export default function Example() {
                     <li className="mt-auto">
                       <a
                         href="#"
+                        onClick={() => setSidebarOpen(false)}  // Close sidebar on click
                         className="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-gray-400 hover:bg-gray-800 hover:text-white"
                       >
                         <Cog6ToothIcon aria-hidden="true" className="h-6 w-6 shrink-0" />
@@ -152,14 +197,9 @@ export default function Example() {
 
         {/* Static sidebar for desktop */}
         <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
-          {/* Sidebar component, swap this element with another sidebar if you like */}
           <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-900 px-6 pb-4">
             <div className="flex h-16 shrink-0 items-center">
-              <img
-                alt="Your Company"
-                src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=500"
-                className="h-8 w-auto"
-              />
+                <h1 className="text-white text-2xl font-bold">CodeSoft</h1>
             </div>
             <nav className="flex flex-1 flex-col">
               <ul className="flex flex-1 flex-col gap-y-7">
@@ -167,8 +207,8 @@ export default function Example() {
                   <ul className="-mx-2 space-y-1">
                     {navigation.map((item) => (
                       <li key={item.name}>
-                        <a
-                          href={item.href}
+                        <Link
+                          to={item.href}
                           className={classNames(
                             item.current
                               ? 'bg-gray-800 text-white'
@@ -178,7 +218,7 @@ export default function Example() {
                         >
                           <item.icon aria-hidden="true" className="h-6 w-6 shrink-0" />
                           {item.name}
-                        </a>
+                        </Link>
                       </li>
                     ))}
                   </ul>
@@ -226,12 +266,14 @@ export default function Example() {
               <span className="sr-only">Open sidebar</span>
               <Bars3Icon aria-hidden="true" className="h-6 w-6" />
             </button>
-
-            {/* Separator */}
             <div aria-hidden="true" className="h-6 w-px bg-gray-900/10 lg:hidden" />
-
             <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-              <form action="#" method="GET" className="relative flex flex-1">
+              <form
+                action="#"
+                method="GET"
+                className="relative flex flex-1"
+                onSubmit={e => e.preventDefault()}
+              >
                 <label htmlFor="search-field" className="sr-only">
                   Search
                 </label>
@@ -243,8 +285,12 @@ export default function Example() {
                   id="search-field"
                   name="search"
                   type="search"
-                  placeholder="Search..."
+                  placeholder="Search by address or owner..."
                   className="block h-full w-full border-0 py-0 pl-8 pr-0 text-gray-900 placeholder:text-gray-400 focus:ring-0 sm:text-sm"
+                  value={searchQuery}
+                  onChange={handleSearchChange} // Update search query on input change
+                  onFocus={() => setShowDropdown(filteredAddresses.length > 0)}
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 100)}
                 />
               </form>
               <div className="flex items-center gap-x-4 lg:gap-x-6">
@@ -252,11 +298,7 @@ export default function Example() {
                   <span className="sr-only">View notifications</span>
                   <BellIcon aria-hidden="true" className="h-6 w-6" />
                 </button>
-
-                {/* Separator */}
                 <div aria-hidden="true" className="hidden lg:block lg:h-6 lg:w-px lg:bg-gray-900/10" />
-
-                {/* Profile dropdown */}
                 <Menu as="div" className="relative">
                   <MenuButton className="-m-1.5 flex items-center p-1.5">
                     <span className="sr-only">Open user menu</span>
@@ -274,13 +316,13 @@ export default function Example() {
                   </MenuButton>
                   <MenuItems
                     transition
-                    className="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 transition focus:outline-none data-[closed]:scale-95 data-[closed]:transform data-[closed]:opacity-0 data-[enter]:duration-100 data-[leave]:duration-75 data-[enter]:ease-out data-[leave]:ease-in"
+                    className="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 transition focus:outline-none"
                   >
                     {userNavigation.map((item) => (
                       <MenuItem key={item.name}>
                         <a
                           href={item.href}
-                          className="block px-3 py-1 text-sm leading-6 text-gray-900 data-[focus]:bg-gray-50"
+                          className="block px-3 py-1 text-sm leading-6 text-gray-900"
                         >
                           {item.name}
                         </a>
@@ -291,14 +333,30 @@ export default function Example() {
               </div>
             </div>
           </div>
-
+          {/* Dropdown Search Results */}
+          {showDropdown && (
+            <div className="p-4 absolute bg-white shadow-md rounded-md z-50">
+              <ul className="dropdown-list">
+                {filteredAddresses.map(address => (
+                  <li 
+                    key={address.id} 
+                    onMouseDown={() => handleDropdownSelect(address)}
+                    className="cursor-pointer p-2 hover:bg-gray-200"
+                  >
+                    {address.property_name} - {address.combadd} - {address.ownername}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {/* Main content area */}
           <main className="py-10">
             <div className="px-4 sm:px-6 lg:px-8">
-                
+              {children}
             </div>
           </main>
         </div>
       </div>
     </>
-  )
+  );
 }
