@@ -27,10 +27,10 @@ import { Link, useNavigate } from 'react-router-dom'; // Import Link and useNavi
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon, current: true },
   { name: 'Contacts', href: '/contacts', icon: UsersIcon, current: false },
-  { name: 'Violations', href: '/due-list', icon: BuildingOffice2Icon, current: false },
+  { name: 'Violations', href: '/violations', icon: BuildingOffice2Icon, current: false },
   { name: 'Citations', href: '/sir', icon: CalendarIcon, current: false },
   { name: 'Complaints', href: '#', icon: DocumentDuplicateIcon, current: false },
-  { name: 'Inspections', href: '#', icon: ChartPieIcon, current: false },
+  { name: 'Inspections', href: '/inspections', icon: ChartPieIcon, current: false },
   { name: 'Permits', href: '#', icon: BuildingOffice2Icon, current: false },
   { name: 'Licenses', href: '#', icon: BuildingOffice2Icon, current: false },
   { name: 'Payments', href: '#', icon: BuildingOffice2Icon, current: false },

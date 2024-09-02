@@ -9,6 +9,8 @@ import Sir from './Components/Sir';
 import AddressDetail from './Components/AddressDetail';
 import Contacts from './Components/Contacts';
 import ContactDetail from './Components/ContactDetail';
+import Violations from './Components/Violations';
+import Inspections from './Components/Inspections';
 
 
 function App() {
@@ -23,6 +25,8 @@ function App() {
           <Route path="/address/:id" element={<AddressDetail />} />
           <Route path="/contacts" element={<Contacts />} />
           <Route path="/contacts/:id" element={<ContactDetail />} />
+          <Route path="/violations" element={<Violations />} />
+          <Route path="/inspections" element={<Inspections />} />
           {/* Add more routes as needed */}
         </Routes>
       </Sidebar>
