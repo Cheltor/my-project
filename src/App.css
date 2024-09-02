@@ -36,3 +36,26 @@
     transform: rotate(360deg);
   }
 }
+
+body {
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+}
+
+.container {
+  max-width: 100%; /* Ensure containers don't exceed screen width */
+  overflow-x: hidden; /* Prevent overflow in containers */
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto; /* Allow tables to scroll horizontally if needed */
+}
+
+img, table, .responsive-element {
+  max-width: 100%;
+  height: auto;
+}
+
+* {
+  box-sizing: border-box;
+}

@@ -26,11 +26,16 @@ import { Link, useNavigate } from 'react-router-dom'; // Import Link and useNavi
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon, current: true },
-  { name: 'About', href: '/about', icon: UsersIcon, current: false },
-  { name: 'Addresses', href: '/due-list', icon: BuildingOffice2Icon, current: false },
-  { name: 'SIR', href: '/sir', icon: CalendarIcon, current: false },
-  { name: 'Documents', href: '#', icon: DocumentDuplicateIcon, current: false },
-  { name: 'Reports', href: '#', icon: ChartPieIcon, current: false },
+  { name: 'Contacts', href: '/contacts', icon: UsersIcon, current: false },
+  { name: 'Violations', href: '/due-list', icon: BuildingOffice2Icon, current: false },
+  { name: 'Citations', href: '/sir', icon: CalendarIcon, current: false },
+  { name: 'Complaints', href: '#', icon: DocumentDuplicateIcon, current: false },
+  { name: 'Inspections', href: '#', icon: ChartPieIcon, current: false },
+  { name: 'Permits', href: '#', icon: BuildingOffice2Icon, current: false },
+  { name: 'Licenses', href: '#', icon: BuildingOffice2Icon, current: false },
+  { name: 'Payments', href: '#', icon: BuildingOffice2Icon, current: false },
+  { name: 'Reports', href: '#', icon: BuildingOffice2Icon, current: false },
+  { name: 'Settings', href: '#', icon: Cog6ToothIcon, current: false },
 ];
 
 const teams = [
@@ -302,11 +307,6 @@ export default function Sidebar({ children }) {
                 <Menu as="div" className="relative">
                   <MenuButton className="-m-1.5 flex items-center p-1.5">
                     <span className="sr-only">Open user menu</span>
-                    <img
-                      alt=""
-                      src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                      className="h-8 w-8 rounded-full bg-gray-50"
-                    />
                     <span className="hidden lg:flex lg:items-center">
                       <span aria-hidden="true" className="ml-4 text-sm font-semibold leading-6 text-gray-900">
                         Tom Cook
@@ -343,7 +343,7 @@ export default function Sidebar({ children }) {
                     onMouseDown={() => handleDropdownSelect(address)}
                     className="cursor-pointer p-2 hover:bg-gray-200"
                   >
-                    {address.property_name} - {address.combadd} - {address.ownername}
+                    {address.property_name ? address.property_name + ' - ' : ''}{address.combadd} - {address.ownername}
                   </li>
                 ))}
               </ul>
