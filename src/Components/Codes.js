@@ -12,7 +12,7 @@ const Codes = () => {
 
   useEffect(() => {
     // Fetch codes from the API or use static data for testing
-    fetch('https://www.riverdaleparkcode.com/api/v1/codes') // Replace with actual endpoint
+    fetch('http://localhost:3000/api/v1/codes') // Replace with actual endpoint
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch codes');

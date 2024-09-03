@@ -11,7 +11,7 @@ const DueList = () => {
     // Function to fetch the addresses count from the API
     const fetchAddresses = async () => {
       try {
-        const response = await fetch('https://www.riverdaleparkcode.com/api/v1/addresses');
+        const response = await fetch('http://localhost:3000/api/v1/addresses');
         if (!response.ok) {
           throw new Error('Failed to fetch addresses');
         }

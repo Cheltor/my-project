@@ -9,7 +9,7 @@ const AddressDetails = () => {
 
   useEffect(() => {
     // Fetch the details of a specific address using the ID from the URL
-    fetch(`https://www.riverdaleparkcode.com/api/v1/addresses/${id}`)
+    fetch(`http://localhost:3000/api/v1/addresses/${id}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch address details');

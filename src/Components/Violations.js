@@ -11,7 +11,7 @@ export default function Violations() {
 
   useEffect(() => {
     // Fetch violations from the API
-    fetch('https://www.riverdaleparkcode.com/api/v1/violations') // Replace with the actual endpoint
+    fetch('http://localhost:3000/api/v1/violations') // Replace with the actual endpoint
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch violations');

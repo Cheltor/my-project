@@ -35,7 +35,7 @@ const navigation = [
   { name: 'Licenses', href: '#', icon: BuildingOffice2Icon, current: false },
   { name: 'Codes', href: '/codes', icon: BuildingOffice2Icon, current: false },
   { name: 'Businesses', href: '/businesses', icon: BuildingOffice2Icon, current: false },
-  { name: 'Settings', href: '#', icon: Cog6ToothIcon, current: false },
+  { name: 'Login', href: '/login', icon: Cog6ToothIcon, current: false },
 ];
 
 const teams = [
@@ -67,7 +67,7 @@ export default function Sidebar({ children }) {
   // Fetch addresses on component mount
   useEffect(() => {
     setLoading(true);
-    fetch('https://www.riverdaleparkcode.com/api/v1/addresses')
+    fetch('http://localhost:3000/api/v1/addresses')
       .then(response => {
         if (!response.ok) {
           throw new Error('Failed to fetch addresses');

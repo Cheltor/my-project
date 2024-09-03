@@ -1,6 +1,8 @@
-import React from 'react';
+// src/App.js
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
+import API from './Services/api';
 import Sidebar from './Layouts/Sidebar';  // Adjust path based on your project structure
 import Home from './Components/Home';
 import About from './Components/About';  // Example component
@@ -14,9 +16,20 @@ import Inspections from './Components/Inspections';
 import Businesses from './Components/Businesses';
 import BusinessDetail from './Components/BusinessDetail';
 import Codes from './Components/Codes';
-
+import Login from './Components/Login'; // Import the Login component
 
 function App() {
+  useEffect(() => {
+    // Make an initial request to get the CSRF token set in cookies
+    API.get('/')
+      .then(response => {
+        console.log('CSRF token set:', document.cookie);
+      })
+      .catch(error => {
+        console.error('Error setting CSRF token:', error);
+      });
+  }, []);
+
   return (
     <Router>
       <Sidebar>
@@ -33,6 +46,7 @@ function App() {
           <Route path="/businesses" element={<Businesses />} />
           <Route path="/business/:id" element={<BusinessDetail />} />
           <Route path="/codes" element={<Codes />} />
+          <Route path="/login" element={<Login />} /> {/* Add this route for the login page */}
           {/* Add more routes as needed */}
         </Routes>
       </Sidebar>

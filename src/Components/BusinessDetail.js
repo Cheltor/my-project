@@ -9,7 +9,7 @@ const BusinessDetails = () => {
 
   useEffect(() => {
     // Fetch the details of a specific business using the ID from the URL
-    fetch(`https://www.riverdaleparkcode.com/api/v1/businesses/${id}`)
+    fetch(`http://localhost:3000/api/v1/businesses/${id}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch business details');

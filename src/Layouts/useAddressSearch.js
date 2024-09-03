@@ -8,7 +8,7 @@ function useAddressSearch() {
 
   useEffect(() => {
     // Fetch the list of addresses from the API
-    fetch('https://www.riverdaleparkcode.com/api/v1/addresses')
+    fetch('http://localhost:3000/api/v1/addresses')
       .then((response) => {
         if (!response.ok) {
           throw new Error('Network response was not ok');
