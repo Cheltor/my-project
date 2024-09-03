@@ -11,6 +11,9 @@ import Contacts from './Components/Contacts';
 import ContactDetail from './Components/ContactDetail';
 import Violations from './Components/Violations';
 import Inspections from './Components/Inspections';
+import Businesses from './Components/Businesses';
+import BusinessDetail from './Components/BusinessDetail';
+import Codes from './Components/Codes';
 
 
 function App() {
@@ -27,6 +30,9 @@ function App() {
           <Route path="/contacts/:id" element={<ContactDetail />} />
           <Route path="/violations" element={<Violations />} />
           <Route path="/inspections" element={<Inspections />} />
+          <Route path="/businesses" element={<Businesses />} />
+          <Route path="/business/:id" element={<BusinessDetail />} />
+          <Route path="/codes" element={<Codes />} />
           {/* Add more routes as needed */}
         </Routes>
       </Sidebar>

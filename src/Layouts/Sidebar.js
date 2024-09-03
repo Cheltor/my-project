@@ -33,8 +33,8 @@ const navigation = [
   { name: 'Inspections', href: '/inspections', icon: ChartPieIcon, current: false },
   { name: 'Permits', href: '#', icon: BuildingOffice2Icon, current: false },
   { name: 'Licenses', href: '#', icon: BuildingOffice2Icon, current: false },
-  { name: 'Payments', href: '#', icon: BuildingOffice2Icon, current: false },
-  { name: 'Reports', href: '#', icon: BuildingOffice2Icon, current: false },
+  { name: 'Codes', href: '/codes', icon: BuildingOffice2Icon, current: false },
+  { name: 'Businesses', href: '/businesses', icon: BuildingOffice2Icon, current: false },
   { name: 'Settings', href: '#', icon: Cog6ToothIcon, current: false },
 ];
 
