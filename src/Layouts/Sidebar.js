@@ -61,6 +61,7 @@ export default function Sidebar({ children }) {
   const [loading, setLoading] = useState(false); // Loading state for API call
   const [error, setError] = useState(null); // Error state for API call
   const [showDropdown, setShowDropdown] = useState(false); // State to show/hide dropdown
+  const [activeIndex, setActiveIndex] = useState(-1); // Track active/focused dropdown item
 
   const navigate = useNavigate(); // To navigate programmatically
 
@@ -97,18 +98,43 @@ export default function Sidebar({ children }) {
       );
       setFilteredAddresses(filtered);
       setShowDropdown(filtered.length > 0); // Show dropdown if there are matches
+      setActiveIndex(-1); // Reset activeIndex when new search is done
     } else {
-      setShowDropdown(false); // Hide dropdown if less than 3 characters
+      setShowDropdown(false); // Hide dropdown if less than 4 characters
       setFilteredAddresses([]); // Clear filtered results
     }
   };
 
   // Handle dropdown selection
   const handleDropdownSelect = (address) => {
-    setSearchQuery(address.combadd); // Update search query with selected address
-    setFilteredAddresses([address]); // Show only selected address in results
+    setSearchQuery(''); // Clear the search bar
+    setFilteredAddresses([]); // Clear filtered results
     setShowDropdown(false); // Hide dropdown
     navigate(`/address/${address.id}`); // Navigate to the address details page
+  };
+
+  // Handle keyboard navigation
+  const handleKeyDown = (event) => {
+    if (event.key === 'ArrowDown') {
+      // Move selection down
+      setActiveIndex((prevIndex) =>
+        prevIndex === filteredAddresses.length - 1 ? 0 : prevIndex + 1
+      );
+    } else if (event.key === 'ArrowUp') {
+      // Move selection up
+      setActiveIndex((prevIndex) =>
+        prevIndex <= 0 ? filteredAddresses.length - 1 : prevIndex - 1
+      );
+    } else if (event.key === 'Enter') {
+      // Select the active item
+      if (activeIndex >= 0 && filteredAddresses[activeIndex]) {
+        handleDropdownSelect(filteredAddresses[activeIndex]);
+      }
+    } else if (event.key === 'Tab' && filteredAddresses.length > 0) {
+      // Prevent default tab behavior
+      event.preventDefault();
+      setActiveIndex(0); // Set active index to first item
+    }
   };
 
   return (
@@ -277,7 +303,7 @@ export default function Sidebar({ children }) {
                 action="#"
                 method="GET"
                 className="relative flex flex-1"
-                onSubmit={e => e.preventDefault()}
+                onSubmit={(e) => e.preventDefault()}
               >
                 <label htmlFor="search-field" className="sr-only">
                   Search
@@ -295,7 +321,8 @@ export default function Sidebar({ children }) {
                   value={searchQuery}
                   onChange={handleSearchChange} // Update search query on input change
                   onFocus={() => setShowDropdown(filteredAddresses.length > 0)}
-                  onBlur={() => setTimeout(() => setShowDropdown(false), 100)}
+                  onKeyDown={handleKeyDown} // Handle keyboard events for dropdown
+                  autoComplete="off" // Disable browser's autocomplete
                 />
               </form>
               <div className="flex items-center gap-x-4 lg:gap-x-6">
@@ -337,13 +364,16 @@ export default function Sidebar({ children }) {
           {showDropdown && (
             <div className="p-4 absolute bg-white shadow-md rounded-md z-50">
               <ul className="dropdown-list">
-                {filteredAddresses.map(address => (
-                  <li 
-                    key={address.id} 
+                {filteredAddresses.map((address, index) => (
+                  <li
+                    key={address.id}
                     onMouseDown={() => handleDropdownSelect(address)}
-                    className="cursor-pointer p-2 hover:bg-gray-200"
+                    className={`cursor-pointer p-2 hover:bg-gray-200 ${
+                      index === activeIndex ? 'bg-gray-200' : ''
+                    }`}
                   >
-                    {address.property_name ? address.property_name + ' - ' : ''}{address.combadd} - {address.ownername}
+                    {address.property_name ? address.property_name + ' - ' : ''}
+                    {address.combadd} - {address.ownername}
                   </li>
                 ))}
               </ul>
@@ -351,9 +381,7 @@ export default function Sidebar({ children }) {
           )}
           {/* Main content area */}
           <main className="py-10">
-            <div className="px-4 sm:px-6 lg:px-8">
-              {children}
-            </div>
+            <div className="px-4 sm:px-6 lg:px-8">{children}</div>
           </main>
         </div>
       </div>
