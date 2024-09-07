@@ -18,6 +18,7 @@ import BusinessDetail from './Components/BusinessDetail';
 import Codes from './Components/Codes';
 import Login from './Components/Login'; // Import the Login component
 
+
 function App() {
   useEffect(() => {
     // Make an initial request to get the CSRF token set in cookies
