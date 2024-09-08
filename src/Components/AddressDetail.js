@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import Photos from './Address/AddressPhotos';
 import Citations from './Address/AddressCitations';
 import Timeline from './Address/AddressTimeline';
+import Comments from './Address/AddressComments';
 
 const AddressDetails = () => {
   const { id } = useParams();
@@ -48,6 +49,12 @@ const AddressDetails = () => {
         <>
           {/* Tab Navigation */}
           <div className="flex justify-center space-x-6 border-b-2 pb-2">
+            <button
+              className={`px-4 py-2 ${activeTab === 'comments' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+              onClick={() => setActiveTab('comments')}
+            >
+              Comments
+            </button>
             <button 
               className={`px-4 py-2 ${activeTab === 'timeline' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
               onClick={() => setActiveTab('timeline')}
@@ -73,6 +80,7 @@ const AddressDetails = () => {
             {activeTab === 'photos' && <Photos photos={address.photos} />}
             {activeTab === 'timeline' && <Timeline timeline={address.timeline} />}
             {activeTab === 'citations' && <Citations citations={address.citations} />}
+            {activeTab === 'comments' && <Comments comments={address.comments} />}
           </div>
         </>
       )}

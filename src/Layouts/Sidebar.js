@@ -69,17 +69,17 @@ export default function Sidebar({ children }) {
   useEffect(() => {
     setLoading(true);
     fetch('http://localhost:3000/api/v1/addresses')
-      .then(response => {
+      .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch addresses');
         }
         return response.json();
       })
-      .then(data => {
+      .then((data) => {
         setAddresses(data);
         setLoading(false);
       })
-      .catch(error => {
+      .catch((error) => {
         setError(error.message);
         setLoading(false);
       });
@@ -91,10 +91,11 @@ export default function Sidebar({ children }) {
     setSearchQuery(query);
 
     if (query.length >= 4) {
-      const filtered = addresses.filter(address =>
-        (address.combadd && address.combadd.toLowerCase().includes(query)) ||
-        (address.ownername && address.ownername.toLowerCase().includes(query)) ||
-        (address.property_name && address.property_name.toLowerCase().includes(query))
+      const filtered = addresses.filter(
+        (address) =>
+          (address.combadd && address.combadd.toLowerCase().includes(query)) ||
+          (address.ownername && address.ownername.toLowerCase().includes(query)) ||
+          (address.property_name && address.property_name.toLowerCase().includes(query))
       );
       setFilteredAddresses(filtered);
       setShowDropdown(filtered.length > 0); // Show dropdown if there are matches
@@ -160,7 +161,7 @@ export default function Sidebar({ children }) {
               </TransitionChild>
               <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-900 px-6 pb-4 ring-1 ring-white/10">
                 <div className="flex h-16 shrink-0 items-center">
-                    <h1 className="text-white text-2xl font-bold">CodeSoft</h1>
+                  <h1 className="text-white text-2xl font-bold">CodeSoft</h1>
                 </div>
                 <nav className="flex flex-1 flex-col">
                   <ul className="flex flex-1 flex-col gap-y-7">
@@ -170,12 +171,12 @@ export default function Sidebar({ children }) {
                           <li key={item.name}>
                             <Link
                               to={item.href}
-                              onClick={() => setSidebarOpen(false)}  // Close sidebar on click
+                              onClick={() => setSidebarOpen(false)} // Close sidebar on click
                               className={classNames(
                                 item.current
                                   ? 'bg-gray-800 text-white'
                                   : 'text-gray-400 hover:bg-gray-800 hover:text-white',
-                                'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6',
+                                'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6'
                               )}
                             >
                               <item.icon aria-hidden="true" className="h-6 w-6 shrink-0" />
@@ -192,12 +193,12 @@ export default function Sidebar({ children }) {
                           <li key={team.name}>
                             <a
                               href={team.href}
-                              onClick={() => setSidebarOpen(false)}  // Close sidebar on click
+                              onClick={() => setSidebarOpen(false)} // Close sidebar on click
                               className={classNames(
                                 team.current
                                   ? 'bg-gray-800 text-white'
                                   : 'text-gray-400 hover:bg-gray-800 hover:text-white',
-                                'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6',
+                                'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6'
                               )}
                             >
                               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-gray-700 bg-gray-800 text-[0.625rem] font-medium text-gray-400 group-hover:text-white">
@@ -212,7 +213,7 @@ export default function Sidebar({ children }) {
                     <li className="mt-auto">
                       <a
                         href="#"
-                        onClick={() => setSidebarOpen(false)}  // Close sidebar on click
+                        onClick={() => setSidebarOpen(false)} // Close sidebar on click
                         className="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-gray-400 hover:bg-gray-800 hover:text-white"
                       >
                         <Cog6ToothIcon aria-hidden="true" className="h-6 w-6 shrink-0" />
@@ -230,7 +231,7 @@ export default function Sidebar({ children }) {
         <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
           <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-gray-900 px-6 pb-4">
             <div className="flex h-16 shrink-0 items-center">
-                <h1 className="text-white text-2xl font-bold">CodeSoft</h1>
+              <h1 className="text-white text-2xl font-bold">CodeSoft</h1>
             </div>
             <nav className="flex flex-1 flex-col">
               <ul className="flex flex-1 flex-col gap-y-7">
@@ -244,7 +245,7 @@ export default function Sidebar({ children }) {
                             item.current
                               ? 'bg-gray-800 text-white'
                               : 'text-gray-400 hover:bg-gray-800 hover:text-white',
-                            'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6',
+                            'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6'
                           )}
                         >
                           <item.icon aria-hidden="true" className="h-6 w-6 shrink-0" />
@@ -265,7 +266,7 @@ export default function Sidebar({ children }) {
                             team.current
                               ? 'bg-gray-800 text-white'
                               : 'text-gray-400 hover:bg-gray-800 hover:text-white',
-                            'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6',
+                            'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6'
                           )}
                         >
                           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-gray-700 bg-gray-800 text-[0.625rem] font-medium text-gray-400 group-hover:text-white">
@@ -298,11 +299,11 @@ export default function Sidebar({ children }) {
               <Bars3Icon aria-hidden="true" className="h-6 w-6" />
             </button>
             <div aria-hidden="true" className="h-6 w-px bg-gray-900/10 lg:hidden" />
-            <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
+            <div className="relative w-full"> {/* Relative wrapper */}
               <form
                 action="#"
                 method="GET"
-                className="relative flex flex-1"
+                className="relative flex w-full"
                 onSubmit={(e) => e.preventDefault()}
               >
                 <label htmlFor="search-field" className="sr-only">
@@ -325,60 +326,32 @@ export default function Sidebar({ children }) {
                   autoComplete="off" // Disable browser's autocomplete
                 />
               </form>
-              <div className="flex items-center gap-x-4 lg:gap-x-6">
-                <button type="button" className="-m-2.5 p-2.5 text-gray-400 hover:text-gray-500">
-                  <span className="sr-only">View notifications</span>
-                  <BellIcon aria-hidden="true" className="h-6 w-6" />
-                </button>
-                <div aria-hidden="true" className="hidden lg:block lg:h-6 lg:w-px lg:bg-gray-900/10" />
-                <Menu as="div" className="relative">
-                  <MenuButton className="-m-1.5 flex items-center p-1.5">
-                    <span className="sr-only">Open user menu</span>
-                    <span className="hidden lg:flex lg:items-center">
-                      <span aria-hidden="true" className="ml-4 text-sm font-semibold leading-6 text-gray-900">
-                        Tom Cook
-                      </span>
-                      <ChevronDownIcon aria-hidden="true" className="ml-2 h-5 w-5 text-gray-400" />
-                    </span>
-                  </MenuButton>
-                  <MenuItems
-                    transition
-                    className="absolute right-0 z-10 mt-2.5 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 transition focus:outline-none"
-                  >
-                    {userNavigation.map((item) => (
-                      <MenuItem key={item.name}>
-                        <a
-                          href={item.href}
-                          className="block px-3 py-1 text-sm leading-6 text-gray-900"
-                        >
-                          {item.name}
-                        </a>
-                      </MenuItem>
+
+              {/* Dropdown Search Results */}
+              {showDropdown && (
+                <div className="absolute w-full bg-white shadow-md rounded-md z-50 mt-1">
+                  <ul className="dropdown-list max-h-60 overflow-auto">
+                    {filteredAddresses.map((address, index) => (
+                      <li
+                        key={address.id}
+                        onMouseDown={() => handleDropdownSelect(address)}
+                        className={`cursor-pointer p-2 hover:bg-gray-200 ${
+                          index === activeIndex ? 'bg-gray-200' : ''
+                        }`}
+                      >
+                        {address.property_name ? address.property_name + ' - ' : ''}
+                        {address.combadd} - {address.ownername}
+                      </li>
                     ))}
-                  </MenuItems>
-                </Menu>
-              </div>
+                  </ul>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-x-4 lg:gap-x-6">
+              {/* Additional elements like notifications and user menu */}
             </div>
           </div>
-          {/* Dropdown Search Results */}
-          {showDropdown && (
-            <div className="p-4 absolute bg-white shadow-md rounded-md z-50">
-              <ul className="dropdown-list">
-                {filteredAddresses.map((address, index) => (
-                  <li
-                    key={address.id}
-                    onMouseDown={() => handleDropdownSelect(address)}
-                    className={`cursor-pointer p-2 hover:bg-gray-200 ${
-                      index === activeIndex ? 'bg-gray-200' : ''
-                    }`}
-                  >
-                    {address.property_name ? address.property_name + ' - ' : ''}
-                    {address.combadd} - {address.ownername}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+
           {/* Main content area */}
           <main className="py-10">
             <div className="px-4 sm:px-6 lg:px-8">{children}</div>
