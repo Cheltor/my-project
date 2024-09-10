@@ -96,7 +96,7 @@ const Photos = ({ photos }) => {
             )}
             <img 
               src={photo} 
-              alt={`Photo ${index}`} 
+              alt={`${index}`} 
               className={`w-full h-full object-cover cursor-pointer transition-transform duration-300 transform hover:scale-105 ${
                 loadedImages.includes(index) ? 'opacity-100' : 'opacity-0'
               }`}

@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Photos from './Address/AddressPhotos';
 import Citations from './Address/AddressCitations';
-import Timeline from './Address/AddressTimeline';
+import Violations from './Address/AddressViolations';
 import Comments from './Address/AddressComments';
+import Complaints from './Address/AddressComplaints';
+import Inspections from './Address/AddressInspections';
 
 const AddressDetails = () => {
   const { id } = useParams();
@@ -56,10 +58,10 @@ const AddressDetails = () => {
               Comments
             </button>
             <button 
-              className={`px-4 py-2 ${activeTab === 'timeline' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
-              onClick={() => setActiveTab('timeline')}
+              className={`px-4 py-2 ${activeTab === 'violations' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+              onClick={() => setActiveTab('violations')}
             >
-              Timeline
+              Violations
             </button>
             <button 
               className={`px-4 py-2 ${activeTab === 'photos' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
@@ -73,14 +75,28 @@ const AddressDetails = () => {
             >
               Citations
             </button>
+            <button 
+              className={`px-4 py-2 ${activeTab === 'inspections' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+              onClick={() => setActiveTab('inspections')}
+            >
+              Inspections
+            </button>
+            <button 
+              className={`px-4 py-2 ${activeTab === 'complaints' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+              onClick={() => setActiveTab('complaints')}
+            >
+              Complaints
+            </button>
           </div>
 
           {/* Render content based on active tab */}
           <div className="mt-6">
             {activeTab === 'photos' && <Photos photos={address.photos} />}
-            {activeTab === 'timeline' && <Timeline timeline={address.timeline} />}
-            {activeTab === 'citations' && <Citations citations={address.citations} />}
-            {activeTab === 'comments' && <Comments comments={address.comments} />}
+            {activeTab === 'citations' && <Citations addressId={id} />}
+            {activeTab === 'comments' && <Comments addressId={id} />}
+            {activeTab === 'violations' && <Violations addressId={id} />}
+            {activeTab === 'inspections' && <Inspections addressId={id} />}
+            {activeTab === 'complaints' && <Complaints addressId={id} />}
           </div>
         </>
       )}
