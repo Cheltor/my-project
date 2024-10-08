@@ -12,7 +12,7 @@ const AddressComments = ({ addressId }) => {
   const [error, setError] = useState(null);      // For error state
 
   useEffect(() => {
-    fetch(`http://localhost:3000/api/v1/addresses/${addressId}/comments`)
+    fetch(`http://127.0.0.1:8000/comments/address/${addressId}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch comments');

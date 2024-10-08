@@ -12,40 +12,63 @@ const AddressDetails = () => {
   const [address, setAddress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('timeline'); // State to track the active tab
+  const [activeTab, setActiveTab] = useState('comments'); // State to track the active tab
 
   useEffect(() => {
-    fetch(`http://localhost:3000/api/v1/addresses/${id}`)
+    setLoading(true);
+    fetch(`http://127.0.0.1:8000/addresses/${id}`)  // Make sure 'id' is correct
       .then((response) => {
         if (!response.ok) {
-          throw new Error('Failed to fetch address details');
+          throw new Error('Failed to fetch address');
         }
         return response.json();
       })
       .then((data) => {
-        setAddress(data);
+        console.log("Fetched address data:", data);  // Debug log to verify state
+        setAddress(data);  // Store the address data in state
         setLoading(false);
       })
       .catch((error) => {
         setError(error.message);
         setLoading(false);
       });
-  }, [id]);
+  }, [id]);  // Dependency on id (ensure it's defined)
+  
 
   if (loading) return <div className="flex justify-center items-center h-screen"><div>Loading...</div></div>;
   if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
+  if (!address) return <div className="text-center mt-10">No address details available.</div>;
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg mt-10 space-y-8">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Address Details</h1>
 
-      {/* Display Combined Address (combadd) */}
-      {address && address.address && (
-        <div className="mb-4">
-          <h2 className="text-2xl font-semibold text-gray-700">Combined Address</h2>
-          <p className="text-lg text-gray-600">{address.address.combadd}</p> {/* Access the combined address */}
-        </div>
-      )}
+    {/* Display Combined Address (combadd) */}
+    {address && (
+      <div className="mb-4">
+        <h1 className="text-3xl font-bold text-gray-800 mb-6 flex items-center">
+          {/* Conditionally render Property Name if it exists */}
+          {address.property_name && (
+            <>
+              <span>{address.property_name}</span>
+              <span className="mx-2">-</span> {/* Separator between property_name and combadd */}
+            </>
+          )}
+          <span>{address.combadd}</span> {/* Always render combined address */}
+        </h1>
+
+        <h2 className="text-2xl font-semibold text-gray-700">Owner Name</h2>
+        <p className="text-lg text-gray-600">{address.ownername}</p> {/* Access the owner name */}
+        
+        {/* Conditionally render AKA if not null */}
+        {address.aka && (
+          <>
+            <h2 className="text-2xl font-semibold text-gray-700">AKA:</h2>
+            <p className="text-lg text-gray-600">{address.aka}</p>
+          </>
+        )}
+      </div>
+    )}
+
 
       {address && (
         <>

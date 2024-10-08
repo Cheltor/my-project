@@ -25,7 +25,7 @@ import { ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/20/solid'
 import { Link, useNavigate } from 'react-router-dom'; // Import Link and useNavigate
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: HomeIcon, current: true },
+  { name: 'Dashboard', href: '/', icon: HomeIcon, current: false },
   { name: 'Contacts', href: '/contacts', icon: UsersIcon, current: false },
   { name: 'Violations', href: '/violations', icon: BuildingOffice2Icon, current: false },
   { name: 'Citations', href: '/sir', icon: CalendarIcon, current: false },
@@ -68,7 +68,7 @@ export default function Sidebar({ children }) {
   // Fetch addresses on component mount
   useEffect(() => {
     setLoading(true);
-    fetch('http://localhost:3000/api/v1/addresses')
+    fetch('http://127.0.0.1:8000/addresses/')
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch addresses');

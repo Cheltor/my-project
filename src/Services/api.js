@@ -1,10 +1,11 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: 'http://localhost:3000',
+  baseURL: 'http://127.0.0.1:8000/',
   withCredentials: true,
 });
 
+/*
 API.interceptors.request.use(
   (config) => {
     const tcsrfToken = document.cookie
@@ -20,5 +21,6 @@ API.interceptors.request.use(
     return Promise.reject(error);
   }
 );
+*/
 
 export default API;

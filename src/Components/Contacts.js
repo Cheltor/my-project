@@ -15,7 +15,7 @@ export default function Contacts() {
 
   useEffect(() => {
     // Fetch contacts from the API
-    fetch('http://localhost:3000/api/v1/contacts')
+    fetch('http://127.0.0.1:8000/contacts/')
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch contacts');

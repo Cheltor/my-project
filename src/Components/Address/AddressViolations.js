@@ -13,7 +13,7 @@ const AddressViolations = ({ addressId }) => {
 
   useEffect(() => {
     // Fetch violations for the specific address
-    fetch(`http://localhost:3000/api/v1/addresses/${addressId}/violations`)
+    fetch(`http://127.0.0.1:8000/violations/address/${addressId}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch violations');

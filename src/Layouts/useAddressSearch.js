@@ -8,7 +8,7 @@ function useAddressSearch() {
 
   useEffect(() => {
     // Fetch the list of addresses from the API
-    fetch('http://localhost:3000/api/v1/addresses')
+    fetch('http://127.0.0.1:8000/addresses/')
       .then((response) => {
         if (!response.ok) {
           throw new Error('Network response was not ok');
