@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom'; // Import Link for navigation
 
 const Codes = () => {
   const [codes, setCodes] = useState([]); // State to store all codes
@@ -149,7 +150,10 @@ const Codes = () => {
                         'whitespace-nowrap px-3 py-4 text-sm text-gray-500',
                       )}
                     >
-                      {code.name}
+                      {/* Link to the CodeDetail component */}
+                      <Link to={`/code/${code.id}`} className="text-indigo-600 hover:text-indigo-900">
+                        {code.name}
+                      </Link>
                     </td>
                     <td
                       className={classNames(

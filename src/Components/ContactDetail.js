@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import ContactComments from './Contact/ContactComments';
+import { formatPhoneNumber } from '../utils';
 
 export default function ContactDetail() {
   const { id } = useParams(); // Get the id from the URL
@@ -32,9 +34,12 @@ export default function ContactDetail() {
   return (
     <div className="px-4 sm:px-6 lg:px-8">
       <h1 className="text-2xl font-semibold leading-6 text-gray-900">{contact.name}</h1>
-      <p className="mt-2 text-sm text-gray-700">Email: {contact.email}</p>
-      <p className="mt-2 text-sm text-gray-700">Phone: {contact.phone || 'N/A'}</p>
+      <p className="mt-2 text-sm text-gray-700">Email: <a href={`mailto:${contact.email}`}>{contact.email}</a></p>
+      <p className="mt-2 text-sm text-gray-700">
+        Phone: <a href={`tel:${formatPhoneNumber(contact.phone)}`}>{formatPhoneNumber(contact.phone) || 'N/A'}</a>
+      </p>
       {/* Add more contact details as needed */}
+      <ContactComments contactId={id} />
     </div>
   );
 }

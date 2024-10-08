@@ -16,6 +16,7 @@ import Inspections from './Components/Inspections';
 import Businesses from './Components/Businesses';
 import BusinessDetail from './Components/BusinessDetail';
 import Codes from './Components/Codes';
+import CodeDetail from './Components/CodeDetail';
 import Login from './Components/Login'; // Import the Login component
 
 
@@ -47,6 +48,7 @@ function App() {
           <Route path="/businesses" element={<Businesses />} />
           <Route path="/business/:id" element={<BusinessDetail />} />
           <Route path="/codes" element={<Codes />} />
+          <Route path="/code/:id" element={<CodeDetail />} />
           <Route path="/login" element={<Login />} /> {/* Add this route for the login page */}
           {/* Add more routes as needed */}
         </Routes>

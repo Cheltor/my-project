@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom'; // Import Link from react-router-dom
+import { formatPhoneNumber } from '../utils'; // Import formatPhoneNumber utility function
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
@@ -112,12 +113,6 @@ export default function Contacts() {
                   >
                     Phone
                   </th>
-                  <th
-                    scope="col"
-                    className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 py-3.5 pl-3 pr-4 backdrop-blur backdrop-filter sm:pr-6 lg:pr-8"
-                  >
-                    <span className="sr-only">Edit</span>
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -130,7 +125,7 @@ export default function Contacts() {
                       )}
                     >
                       {/* Wrap name with Link to navigate to the contact's details page */}
-                      <Link to={`/contact/${contact.id}`} className="text-indigo-600 hover:text-indigo-900">
+                      <Link to={`/contacts/${contact.id}`} className="text-indigo-600 hover:text-indigo-900">
                         {contact.name}
                       </Link>
                     </td>
@@ -140,26 +135,14 @@ export default function Contacts() {
                         'hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 sm:table-cell',
                       )}
                     >
-                      {contact.email}
-                    </td>
+                      <a href={`mailto:${contact.email}`}>{contact.email}</a>                    </td>
                     <td
                       className={classNames(
                         contactIdx !== currentContacts.length - 1 ? 'border-b border-gray-200' : '',
                         'whitespace-nowrap px-3 py-4 text-sm text-gray-500',
                       )}
                     >
-                      {contact.phone || 'N/A'}
-                    </td>
-                    <td
-                      className={classNames(
-                        contactIdx !== currentContacts.length - 1 ? 'border-b border-gray-200' : '',
-                        'relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-8 lg:pr-8',
-                      )}
-                    >
-                      <a href="#" className="text-indigo-600 hover:text-indigo-900">
-                        Edit<span className="sr-only">, {contact.name}</span>
-                      </a>
-                    </td>
+                      <a href={`tel:${formatPhoneNumber(contact.phone)}`}>{formatPhoneNumber(contact.phone) || 'N/A'}</a>                    </td>
                   </tr>
                 ))}
               </tbody>
