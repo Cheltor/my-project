@@ -17,6 +17,9 @@ import Businesses from './Components/Businesses';
 import BusinessDetail from './Components/BusinessDetail';
 import Codes from './Components/Codes';
 import CodeDetail from './Components/CodeDetail';
+import Licenses from './Components/Licenses';
+import Complaints from './Components/Complaints';
+import Citations from './Components/Citations';
 import Login from './Components/Login'; // Import the Login component
 
 
@@ -49,6 +52,9 @@ function App() {
           <Route path="/business/:id" element={<BusinessDetail />} />
           <Route path="/codes" element={<Codes />} />
           <Route path="/code/:id" element={<CodeDetail />} />
+          <Route path="/licenses" element={<Licenses />} />
+          <Route path="/complaints" element={<Complaints />} />
+          <Route path="/citations" element={<Citations />} />
           <Route path="/login" element={<Login />} /> {/* Add this route for the login page */}
           {/* Add more routes as needed */}
         </Routes>

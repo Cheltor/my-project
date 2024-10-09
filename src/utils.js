@@ -12,3 +12,9 @@ export const formatWebsite = (website) => {
   if (!website) return 'N/A';
   return website.replace(/(^\w+:|^)\/\//, '');
 };
+
+export const truncateEmail = (email) => {
+  if (!email) return 'N/A';
+  return email.split('@')[0];
+};
+

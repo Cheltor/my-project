@@ -1,24 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-export default function Inspections() {
-  const [inspections, setInspections] = useState([]); // State to store all inspections
+export default function Complaints() {
+  const [complaints, setComplaints] = useState([]); // State to store all complaints
   const [loading, setLoading] = useState(true); // State to manage loading state
   const [error, setError] = useState(null); // State to manage error state
   const [currentPage, setCurrentPage] = useState(1); // State for the current page
-  const inspectionsPerPage = 10; // Number of inspections to display per page
+  const complaintsPerPage = 10; // Number of complaints to display per page
 
   useEffect(() => {
-    // Fetch inspections from the API
-    fetch('http://127.0.0.1:8000/inspections/') // Replace with the actual endpoint
+    // Fetch complaints from the API
+    fetch('http://127.0.0.1:8000/complaints/') // Replace with the actual endpoint
       .then((response) => {
         if (!response.ok) {
-          throw new Error('Failed to fetch inspections');
+          throw new Error('Failed to fetch complaints');
         }
         return response.json();
       })
       .then((data) => {
-        setInspections(data); // Store the fetched inspections in the state
+        setComplaints(data); // Store the fetched complaints in the state
         setLoading(false); // Set loading to false after fetching data
       })
       .catch((error) => {
@@ -28,12 +28,12 @@ export default function Inspections() {
   }, []); // Empty dependency array ensures this runs once when the component mounts
 
   // Calculate the total number of pages
-  const totalPages = Math.ceil(inspections.length / inspectionsPerPage);
+  const totalPages = Math.ceil(complaints.length / complaintsPerPage);
 
-  // Get the current set of inspections to display
-  const indexOfLastInspection = currentPage * inspectionsPerPage;
-  const indexOfFirstInspection = indexOfLastInspection - inspectionsPerPage;
-  const currentInspections = inspections.slice(indexOfFirstInspection, indexOfLastInspection);
+  // Get the current set of complaints to display
+  const indexOfLastComplaint = currentPage * complaintsPerPage;
+  const indexOfFirstComplaint = indexOfLastComplaint - complaintsPerPage;
+  const currentComplaints = complaints.slice(indexOfFirstComplaint, indexOfLastComplaint);
 
   // Change page
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
@@ -45,9 +45,9 @@ export default function Inspections() {
     <div className="px-4 sm:px-6 lg:px-8">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
-          <h1 className="text-base font-semibold leading-6 text-gray-900">Inspections</h1>
+          <h1 className="text-base font-semibold leading-6 text-gray-900">Complaints</h1>
           <p className="mt-2 text-sm text-gray-700">
-            A list of all inspections, including their status, source, and associated address.
+            A list of all complaints, including their status, source, and associated address.
           </p>
         </div>
         <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
@@ -55,7 +55,7 @@ export default function Inspections() {
             type="button"
             className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
           >
-            Add inspection
+            Add complaint
           </button>
         </div>
       </div>
@@ -83,58 +83,45 @@ export default function Inspections() {
                   >
                     Address
                   </th>
-                  <th
-                    scope="col"
-                    className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 py-3.5 pl-3 pr-4 text-center backdrop-blur backdrop-filter sm:pr-6 lg:pr-8"
-                  >
-                    Scheduled Date
-                  </th>
                 </tr>
               </thead>
               <tbody>
-                {currentInspections.map((inspection, idx) => (
-                  <tr key={inspection.id}>
+                {currentComplaints.map((complaint, idx) => (
+                  <tr key={complaint.id}>
                     <td
                       className={classNames(
-                        idx !== currentInspections.length - 1 ? 'border-b border-gray-200' : '',
+                        idx !== currentComplaints.length - 1 ? 'border-b border-gray-200' : '',
                         'whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-center',
                       )}
                     >
-                      {/* Link to the inspection details page */}
-                      <Link to={`/inspection/${inspection.id}`} className="text-indigo-600 hover:text-indigo-900">
-                        {inspection.source}
+                      {/* Link to the complaint details page */}
+                      <Link to={`/complaint/${complaint.id}`} className="text-indigo-600 hover:text-indigo-900">
+                        {complaint.source}
                       </Link>
                     </td>
                     <td
                       className={classNames(
-                        idx !== currentInspections.length - 1 ? 'border-b border-gray-200' : '',
+                        idx !== currentComplaints.length - 1 ? 'border-b border-gray-200' : '',
                         'whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-center',
                       )}
                     >
-                      {inspection.status ? inspection.status : 'Pending'}
+                      {complaint.status ? complaint.status : 'Pending'}
                     </td>
                     <td
                       className={classNames(
-                        idx !== currentInspections.length - 1 ? 'border-b border-gray-200' : '',
+                        idx !== currentComplaints.length - 1 ? 'border-b border-gray-200' : '',
                         'whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-center',
                       )}
                     >
                       {/* Link to the address details page */}
-                      {inspection.address ? (
-                        <Link to={`/address/${inspection.address.id}`} className="text-indigo-600 hover:text-indigo-900">
-                          {inspection.address.combadd}
+                      {complaint.address ? (
+                        <Link to={`/address/${complaint.address.id}`} className="text-indigo-600 hover:text-indigo-900">
+                          {complaint.address.combadd}
                         </Link>
                       ) : (
                         'No address'
                       )}
                     </td>
-                    <td
-                      className={classNames(
-                        idx !== currentInspections.length - 1 ? 'border-b border-gray-200' : '',
-                        'whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-center',
-                      )}
-                    >
-                      {inspection.scheduled_datetime ? new Date(inspection.scheduled_datetime).toLocaleString() : 'unscheduled'}                    </td>
                   </tr>
                 ))}
               </tbody>
