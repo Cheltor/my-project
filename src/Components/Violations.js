@@ -9,6 +9,13 @@ export default function Violations() {
   const [statusFilter, setStatusFilter] = useState('all'); // State for the status filter
   const violationsPerPage = 10; // Number of violations to display per page
 
+  const statusMapping = {
+    0: 'Current',
+    1: 'Resolved',
+    2: 'Pending Trial',
+    3: 'Dismissed'
+  };
+
   useEffect(() => {
     // Fetch violations from the API
     fetch('http://127.0.0.1:8000/violations/') // Replace with the actual endpoint
@@ -31,7 +38,7 @@ export default function Violations() {
   // Calculate the total number of pages
   const filteredViolations = statusFilter === 'all'
     ? violations
-    : violations.filter(violation => violation.status === statusFilter);
+    : violations.filter(violation => statusMapping[violation.status] === statusFilter);
 
   const totalPages = Math.ceil(filteredViolations.length / violationsPerPage);
 
@@ -83,8 +90,10 @@ export default function Violations() {
           className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
         >
           <option value="all">All</option>
-          <option value="current">Current</option>
-          <option value="resolved">Resolved</option>
+          <option value="Current">Current</option>
+          <option value="Resolved">Resolved</option>
+          {/* <option value="Pending Trial">Pending Trial</option>
+          <option value="Dismissed">Dismissed</option> */}
         </select>
       </div>
       <div className="mt-8 flow-root">
@@ -153,7 +162,7 @@ export default function Violations() {
                         'whitespace-nowrap px-3 py-4 text-sm text-gray-500',
                       )}
                     >
-                      {violation.status}
+                      {statusMapping[violation.status]}
                     </td>
                     <td
                       className={classNames(
@@ -162,9 +171,9 @@ export default function Violations() {
                       )}
                     >
                       {/* Link to the address details page */}
-                      {violation.address ? (
-                        <Link to={`/address/${violation.address.id}`} className="text-indigo-600 hover:text-indigo-900">
-                          {violation.address.combadd}
+                      {violation.combadd ? (
+                        <Link to={`/address/${violation.id}`} className="text-indigo-600 hover:text-indigo-900">
+                          {violation.combadd}
                         </Link>
                       ) : (
                         'No address'
@@ -176,7 +185,7 @@ export default function Violations() {
                         'whitespace-nowrap px-3 py-4 text-sm text-gray-500',
                       )}
                     >
-                      {violation.deadline}
+                      {new Date(violation.deadline).toLocaleDateString('en-US')}
                     </td>
                   </tr>
                 ))}

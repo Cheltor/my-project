@@ -111,7 +111,15 @@ export default function Inspections() {
                         'whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-center',
                       )}
                     >
-                      {inspection.status ? inspection.status : 'Pending'}
+                                            <span
+                        className={`inline-block px-2 py-1 text-sm font-semibold rounded 
+                          ${inspection.status === 'Satisfactory' ? 'bg-green-100 text-green-800' :
+                            inspection.status === 'Unsatisfactory' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'}`}
+                      >
+                        {inspection.status ? inspection.status : 'Pending'}
+                      </span>
+
                     </td>
                     <td
                       className={classNames(

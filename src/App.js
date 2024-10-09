@@ -20,6 +20,7 @@ import CodeDetail from './Components/CodeDetail';
 import Licenses from './Components/Licenses';
 import Complaints from './Components/Complaints';
 import Citations from './Components/Citations';
+import ViolationDetail from './Components/ViolationDetail';
 import Login from './Components/Login'; // Import the Login component
 
 
@@ -55,6 +56,7 @@ function App() {
           <Route path="/licenses" element={<Licenses />} />
           <Route path="/complaints" element={<Complaints />} />
           <Route path="/citations" element={<Citations />} />
+          <Route path="/violation/:id" element={<ViolationDetail />} />
           <Route path="/login" element={<Login />} /> {/* Add this route for the login page */}
           {/* Add more routes as needed */}
         </Routes>

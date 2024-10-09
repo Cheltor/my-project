@@ -33,7 +33,8 @@ function useAddressSearch() {
         (address) =>
           (address.combadd && address.combadd.toLowerCase().includes(searchTerm)) ||
           (address.ownername && address.ownername.toLowerCase().includes(searchTerm)) ||
-          (address.property_name && address.property_name.toLowerCase().includes(searchTerm))
+          (address.property_name && address.property_name.toLowerCase().includes(searchTerm)) ||
+          (address.aka && address.aka.toLowerCase().includes(searchTerm))
       );
       setFilteredAddresses(filtered);
       setShowDropdown(filtered.length > 0); // Show dropdown if there are matches

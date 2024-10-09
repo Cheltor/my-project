@@ -106,9 +106,10 @@ export default function Citations() {
                       )}
                     >
                       <Link to={`/violation/${citation.violation_id}`} className="text-indigo-600 hover:text-indigo-900">
-                        {citation.violation_id}
+                        {citation.combadd} -&nbsp;
+                        Violation ID: {citation.violation_id}
                       </Link>
-                   </td>
+                    </td>
                     <td
                       className={classNames(
                         idx !== currentCitations.length - 1 ? 'border-b border-gray-200' : '',
