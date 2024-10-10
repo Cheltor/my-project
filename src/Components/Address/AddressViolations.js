@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import NewAddressViolation from './NewAddressViolation';
 
 // Utility function to format the date
 const formatDate = (dateString) => {
@@ -18,6 +19,11 @@ const AddressViolations = ({ addressId }) => {
     2: 'Pending Trial',
     3: 'Dismissed'
   };
+
+    // Function to add a new violation to the list
+    const handleViolationAdded = (newViolation) => {
+      setViolations((prevViolations) => [newViolation, ...prevViolations]);
+    };
 
   useEffect(() => {
     // Fetch violations for the specific address
@@ -53,6 +59,11 @@ const AddressViolations = ({ addressId }) => {
   return (
     <div className="border-b pb-4">
       <h2 className="text-2xl font-semibold text-gray-700">Violations</h2>
+      
+      {/* Render the NewAddressViolation form */}
+      <NewAddressViolation addressId={addressId} onViolationAdded={handleViolationAdded} />
+
+
       <ul className="space-y-4 mt-4">
         {violations.map((violation) => (
           <li key={violation.id} className="bg-gray-100 p-4 rounded-lg shadow">
