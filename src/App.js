@@ -27,6 +27,7 @@ import Login from './Components/Login'; // Import the Login component
 function App() {
   useEffect(() => {
     // Make an initial request to get the CSRF token set in cookies
+    /*
     API.get('/')
       .then(response => {
         console.log('CSRF token set:', document.cookie);
@@ -34,6 +35,7 @@ function App() {
       .catch(error => {
         console.error('Error setting CSRF token:', error);
       });
+    */
   }, []);
 
   return (

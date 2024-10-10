@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import ContactComments from './Contact/ContactComments';
+import NewContactComment from './Contact/NewContactComment';
 import { formatPhoneNumber } from '../utils';
 
 export default function ContactDetail() {
@@ -39,6 +40,7 @@ export default function ContactDetail() {
         Phone: <a href={`tel:${formatPhoneNumber(contact.phone)}`}>{formatPhoneNumber(contact.phone) || 'N/A'}</a>
       </p>
       {/* Add more contact details as needed */}
+      <NewContactComment contactId={id} />
       <ContactComments contactId={id} />
     </div>
   );

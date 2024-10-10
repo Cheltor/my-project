@@ -102,10 +102,17 @@ export default function Complaints() {
                     <td
                       className={classNames(
                         idx !== currentComplaints.length - 1 ? 'border-b border-gray-200' : '',
-                        'whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-center',
+                        'whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-center'
                       )}
                     >
-                      {complaint.status ? complaint.status : 'Pending'}
+                      <span
+                        className={`inline-block px-2 py-1 text-sm font-semibold rounded 
+                          ${complaint.status === 'Satisfactory' ? 'bg-green-100 text-green-800' :
+                            complaint.status === 'Unsatisfactory' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'}`}
+                      >
+                        {complaint.status ? complaint.status : 'Pending'}
+                      </span>
                     </td>
                     <td
                       className={classNames(

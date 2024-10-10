@@ -69,8 +69,10 @@ const ViolationDetail = () => {
         {violation.comment && (
           <p className="text-sm text-gray-500">Comment: {violation.comment}</p>
         )}
+        <p className="text-gray-700">Address: {violation.combadd}</p>
       </div>
-      <h3 className="text-2xl font-semibold text-gray-800 mb-4">Citations</h3>
+      <div className="mt-8">
+      <h3 className="text-2xl font-semibold text-gray-800 mb-4 ">Citations</h3>
       <ul className="space-y-4">
         {citations.length > 0 ? (
           citations.map((citation) => (
@@ -125,6 +127,7 @@ const ViolationDetail = () => {
           <p className="text-gray-500">No citations available.</p>
         )}
       </ul>
+      </div> 
     </div>
   );
 }

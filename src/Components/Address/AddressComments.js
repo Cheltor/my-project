@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import NewAddressComment from './NewAddressComment'; // Import the new component
 
 // Utility function to format the date
 const formatDate = (dateString) => {
@@ -29,6 +30,11 @@ const AddressComments = ({ addressId }) => {
       });
   }, [addressId]);
 
+  // Function to add a new comment to the list
+  const handleCommentAdded = (newComment) => {
+    setComments([newComment, ...comments]); // Add the new comment to the top of the list
+  };
+
   if (loading) {
     return <p>Loading comments...</p>;
   }
@@ -37,23 +43,28 @@ const AddressComments = ({ addressId }) => {
     return <p className="text-red-500">Error: {error}</p>;
   }
 
-  if (comments.length === 0) {
-    return <p>No comments available.</p>;
-  }
-
   return (
     <div className="border-b pb-4">
       <h2 className="text-2xl font-semibold text-gray-700">Comments</h2>
+
+      {/* Form to add a new comment */}
+      <NewAddressComment addressId={addressId} onCommentAdded={handleCommentAdded} />
+
+      {/* List of existing comments */}
       <ul className="space-y-4 mt-4">
-        {comments.map((comment) => (
-          <li key={comment.id} className="bg-gray-100 p-4 rounded-lg shadow">
-            <p className="text-gray-700 whitespace-pre-line">{comment.content}</p>
-            <p className="text-sm text-gray-500 mt-2">Posted on {formatDate(comment.created_at)}</p>
-            {comment.user && (
-              <p className="text-sm text-gray-500">By {comment.user.email}</p>
-            )}
-          </li>
-        ))}
+        {comments.length > 0 ? (
+          comments.map((comment) => (
+            <li key={comment.id} className="bg-gray-100 p-4 rounded-lg shadow">
+              <p className="text-gray-700 whitespace-pre-line">{comment.content}</p>
+              <p className="text-sm text-gray-500 mt-2">Posted on {formatDate(comment.created_at)}</p>
+              {comment.user && (
+                <p className="text-sm text-gray-500">By {comment.user.email}</p>
+              )}
+            </li>
+          ))
+        ) : (
+          <p>No comments available.</p>
+        )}
       </ul>
     </div>
   );

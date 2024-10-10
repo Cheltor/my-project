@@ -49,7 +49,6 @@ const AddressComplaints = ({ addressId }) => {
         {complaints.map((complaint) => (
           <li key={complaint.id} className="bg-gray-100 p-4 rounded-lg shadow">
             <p className="text-gray-700"><strong>Status:</strong> {complaint.status || 'Pending'}</p>
-            <p className="text-gray-700"><strong>Complaint Type:</strong> {complaint.complaint_type || 'N/A'}</p>
             {complaint.comment && (
               <p className="text-gray-700"><strong>Comment:</strong> {complaint.comment}</p>
             )}

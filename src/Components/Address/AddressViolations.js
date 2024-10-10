@@ -11,6 +11,14 @@ const AddressViolations = ({ addressId }) => {
   const [loading, setLoading] = useState(true);  // For loading state
   const [error, setError] = useState(null);      // For error state
 
+  // Define the status mapping object
+  const statusMapping = {
+    0: 'Current',
+    1: 'Resolved',
+    2: 'Pending Trial',
+    3: 'Dismissed'
+  };
+
   useEffect(() => {
     // Fetch violations for the specific address
     fetch(`http://127.0.0.1:8000/violations/address/${addressId}`)
@@ -49,9 +57,21 @@ const AddressViolations = ({ addressId }) => {
         {violations.map((violation) => (
           <li key={violation.id} className="bg-gray-100 p-4 rounded-lg shadow">
             <p className="text-gray-700">Violation Type: {violation.violation_type}</p>
-            <p className="text-gray-700">Status: {violation.status}</p>
-            {violation.deadline && (
-              <p className="text-gray-700">Deadline: {violation.deadline}</p>
+            <p className="text-gray-700">
+              Status: 
+              <span
+                className={`ml-2 px-2 py-1 rounded ${
+                  violation.status === 0 ? 'bg-red-100 text-red-800' :
+                  violation.status === 1 ? 'bg-green-100 text-green-800' :
+                  violation.status === 2 ? 'bg-yellow-100 text-yellow-800' :
+                  violation.status === 3 ? 'bg-gray-100 text-gray-800' : ''
+                }`}
+              >
+                {statusMapping[violation.status]}
+              </span>
+            </p>
+            {violation.deadline_date && (
+              <p className="text-gray-700">Deadline: {new Date(violation.deadline_date).toLocaleDateString('en-US')}</p>
             )}
             <p className="text-sm text-gray-500 mt-2">Created on {formatDate(violation.created_at)}</p>
             {violation.updated_at && (

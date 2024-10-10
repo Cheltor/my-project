@@ -73,44 +73,45 @@ const AddressDetails = () => {
       {address && (
         <>
           {/* Tab Navigation */}
-          <div className="flex justify-center space-x-6 border-b-2 pb-2">
-            <button
-              className={`px-4 py-2 ${activeTab === 'comments' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
-              onClick={() => setActiveTab('comments')}
-            >
-              Comments
-            </button>
-            <button 
-              className={`px-4 py-2 ${activeTab === 'violations' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
-              onClick={() => setActiveTab('violations')}
-            >
-              Violations
-            </button>
-            <button 
-              className={`px-4 py-2 ${activeTab === 'photos' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
-              onClick={() => setActiveTab('photos')}
-            >
-              Photos
-            </button>
-            <button 
-              className={`px-4 py-2 ${activeTab === 'citations' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
-              onClick={() => setActiveTab('citations')}
-            >
-              Citations
-            </button>
-            <button 
-              className={`px-4 py-2 ${activeTab === 'inspections' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
-              onClick={() => setActiveTab('inspections')}
-            >
-              Inspections
-            </button>
-            <button 
-              className={`px-4 py-2 ${activeTab === 'complaints' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
-              onClick={() => setActiveTab('complaints')}
-            >
-              Complaints
-            </button>
-          </div>
+          <div className="flex justify-center space-x-6 border-b-2 pb-2 overflow-x-auto">
+  <button
+    className={`px-4 py-2 ${activeTab === 'comments' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+    onClick={() => setActiveTab('comments')}
+  >
+    Comments
+  </button>
+  <button
+    className={`px-4 py-2 ${activeTab === 'violations' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+    onClick={() => setActiveTab('violations')}
+  >
+    Violations
+  </button>
+  <button
+    className={`px-4 py-2 ${activeTab === 'photos' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+    onClick={() => setActiveTab('photos')}
+  >
+    Photos
+  </button>
+  <button
+    className={`px-4 py-2 ${activeTab === 'citations' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+    onClick={() => setActiveTab('citations')}
+  >
+    Citations
+  </button>
+  <button
+    className={`px-4 py-2 ${activeTab === 'inspections' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+    onClick={() => setActiveTab('inspections')}
+  >
+    Inspections
+  </button>
+  <button
+    className={`px-4 py-2 ${activeTab === 'complaints' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-500'}`}
+    onClick={() => setActiveTab('complaints')}
+  >
+    Complaints
+  </button>
+</div>
+
 
           {/* Render content based on active tab */}
           <div className="mt-6">
