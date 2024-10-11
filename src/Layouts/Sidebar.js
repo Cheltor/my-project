@@ -3,15 +3,10 @@ import {
   Dialog,
   DialogBackdrop,
   DialogPanel,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuItems,
   TransitionChild,
 } from '@headlessui/react';
 import {
   Bars3Icon,
-  BellIcon,
   CalendarIcon,
   ChartPieIcon,
   Cog6ToothIcon,
@@ -21,8 +16,10 @@ import {
   UsersIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
-import { ChevronDownIcon, MagnifyingGlassIcon } from '@heroicons/react/20/solid';
+import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
 import { Link, useNavigate } from 'react-router-dom'; // Import Link and useNavigate
+import Logout from '../Components/Logout'; // Import the Logout component
+import { useAuth } from '../AuthContext'; // Import useAuth hook
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon, current: false },
@@ -35,18 +32,6 @@ const navigation = [
   { name: 'Licenses', href: '/licenses', icon: BuildingOffice2Icon, current: false },
   { name: 'Codes', href: '/codes', icon: BuildingOffice2Icon, current: false },
   { name: 'Businesses', href: '/businesses', icon: BuildingOffice2Icon, current: false },
-  { name: 'Login', href: '/login', icon: Cog6ToothIcon, current: false },
-];
-
-const teams = [
-  { id: 1, name: 'Logout', href: '#', initial: 'L', current: false },
-  { id: 2, name: 'Tailwind Labs', href: '#', initial: 'T', current: false },
-  { id: 3, name: 'Workcation', href: '#', initial: 'W', current: false },
-];
-
-const userNavigation = [
-  { name: 'Your profile', href: '#' },
-  { name: 'Sign out', href: '#' },
 ];
 
 function classNames(...classes) {
@@ -64,6 +49,7 @@ export default function Sidebar({ children }) {
   const [activeIndex, setActiveIndex] = useState(-1); // Track active/focused dropdown item
 
   const navigate = useNavigate(); // To navigate programmatically
+  const { user } = useAuth(); // Get user data from context
 
   // Fetch addresses on component mount
   useEffect(() => {
@@ -165,6 +151,11 @@ export default function Sidebar({ children }) {
                     <h1 className="text-white text-2xl font-bold">CodeSoft</h1>
                   </Link>
                 </div>
+                {user && (
+                  <div className="text-gray-400 text-sm">
+                    {user.email}
+                  </div>
+                )}
                 <nav className="flex flex-1 flex-col">
                   <ul className="flex flex-1 flex-col gap-y-7">
                     <li>
@@ -188,39 +179,14 @@ export default function Sidebar({ children }) {
                         ))}
                       </ul>
                     </li>
-                    <li>
-                      <div className="text-xs font-semibold leading-6 text-gray-400">Your teams</div>
-                      <ul className="-mx-2 mt-2 space-y-1">
-                        {teams.map((team) => (
-                          <li key={team.name}>
-                            <a
-                              href={team.href}
-                              onClick={() => setSidebarOpen(false)} // Close sidebar on click
-                              className={classNames(
-                                team.current
-                                  ? 'bg-gray-800 text-white'
-                                  : 'text-gray-400 hover:bg-gray-800 hover:text-white',
-                                'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6'
-                              )}
-                            >
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-gray-700 bg-gray-800 text-[0.625rem] font-medium text-gray-400 group-hover:text-white">
-                                {team.initial}
-                              </span>
-                              <span className="truncate">{team.name}</span>
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    </li>
                     <li className="mt-auto">
-                      <a
-                        href="#"
-                        onClick={() => setSidebarOpen(false)} // Close sidebar on click
+                      <div
                         className="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-gray-400 hover:bg-gray-800 hover:text-white"
+                        onClick={() => setSidebarOpen(false)} // Close sidebar on click
                       >
                         <Cog6ToothIcon aria-hidden="true" className="h-6 w-6 shrink-0" />
-                        Settings
-                      </a>
+                        <Logout />
+                      </div>
                     </li>
                   </ul>
                 </nav>
@@ -237,6 +203,11 @@ export default function Sidebar({ children }) {
                 <h1 className="text-white text-2xl font-bold">CodeSoft</h1>
               </Link>
             </div>
+            {user && (
+                  <div className="text-gray-400 text-sm">
+                    {user.email}
+                  </div>
+                )}
             <nav className="flex flex-1 flex-col">
               <ul className="flex flex-1 flex-col gap-y-7">
                 <li>
@@ -259,37 +230,14 @@ export default function Sidebar({ children }) {
                     ))}
                   </ul>
                 </li>
-                <li>
-                  <div className="text-xs font-semibold leading-6 text-gray-400">Your teams</div>
-                  <ul className="-mx-2 mt-2 space-y-1">
-                    {teams.map((team) => (
-                      <li key={team.name}>
-                        <a
-                          href={team.href}
-                          className={classNames(
-                            team.current
-                              ? 'bg-gray-800 text-white'
-                              : 'text-gray-400 hover:bg-gray-800 hover:text-white',
-                            'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6'
-                          )}
-                        >
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-gray-700 bg-gray-800 text-[0.625rem] font-medium text-gray-400 group-hover:text-white">
-                            {team.initial}
-                          </span>
-                          <span className="truncate">{team.name}</span>
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </li>
                 <li className="mt-auto">
-                  <a
-                    href="#"
+                  <div
                     className="group -mx-2 flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6 text-gray-400 hover:bg-gray-800 hover:text-white"
+                    onClick={() => setSidebarOpen(false)} // Close sidebar on click
                   >
                     <Cog6ToothIcon aria-hidden="true" className="h-6 w-6 shrink-0" />
-                    Settings
-                  </a>
+                    <Logout />
+                  </div>
                 </li>
               </ul>
             </nav>
@@ -330,6 +278,7 @@ export default function Sidebar({ children }) {
                   autoComplete="off" // Disable browser's autocomplete
                 />
               </form>
+              
 
               {/* Dropdown Search Results */}
               {showDropdown && (
