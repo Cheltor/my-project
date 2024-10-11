@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../AuthContext'; // Import the useAuth hook from the AuthContext
 
 const NewAddressComment = ({ addressId, onCommentAdded }) => {
   const [newComment, setNewComment] = useState(''); // State for new comment input
   const [submitting, setSubmitting] = useState(false); // State for form submission
+  const { user } = useAuth(); // Get user data from context
 
   // Function to handle form submission
   const handleSubmit = (event) => {
@@ -10,11 +12,18 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
     if (!newComment.trim()) {
       return; // Prevent submission of empty comments
     }
+
+    if (!user) {
+      console.error('User is not authenticated.');
+      return;
+    }
   
+    const userId = user.id; // Get the user ID from the user context
+
     // Log the comment and address ID before submission
     console.log("Submitting comment:", newComment);
     console.log("Address ID:", addressId);
-    console.log("User ID:", 1); // Hardcoded user ID for testing
+    console.log("User ID:", userId); // Hardcoded user ID for testing
   
     setSubmitting(true);
   
