@@ -32,7 +32,7 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ content: newComment, user_id: 1 }), // Assuming user_id: 2 for testing
+      body: JSON.stringify({ content: newComment, user_id: userId }), 
     })
       .then((response) => {
         console.log("Response status:", response.status); // Log the response status

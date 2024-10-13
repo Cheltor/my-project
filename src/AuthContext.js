@@ -7,12 +7,26 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null); // Store token for API requests
 
   const login = (userData, token) => {
-    console.group('Setting user and token:', userData, token);
-    setUser(userData);
+    console.log('Setting user and token:', userData, token);
     setToken(token);
-    localStorage.setItem('token', token); // Store token in local storage for persistence
-    console.log('Token saved to localStorage:', localStorage.getItem('token'));
+    localStorage.setItem('token', token);
+  
+    // Fetch user data after login
+    fetch('http://127.0.0.1:8000/user', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(response => response.json())
+      .then(fetchedUserData => {
+        console.log('User data fetched after login:', fetchedUserData); // Ensure full user data
+        setUser(fetchedUserData);  // Store full user object in state
+      })
+      .catch(error => {
+        console.error('Error fetching user data:', error);
+      });
   };
+  
 
   const logout = () => {
     setUser(null);
@@ -23,31 +37,25 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      // Fetch user data from the API using the token
-      // Update the user state with the user data
       setToken(token);
-
-      // API.get('/user')
+  
       fetch('http://127.0.0.1:8000/user', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error('Failed to fetch user data');
-          }
-          return response.json();
-        })
+        .then((response) => response.json())
         .then((userData) => {
-          setUser(userData); // Set the user data
+          console.log('Fetched user data:', userData);  // Ensure full user data is returned
+          setUser(userData);  // Store full user object in state
         })
         .catch((error) => {
-          console.error(error);
-          logout(); // Log out the user if an error occurs
+          console.error('Error fetching user data:', error);
+          logout();
         });
     }
-  }, []); // Run only on component mount
+  }, []);
+  
 
   return (
     <AuthContext.Provider value={{ user, token, login, logout }}>
