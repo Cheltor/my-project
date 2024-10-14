@@ -40,7 +40,6 @@ export default function ContactDetail() {
         Phone: <a href={`tel:${formatPhoneNumber(contact.phone)}`}>{formatPhoneNumber(contact.phone) || 'N/A'}</a>
       </p>
       {/* Add more contact details as needed */}
-      <NewContactComment contactId={id} />
       <ContactComments contactId={id} />
     </div>
   );

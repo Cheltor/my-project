@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../AuthContext'; // Import the useAuth hook from the AuthContext
 
 const NewContactComment = ({ contactId, onCommentAdded }) => {
   const [newComment, setNewComment] = useState(''); // State for new comment input
   const [submitting, setSubmitting] = useState(false); // State for form submission
+  const { user } = useAuth(); // Get user data from context
 
   // Function to handle form submission
   const handleSubmit = (event) => {
@@ -10,20 +12,27 @@ const NewContactComment = ({ contactId, onCommentAdded }) => {
     if (!newComment.trim()) {
       return; // Prevent submission of empty comments
     }
-  
+
+    if (!user) {
+      console.error('User is not authenticated.');
+      return;
+    }
+
+    const userId = user.id; // Get the user ID from the user context
+
     // Log the comment and contact ID before submission
     console.log("Submitting comment:", newComment);
     console.log("Contact ID:", contactId);
-    console.log("User ID:", 1); // Hardcoded user ID for testing
-  
+    console.log("User ID:", userId);
+
     setSubmitting(true);
-  
-    fetch(`http://127.0.0.1:8000/contactes/${contactId}/comments`, {
+
+    fetch(`http://127.0.0.1:8000/comments/${contactId}/contact/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ content: newComment, user_id: 1 }), // Assuming user_id: 2 for testing
+      body: JSON.stringify({ comment: newComment, user_id: userId, contact_id: contactId}), 
     })
       .then((response) => {
         console.log("Response status:", response.status); // Log the response status
@@ -40,7 +49,6 @@ const NewContactComment = ({ contactId, onCommentAdded }) => {
         setSubmitting(false);
       });
   };
-  
 
   return (
     <form onSubmit={handleSubmit} className="mt-4">

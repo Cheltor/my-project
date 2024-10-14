@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import NewContactComment from './NewContactComment';  // Assuming this is the component for adding a new comment
 
 // Utility function to format the date
 const formatDate = (dateString) => {
@@ -11,8 +12,9 @@ export default function ContactComments({ contactId }) {  // Accept contactId as
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    console.log(`Fetching comments for contact ID: ${contactId}`);
+  // Function to fetch comments
+  const fetchComments = () => {
+    setLoading(true);
     fetch(`http://127.0.0.1:8000/comments/contact/${contactId}`)
       .then((response) => {
         if (!response.ok) {
@@ -29,7 +31,11 @@ export default function ContactComments({ contactId }) {  // Accept contactId as
         setError(error.message);
         setLoading(false);
       });
-  }, [contactId]);  // Depend on contactId to refetch when it changes
+  };
+
+  useEffect(() => {
+    fetchComments();  // Fetch comments on component load and when contactId changes
+  }, [contactId]);
 
   if (loading) return <div>Loading comments...</div>;
   if (error) return <div>Error: {error}</div>;
@@ -37,6 +43,8 @@ export default function ContactComments({ contactId }) {  // Accept contactId as
   return (
     <div className="mt-8">
       <h2 className="text-2xl font-semibold text-gray-700">Comments</h2>
+      {/* Add new comment form and pass fetchComments as a callback */}
+      <NewContactComment contactId={contactId} onCommentAdded={fetchComments} />
       {comments.length === 0 ? (
         <p>No comments available.</p>
       ) : (
