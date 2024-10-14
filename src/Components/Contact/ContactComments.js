@@ -46,9 +46,9 @@ export default function ContactComments({ contactId }) {  // Accept contactId as
       {/* Add new comment form and pass fetchComments as a callback */}
       <NewContactComment contactId={contactId} onCommentAdded={fetchComments} />
       {comments.length === 0 ? (
-        <p>No comments available.</p>
+        <p className='pt-4'>No comments available.</p>
       ) : (
-        <ul className="space-y-4">
+        <ul className="space-y-4 pt-4">
           {comments.map((comment) => (
             <li key={comment.id} className="bg-gray-100 p-4 rounded-lg shadow">
               <p className="text-gray-700">{comment.comment}</p>
