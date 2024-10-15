@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 
+// Status mapping for display
+const statusMapping = {
+  0: 'Current',
+  1: 'Resolved',
+  2: 'Pending Trial',
+  3: 'Dismissed'
+};
+
+function classNames(...classes) {
+  return classes.filter(Boolean).join(' ');
+}
+
 const ViolationDetail = () => {
   const { id } = useParams();
   const [violation, setViolation] = useState(null);
@@ -58,7 +70,20 @@ const ViolationDetail = () => {
       <h2 className="text-2xl font-semibold text-gray-700">Violation Details</h2>
       <div className="bg-gray-100 p-4 rounded-lg shadow mt-4">
         <p className="text-gray-700">Violation Type: {violation.violation_type}</p>
-        <p className="text-gray-700">Status: {violation.status}</p>
+        
+        {/* Status with badge */}
+        <span
+          className={classNames(
+            violation.status === 0 ? 'bg-red-100 text-red-800' : '',
+            violation.status === 1 ? 'bg-green-100 text-green-800' : '',
+            violation.status === 2 ? 'bg-yellow-100 text-yellow-800' : '',
+            violation.status === 3 ? 'bg-gray-100 text-gray-800' : '',
+            'px-2 py-1 rounded'
+          )}
+        >
+          {statusMapping[violation.status]}
+        </span>
+
         {violation.deadline && (
           <p className="text-gray-700">Deadline: {new Date(violation.deadline).toLocaleDateString('en-US')}</p>
         )}
@@ -72,64 +97,64 @@ const ViolationDetail = () => {
         <p className="text-gray-700">Address: {violation.combadd}</p>
       </div>
       <div className="mt-8">
-      <h3 className="text-2xl font-semibold text-gray-800 mb-4 ">Citations</h3>
-      <ul className="space-y-4">
-        {citations.length > 0 ? (
-          citations.map((citation) => (
-            <li
-              key={citation.id}
-              className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200"
-            >
-              <p className="text-gray-700 mb-2">
-                <span className="font-medium">Deadline:</span> {new Date(citation.deadline).toLocaleDateString('en-US')}
-              </p>
-              <p className="text-gray-700 mb-2">
-                <span className="font-medium">Fine:</span> ${citation.fine}
-              </p>
-              <p className="text-gray-700 mb-2">
-                <span className="font-medium">Status:</span> {(() => {
-                  switch (citation.status) {
-                    case 0:
-                      return 'Unpaid';
-                    case 1:
-                      return 'Paid';
-                    case 2:
-                      return 'Pending Trial';
-                    case 3:
-                      return 'Dismissed';
-                    default:
-                      return 'Unknown';
-                  }
-                })()}
-              </p>
-              {citation.trial_date && (
+        <h3 className="text-2xl font-semibold text-gray-800 mb-4 ">Citations</h3>
+        <ul className="space-y-4">
+          {citations.length > 0 ? (
+            citations.map((citation) => (
+              <li
+                key={citation.id}
+                className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200"
+              >
                 <p className="text-gray-700 mb-2">
-                  <span className="font-medium">Trial Date:</span> {citation.trial_date}
+                  <span className="font-medium">Deadline:</span> {new Date(citation.deadline).toLocaleDateString('en-US')}
                 </p>
-              )}
-              <p className="text-gray-700 mb-2">
-                <span className="font-medium">Code:</span>{' '}
-                <Link to={`/code/${citation.code_id}`} className="text-blue-600 hover:text-blue-800 underline">
-                  {citation.code_name}
-                </Link>
-              </p>
-              <p className="text-gray-700 mb-2">
-                <span className="font-medium">Created At:</span> {citation.created_at}
-              </p>
-              {citation.updated_at && (
-                <p className="text-gray-700">
-                  <span className="font-medium">Updated At:</span> {citation.updated_at}
+                <p className="text-gray-700 mb-2">
+                  <span className="font-medium">Fine:</span> ${citation.fine}
                 </p>
-              )}
-            </li>
-          ))
-        ) : (
-          <p className="text-gray-500">No citations available.</p>
-        )}
-      </ul>
-      </div> 
+                <p className="text-gray-700 mb-2">
+                  <span className="font-medium">Status:</span> {(() => {
+                    switch (citation.status) {
+                      case 0:
+                        return 'Unpaid';
+                      case 1:
+                        return 'Paid';
+                      case 2:
+                        return 'Pending Trial';
+                      case 3:
+                        return 'Dismissed';
+                      default:
+                        return 'Unknown';
+                    }
+                  })()}
+                </p>
+                {citation.trial_date && (
+                  <p className="text-gray-700 mb-2">
+                    <span className="font-medium">Trial Date:</span> {citation.trial_date}
+                  </p>
+                )}
+                <p className="text-gray-700 mb-2">
+                  <span className="font-medium">Code:</span>{' '}
+                  <Link to={`/code/${citation.code_id}`} className="text-blue-600 hover:text-blue-800 underline">
+                    {citation.code_name}
+                  </Link>
+                </p>
+                <p className="text-gray-700 mb-2">
+                  <span className="font-medium">Created At:</span> {citation.created_at}
+                </p>
+                {citation.updated_at && (
+                  <p className="text-gray-700">
+                    <span className="font-medium">Updated At:</span> {citation.updated_at}
+                  </p>
+                )}
+              </li>
+            ))
+          ) : (
+            <p className="text-gray-500">No citations available.</p>
+          )}
+        </ul>
+      </div>
     </div>
   );
-}
+};
 
 export default ViolationDetail;

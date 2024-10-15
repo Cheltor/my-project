@@ -22,6 +22,14 @@ import Complaints from './Components/Complaints';
 import Citations from './Components/Citations';
 import ViolationDetail from './Components/ViolationDetail';
 import Login from './Components/Login'; // Import the Login component
+import InspectionDetail from './Components/InspectionDetail'; // Import the InspectionDetail component
+import Conduct from './Components/Inspection/Conduct'; // Import the Conduct component
+import UnitDetail from './Components/Inspection/UnitDetail'; // Import the UnitDetail component
+import NewUnit from './Components/Inspection/NewUnit';
+import AreaDetail from './Components/Inspection/AreaDetail';
+import UnitAreaDetail from './Components/Inspection/UnitAreaDetail';
+import Rooms from './Components/Inspection/Rooms';
+import RoomDetail from './Components/Inspection/RoomDetail';
 
 function App() {
   return (
@@ -70,6 +78,14 @@ function MainApp() {
             <Route path="/complaints" element={<Complaints />} />
             <Route path="/citations" element={<Citations />} />
             <Route path="/violation/:id" element={<ViolationDetail />} />
+            <Route path="/inspection/:id" element={<InspectionDetail />} />
+            <Route path="/inspections/:id/conduct" element={<Conduct />} />
+            <Route path="/inspections/:id/unit/:unitId" element={<UnitDetail />} />
+            <Route path="/inspections/:id/new-unit" element={<NewUnit />} />
+            <Route path="/inspections/:id/area/:areaId" element={<AreaDetail />} />
+            <Route path="/inspections/:id/unit/:unitId/area/:areaId" element={<UnitAreaDetail />} />
+            <Route path="/rooms" element={<Rooms />} />
+            <Route path="/rooms/:id" element={<RoomDetail />} />
             {/* Add more routes as needed */}
           </Routes>
         </Sidebar>

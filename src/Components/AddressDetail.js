@@ -6,6 +6,7 @@ import Violations from './Address/AddressViolations';
 import Comments from './Address/AddressComments';
 import Complaints from './Address/AddressComplaints';
 import Inspections from './Address/AddressInspections';
+import useUnitSearch from './Address/useUnitSearch';  
 
 const AddressDetails = () => {
   const { id } = useParams();
@@ -13,6 +14,7 @@ const AddressDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('comments'); // State to track the active tab
+  const { searchTerm, showDropdown, filteredUnits, handleSearchChange, handleDropdownSelect } = useUnitSearch(id);  // Custom hook for unit search
 
   useEffect(() => {
     setLoading(true);
@@ -68,6 +70,38 @@ const AddressDetails = () => {
         )}
       </div>
     )}
+
+<div className="relative mb-4"> {/* Add relative positioning to this wrapper */}
+  <label htmlFor="unit-search" className="block text-lg font-semibold text-gray-700">
+    Search Units by Number:
+  </label>
+  <input
+    type="text"
+    id="unit-search"
+    placeholder="Enter unit number..."
+    value={searchTerm}
+    onChange={handleSearchChange}
+    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+  />
+
+  {/* Dropdown for unit search results */}
+  {showDropdown && (
+    <div className="absolute w-full bg-white shadow-md rounded-md z-50 mt-1">
+      <ul className="dropdown-list max-h-60 overflow-auto">
+        {filteredUnits.map((unit) => (
+          <li
+            key={unit.id}
+            onMouseDown={() => handleDropdownSelect(unit)}
+            className="cursor-pointer p-2 hover:bg-gray-200"
+          >
+            Unit {unit.number} {/* Customize display as needed */}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )}
+</div>
+
 
 
       {address && (

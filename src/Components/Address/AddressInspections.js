@@ -57,6 +57,7 @@ const AddressInspections = ({ addressId }) => {
             {inspection.updated_at && (
               <p className="text-sm text-gray-500">Updated on {formatDate(inspection.updated_at)}</p>
             )}
+            <a href={`/inspection/${inspection.id}`} className="text-blue-500 hover:underline mt-2 block">View Inspection</a>
           </li>
         ))}
       </ul>
