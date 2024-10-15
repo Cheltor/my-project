@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import NewUnit from './NewUnit';
 
 export default function Conduct() {
   const { id } = useParams(); // inspection ID
+  const navigate = useNavigate(); // For redirecting 
   const [inspection, setInspection] = useState(null);
   const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13,6 +14,9 @@ export default function Conduct() {
   const [searchQuery, setSearchQuery] = useState(''); // For searching units
   const [showNewUnitForm, setShowNewUnitForm] = useState(false);
   const [newAreaName, setNewAreaName] = useState(''); // State for new area name
+  const [rooms, setRooms] = useState([]); // State for rooms
+  const [selectedRoomId, setSelectedRoomId] = useState(''); // State for selected room
+
 
   useEffect(() => {
     const fetchInspection = async () => {
@@ -43,8 +47,22 @@ export default function Conduct() {
       }
     };
 
+    const fetchRooms = async () => {
+      try {
+        const response = await fetch(`http://localhost:8000/rooms`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch rooms');
+        }
+        const data = await response.json();
+        setRooms(data);
+      } catch (error) {
+        setError(error.message);
+      }
+    };
+
     fetchInspection();
     fetchAreas();
+    fetchRooms();
   }, [id]);
 
   useEffect(() => {
@@ -93,6 +111,25 @@ export default function Conduct() {
 
   const handleAddArea = async (e) => {
     e.preventDefault(); // Prevent the form from refreshing the page
+    let areaName = newAreaName;  // This captures the custom area name, if any
+    let roomId = null;  // Initialize roomId
+  
+    // Check if a room is selected
+    if (selectedRoomId) {
+      const selectedRoom = rooms.find((room) => room.id === parseInt(selectedRoomId)); // Ensure correct comparison
+      console.log('Selected Room:', selectedRoom);  // Debugging log
+      if (selectedRoom) {
+        areaName = selectedRoom.name;  // Set the area name to the selected room's name
+        roomId = selectedRoom.id;  // Set the room ID
+      }
+    }
+  
+    // Ensure the area name is not empty before proceeding
+    if (!areaName) {
+      console.error('Area name cannot be empty');
+      return; // Prevent submission if the area name is empty
+    }
+  
     try {
       const response = await fetch(`http://localhost:8000/inspections/${id}/areas`, {
         method: 'POST',
@@ -100,15 +137,18 @@ export default function Conduct() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: newAreaName,
+          name: areaName,  // Send the area name (either custom or from room)
+          room_id: roomId,  // Send room_id if a room is selected
         }),
       });
   
       if (response.ok) {
-        const newArea = await response.json(); // Parse the response body
-        console.log('New area:', newArea); // Log the new area to ensure it's being returned
-        setAreas([...areas, newArea]); // Update the areas list with the new area
-        setNewAreaName(''); // Clear input fields
+        const newArea = await response.json();
+        setAreas([...areas, newArea]);
+        setNewAreaName('');  // Clear input fields
+  
+        // If a room was selected, navigate to the AreaDetail page with the prompts checklist
+        navigate(`/inspections/${id}/area/${newArea.id}`);
       } else {
         console.error('Failed to add area, status:', response.status);
       }
@@ -116,6 +156,9 @@ export default function Conduct() {
       console.error('Error:', error);
     }
   };
+  
+  
+  
   
   
 
@@ -152,8 +195,11 @@ export default function Conduct() {
         {filteredUnits.length > 0 ? (
           <ul>
             {filteredUnits.map((unit) => (
-              <li key={unit.id}>
-                <Link to={`/inspections/${id}/unit/${unit.id}`}>
+              <li key={unit.id} className="mb-2">
+                <Link 
+                  to={`/inspections/${id}/unit/${unit.id}`} 
+                  className="block px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                >
                   Unit {unit.number} ({unitAreaCounts[unit.id] || '0'} areas)
                 </Link>
               </li>
@@ -184,15 +230,19 @@ export default function Conduct() {
       <div className="px-4 py-6 sm:px-0">
         <h4 className="text-sm font-semibold leading-5 text-gray-900">Areas</h4>
         {areas.filter(area => area.unit_id === null).length > 0 ? (
-          <ul className="mt-2 divide-y divide-gray-200 rounded-md border border-gray-200">
+          <ul className="mt-2 divide-y divide-gray-200 rounded-md">
             {areas.filter(area => area.unit_id === null).map((area) => (
-              <li key={area.id} className="flex items-center justify-between py-3 pl-3 pr-4 text-sm leading-5">
-                <div className="flex w-0 flex-1 items-center">
-                  <span className="ml-2 flex-1 w-0 truncate">{area.name}</span>
-                </div>
-                <div className="flex-shrink-0">
-                  <a href={`#`} className="font-medium text-indigo-600 hover:text-indigo-900">Edit</a>
-                </div>
+              <li key={area.id} className="mb-2">
+                <Link 
+                  to={`/inspections/${id}/area/${area.id}`} // Link to the area detail page
+                  className="block px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex w-0 flex-1 items-center">
+                      <span className="ml-2 flex-1 w-0 truncate">{area.name}</span>
+                    </div>
+                  </div>
+                </Link>
               </li>
             ))}
           </ul>
@@ -201,28 +251,51 @@ export default function Conduct() {
         )}
       </div>
 
+
+
       {/* Add a new area component */}
       <div className="px-4 py-6 sm:px-0">
         <h4 className="text-sm font-semibold leading-5 text-gray-900">Add General/Common Area</h4>
-<form className="mt-2" onSubmit={handleAddArea}>
-  <div>
-    <label htmlFor="areaName" className="block text-sm font-medium leading-5 text-gray-700">Area Name</label>
-    <div className="mt-1 relative rounded-md shadow-sm">
-      <input
-        id="areaName"
-        className="form-input block w-full sm:text-sm sm:leading-5"
-        value={newAreaName}
-        onChange={(e) => setNewAreaName(e.target.value)} // Track input value
-        required
-      />
-    </div>
-  </div>
-  <div className="mt-6">
-    <button type="submit" className="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:border-indigo-700 focus:shadow-outline-indigo active:bg-indigo-700 transition ease-in-out duration-150">
-      Add Area
-    </button>
-  </div>
-</form>
+        <form className="mt-2" onSubmit={handleAddArea}>
+          <div className="mt-4">
+            <label htmlFor="areaName" className="block text-sm font-medium leading-5 text-gray-700">Custom Area Name</label>
+            <input
+              id="areaName"
+              className="form-input block w-full sm:text-sm sm:leading-5"
+              value={newAreaName}
+              onChange={(e) => setNewAreaName(e.target.value)}
+              placeholder="Type in a custom area name"
+            />
+          </div>
+
+          <div className="mt-4">
+            <label htmlFor="roomSelect" className="block text-sm font-medium text-gray-700">
+              Or Select Room as Area
+            </label>
+            <select
+              id="roomSelect"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              value={selectedRoomId}
+              onChange={(e) => setSelectedRoomId(e.target.value)}
+            >
+              <option value="">-- Select Room --</option>
+              {rooms.map((room) => (
+                <option key={room.id} value={room.id}>
+                  {room.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mt-6">
+            <button
+              type="submit"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:border-indigo-700 focus:shadow-outline-indigo active:bg-indigo-700 transition ease-in-out duration-150"
+            >
+              Add Area
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
