@@ -10,7 +10,7 @@ export default function InspectionDetail() {
   useEffect(() => {
     const fetchInspection = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/inspections/${id}`);
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}`);
         if (!response.ok) {
           throw new Error('Failed to fetch inspection');
         }

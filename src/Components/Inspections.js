@@ -10,7 +10,7 @@ export default function Inspections() {
 
   useEffect(() => {
     // Fetch inspections from the API
-    fetch('http://127.0.0.1:8000/inspections/') // Replace with the actual endpoint
+    fetch('${process.env.REACT_APP_API_URL}/inspections/') // Replace with the actual endpoint
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch inspections');

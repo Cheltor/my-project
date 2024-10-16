@@ -12,7 +12,7 @@ export default function NewRoom({ onRoomAdded }) {
     setError(null);
 
     try {
-      const response = await fetch("http://localhost:8000/rooms", {
+      const response = await fetch("${process.env.REACT_APP_API_URL}/rooms", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

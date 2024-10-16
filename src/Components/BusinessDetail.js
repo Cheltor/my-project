@@ -9,7 +9,7 @@ const BusinessDetails = () => {
 
   useEffect(() => {
     // Fetch the details of a specific business using the ID from the URL
-    fetch(`http://127.0.0.1:8000/businesses/${id}`)
+    fetch(`${process.env.REACT_APP_API_URL}/businesses/${id}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch business details');

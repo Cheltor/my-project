@@ -13,7 +13,7 @@ const AddressComplaints = ({ addressId }) => {
 
   useEffect(() => {
     // Fetch complaints for the specific address
-    fetch(`http://127.0.0.1:8000/complaints/address/${addressId}`)
+    fetch(`${process.env.REACT_APP_API_URL}/complaints/address/${addressId}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch complaints');

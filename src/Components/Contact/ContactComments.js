@@ -15,7 +15,7 @@ export default function ContactComments({ contactId }) {  // Accept contactId as
   // Function to fetch comments
   const fetchComments = () => {
     setLoading(true);
-    fetch(`http://127.0.0.1:8000/comments/contact/${contactId}`)
+    fetch(`${process.env.REACT_APP_API_URL}/comments/contact/${contactId}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch comments');

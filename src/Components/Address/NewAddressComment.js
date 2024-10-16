@@ -27,7 +27,7 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
   
     setSubmitting(true);
   
-    fetch(`http://127.0.0.1:8000/addresses/${addressId}/comments`, {
+    fetch(`${process.env.REACT_APP_API_URL}/addresses/${addressId}/comments`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

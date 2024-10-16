@@ -13,7 +13,7 @@ const AddressInspections = ({ addressId }) => {
 
   useEffect(() => {
     // Fetch inspections for the specific address
-    fetch(`http://127.0.0.1:8000/inspections/address/${addressId}`)
+    fetch(`${process.env.REACT_APP_API_URL}/inspections/address/${addressId}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch inspections');

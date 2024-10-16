@@ -16,7 +16,7 @@ export default function UnitAreaDetail() {
     // Fetch inspection details
     const fetchInspectionDetails = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/inspections/${id}`);
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}`);
         if (!response.ok) {
           throw new Error('Failed to fetch inspection details');
         }
@@ -30,7 +30,7 @@ export default function UnitAreaDetail() {
     // Fetch area and unit details
     const fetchAreaAndUnitDetails = async () => {
       try {
-        const areaResponse = await fetch(`http://localhost:8000/areas/${areaId}`);
+        const areaResponse = await fetch(`${process.env.REACT_APP_API_URL}/areas/${areaId}`);
         if (!areaResponse.ok) {
           throw new Error('Failed to fetch area details');
         }
@@ -38,7 +38,7 @@ export default function UnitAreaDetail() {
         setArea(areaData);
 
         // Fetch unit details
-        const unitResponse = await fetch(`http://localhost:8000/units/${unitId}`);
+        const unitResponse = await fetch(`${process.env.REACT_APP_API_URL}/units/${unitId}`);
         if (!unitResponse.ok) {
           throw new Error('Failed to fetch unit details');
         }
@@ -46,7 +46,7 @@ export default function UnitAreaDetail() {
         setUnit(unitData);
 
         // Fetch prompts based on the room name matching the area name
-        const roomsResponse = await fetch(`http://localhost:8000/rooms/`);
+        const roomsResponse = await fetch(`${process.env.REACT_APP_API_URL}/rooms/`);
         if (!roomsResponse.ok) {
           throw new Error('Failed to fetch rooms');
         }
@@ -54,7 +54,7 @@ export default function UnitAreaDetail() {
         const matchingRoom = roomsData.find((room) => room.name.toLowerCase() === areaData.name.toLowerCase());
 
         if (matchingRoom) {
-          const promptsResponse = await fetch(`http://localhost:8000/rooms/${matchingRoom.id}/prompts`);
+          const promptsResponse = await fetch(`${process.env.REACT_APP_API_URL}/rooms/${matchingRoom.id}/prompts`);
           if (!promptsResponse.ok) {
             throw new Error('Failed to fetch prompts');
           }
@@ -73,7 +73,7 @@ export default function UnitAreaDetail() {
     // Fetch existing observations for the area
     const fetchObservations = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/areas/${areaId}/observations`);
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/areas/${areaId}/observations`);
         if (!response.ok) {
           throw new Error('Failed to fetch observations');
         }
@@ -96,7 +96,7 @@ export default function UnitAreaDetail() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8000/areas/${areaId}/observations`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/areas/${areaId}/observations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

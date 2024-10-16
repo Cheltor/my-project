@@ -15,7 +15,7 @@ export default function RoomDetail() {
 
   useEffect(() => {
     // Fetch room details from the API
-    fetch(`http://localhost:8000/rooms/${id}`)
+    fetch(`${process.env.REACT_APP_API_URL}/rooms/${id}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch room details');
@@ -33,7 +33,7 @@ export default function RoomDetail() {
       });
 
     // Fetch prompts for the room
-    fetch(`http://localhost:8000/rooms/${id}/prompts`)
+    fetch(`${process.env.REACT_APP_API_URL}/rooms/${id}/prompts`)
       .then((response) => response.json())
       .then((data) => {
         setPrompts(data);
@@ -46,7 +46,7 @@ export default function RoomDetail() {
   // Function to handle new prompt creation
   const handleCreatePrompt = (e) => {
     e.preventDefault();
-    fetch(`http://localhost:8000/rooms/${id}/prompts`, {
+    fetch(`${process.env.REACT_APP_API_URL}/rooms/${id}/prompts`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -65,7 +65,7 @@ export default function RoomDetail() {
 
   // Function to handle prompt deletion
   const handleDeletePrompt = (promptId) => {
-    fetch(`http://localhost:8000/prompts/${promptId}`, {
+    fetch(`${process.env.REACT_APP_API_URL}/prompts/${promptId}`, {
       method: 'DELETE',
     })
       .then(() => {
@@ -78,7 +78,7 @@ export default function RoomDetail() {
 
   // Function to handle prompt editing
   const handleEditPrompt = (promptId, updatedContent) => {
-    fetch(`http://localhost:8000/prompts/${promptId}`, {
+    fetch(`${process.env.REACT_APP_API_URL}/prompts/${promptId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -100,7 +100,7 @@ export default function RoomDetail() {
 
   // Function to handle room update
   const handleUpdateRoom = () => {
-    fetch(`http://localhost:8000/rooms/${id}`, {
+    fetch(`${process.env.REACT_APP_API_URL}/rooms/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -119,7 +119,7 @@ export default function RoomDetail() {
 
   // Function to handle room deletion
   const handleDeleteRoom = () => {
-    fetch(`http://localhost:8000/rooms/${id}`, {
+    fetch(`${process.env.REACT_APP_API_URL}/rooms/${id}`, {
       method: 'DELETE',
     })
       .then(() => {

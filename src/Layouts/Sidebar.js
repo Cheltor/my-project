@@ -56,7 +56,7 @@ export default function Sidebar({ children }) {
   // Fetch addresses on component mount
   useEffect(() => {
     setLoading(true);
-    fetch('http://127.0.0.1:8000/addresses/')
+    fetch('${process.env.REACT_APP_API_URL}/addresses/')
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch addresses');

@@ -13,7 +13,7 @@ const AddressComments = ({ addressId }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch(`http://127.0.0.1:8000/comments/address/${addressId}`)
+    fetch(`${process.env.REACT_APP_API_URL}/comments/address/${addressId}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch comments');

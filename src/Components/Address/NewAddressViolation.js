@@ -20,7 +20,7 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
 
     setSubmitting(true);
 
-    fetch(`http://127.0.0.1:8000/addresses/${addressId}/violations`, {
+    fetch(`${process.env.REACT_APP_API_URL}/addresses/${addressId}/violations`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

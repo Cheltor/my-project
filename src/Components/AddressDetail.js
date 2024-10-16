@@ -18,7 +18,7 @@ const AddressDetails = () => {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`http://127.0.0.1:8000/addresses/${id}`)  // Make sure 'id' is correct
+    fetch(`${process.env.REACT_APP_API_URL}/addresses/${id}`)  // Make sure 'id' is correct
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch address');
