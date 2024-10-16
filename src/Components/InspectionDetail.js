@@ -10,7 +10,7 @@ export default function InspectionDetail() {
   useEffect(() => {
     const fetchInspection = async () => {
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}`);
+        const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/inspections/${id}`);
         if (!response.ok) {
           throw new Error('Failed to fetch inspection');
         }

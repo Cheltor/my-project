@@ -27,7 +27,7 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
   
     setSubmitting(true);
   
-    fetch(`${process.env.REACT_APP_API_URL}/addresses/${addressId}/comments`, {
+    fetch(`https://civicode-2eae16143963.herokuapp.com/addresses/${addressId}/comments`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

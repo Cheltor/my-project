@@ -27,7 +27,7 @@ const NewContactComment = ({ contactId, onCommentAdded }) => {
 
     setSubmitting(true);
 
-    fetch(`${process.env.REACT_APP_API_URL}/comments/${contactId}/contact/`, {
+    fetch(`https://civicode-2eae16143963.herokuapp.com/comments/${contactId}/contact/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

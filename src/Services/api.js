@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: '${process.env.REACT_APP_API_URL}', // Adjust your backend URL
+  baseURL: 'https://civicode-2eae16143963.herokuapp.com', // Adjust your backend URL
 });
 
 API.interceptors.request.use((config) => {

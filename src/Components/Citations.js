@@ -10,7 +10,7 @@ export default function Citations() {
 
   useEffect(() => {
     // Fetch citations from the API
-    fetch('${process.env.REACT_APP_API_URL}/citations/') // Replace with the actual endpoint
+    fetch('https://civicode-2eae16143963.herokuapp.com/citations/') // Replace with the actual endpoint
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch citations');

@@ -12,7 +12,7 @@ const BusinessesList = () => {
 
   useEffect(() => {
     // Fetch businesses from the API
-    fetch('${process.env.REACT_APP_API_URL}/businesses/') // Replace with the actual endpoint
+    fetch('https://civicode-2eae16143963.herokuapp.com/businesses/') // Replace with the actual endpoint
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch businesses');

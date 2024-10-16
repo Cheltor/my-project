@@ -13,7 +13,7 @@ const AddressComments = ({ addressId }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/comments/address/${addressId}`)
+    fetch(`https://civicode-2eae16143963.herokuapp.com/comments/address/${addressId}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch comments');

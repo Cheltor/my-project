@@ -23,7 +23,7 @@ const ViolationDetail = () => {
   useEffect(() => {
     const fetchViolation = async () => {
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}`);
+        const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/violation/${id}`);
         if (!response.ok) {
           throw new Error('Failed to fetch violation');
         }
@@ -38,7 +38,7 @@ const ViolationDetail = () => {
 
     const fetchCitations = async () => {
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/citations`);
+        const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/violation/${id}/citations`);
         if (!response.ok) {
           throw new Error('Failed to fetch citations');
         }

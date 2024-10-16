@@ -11,7 +11,7 @@ const DueList = () => {
     // Function to fetch the addresses count from the API
     const fetchAddresses = async () => {
       try {
-        const response = await fetch('${process.env.REACT_APP_API_URL}/addresses/');
+        const response = await fetch('https://civicode-2eae16143963.herokuapp.com/addresses/');
         if (!response.ok) {
           throw new Error('Failed to fetch addresses');
         }

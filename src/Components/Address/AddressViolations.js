@@ -27,7 +27,7 @@ const AddressViolations = ({ addressId }) => {
 
   useEffect(() => {
     // Fetch violations for the specific address
-    fetch(`${process.env.REACT_APP_API_URL}/violations/address/${addressId}`)
+    fetch(`https://civicode-2eae16143963.herokuapp.com/violations/address/${addressId}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch violations');

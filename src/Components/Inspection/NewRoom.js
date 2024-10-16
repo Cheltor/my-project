@@ -12,7 +12,7 @@ export default function NewRoom({ onRoomAdded }) {
     setError(null);
 
     try {
-      const response = await fetch("${process.env.REACT_APP_API_URL}/rooms", {
+      const response = await fetch("https://civicode-2eae16143963.herokuapp.com/rooms", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

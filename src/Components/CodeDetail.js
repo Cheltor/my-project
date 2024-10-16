@@ -9,7 +9,7 @@ const CodeDetail = () => {
 
   useEffect(() => {
     // Fetch the details of a specific code using the ID from the URL
-    fetch(`${process.env.REACT_APP_API_URL}/codes/${id}`)
+    fetch(`https://civicode-2eae16143963.herokuapp.com/codes/${id}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch code details');
