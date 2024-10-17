@@ -9,6 +9,9 @@ export default function UnitAreaDetail() {
   const [prompts, setPrompts] = useState([]);
   const [observations, setObservations] = useState([]);
   const [newObservation, setNewObservation] = useState('');
+  const [photos, setPhotos] = useState([]); // State to hold the photos
+  const [selectedImage, setSelectedImage] = useState(null); // State to hold the selected image
+  const [isModalOpen, setIsModalOpen] = useState(false); // State to toggle the modal
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -92,33 +95,83 @@ export default function UnitAreaDetail() {
   const handleCreateObservation = async (e) => {
     e.preventDefault();
     if (!newObservation.trim()) {
-      return;
+        return; // Don't submit empty observation
     }
 
     try {
-      const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/areas/${areaId}/observations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          content: newObservation,
-          area_id: areaId,
-          user_id: 1, // Replace with the actual user ID
-        }),
-      });
+        // Step 1: Create Observation (Without Photos)
+        const observationData = {
+            content: newObservation,
+            user_id: 1, // Replace with the actual user ID
+            potentialvio: false,
+        };
 
-      if (response.ok) {
-        const createdObservation = await response.json();
-        setObservations([...observations, createdObservation]);
-        setNewObservation('');
-      } else {
-        console.error('Failed to create observation');
-      }
+        const observationResponse = await fetch(`https://civicode-2eae16143963.herokuapp.com/areas/${areaId}/observations`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(observationData),
+        });
+
+        if (!observationResponse.ok) {
+            throw new Error('Failed to create observation');
+        }
+
+        const createdObservation = await observationResponse.json();
+        setObservations([...observations, createdObservation]); // Add new observation to the list
+        setNewObservation(''); // Clear the input field
+
+        // Step 2: Upload Photos for the Created Observation
+        if (photos.length > 0) {
+            const formData = new FormData();
+            photos.forEach((photo) => {
+                formData.append('files', photo);
+            });
+
+            const photoUploadResponse = await fetch(
+                `https://civicode-2eae16143963.herokuapp.com/observations/${createdObservation.id}/photos`,
+                {
+                    method: 'POST',
+                    body: formData,
+                }
+            );
+
+            if (!photoUploadResponse.ok) {
+                throw new Error('Failed to upload photos');
+            }
+
+            // Update the created observation with photos after successful upload
+            const updatedObservation = await observationResponse.json();
+            setObservations((prev) =>
+                prev.map((obs) => (obs.id === createdObservation.id ? updatedObservation : obs))
+            );
+
+            setPhotos([]); // Clear the selected photos
+        }
     } catch (error) {
-      console.error('Error creating observation:', error);
+        console.error('Error creating observation:', error);
     }
+};
+
+  
+
+  const handlePhotoChange = (e) => {
+    setPhotos(Array.from(e.target.files)); // Set selected files to the state
   };
+
+  // Function to handle image click
+  const handleImageClick = (url) => {
+    setSelectedImage(url);
+    setIsModalOpen(true);
+  };
+
+  // Function to close modal
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedImage(null);
+  };
+
 
   if (loading) {
     return <p>Loading unit area details...</p>;
@@ -180,21 +233,48 @@ export default function UnitAreaDetail() {
         <p className="text-gray-500">No checklist available for this area.</p>
       )}
 
-      <div className="mt-6">
-        <h3 className="text-xl font-semibold text-gray-900">Observations</h3>
-        {observations.length > 0 ? (
-          <ul className="mt-4 space-y-4">
-            {observations.map((observation) => (
-              <li key={observation.id} className="p-4 bg-gray-100 rounded-md">
-                <p>{observation.content}</p>
-                <p className="text-sm text-gray-600">Created at: {new Date(observation.created_at).toLocaleString()}</p>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-gray-500">No observations yet for this area.</p>
-        )}
+      {/* Display Observations */}
+      <div className="observations-list mt-8">
+        {observations.map((observation) => (
+          <div key={observation.id} className="observation-item border p-4 mb-4 rounded-lg shadow-sm">
+            <p className="font-semibold">{observation.content}</p>
+            <div className="photos flex flex-wrap mt-2">
+              {observation.photos && observation.photos.length > 0 ? (
+                observation.photos.map((photo, index) => (
+                  <img
+                    key={index}
+                    src={photo.url}
+                    alt={`Observation Photo ${index + 1}`}
+                    onClick={() => handleImageClick(photo.url)}
+                    className="w-32 h-auto mr-2 mb-2 cursor-pointer border rounded-lg hover:opacity-80 transition"
+                  />
+                ))
+              ) : (
+                <p className="italic text-gray-500">No photos attached</p>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
+
+      {/* Image Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="relative bg-white rounded-lg shadow-lg max-w-2xl p-6">
+            <button
+              onClick={closeModal}
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+            >
+              &times; {/* Close button */}
+            </button>
+            <img
+              src={selectedImage}
+              alt="Selected Observation"
+              className="max-w-full h-auto rounded-lg"
+            />
+          </div>
+        </div>
+      )}
 
       <div className="mt-6">
         <h3 className="text-xl font-semibold text-gray-900">Add New Observation</h3>
@@ -205,6 +285,12 @@ export default function UnitAreaDetail() {
             placeholder="Enter your observation..."
             className="w-full p-2 border rounded"
             rows="4"
+          />
+                    <input
+            type="file"
+            multiple
+            onChange={handlePhotoChange}
+            className="mt-2"
           />
           <button
             type="submit"
