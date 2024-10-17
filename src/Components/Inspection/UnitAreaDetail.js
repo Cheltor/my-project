@@ -102,7 +102,6 @@ export default function UnitAreaDetail() {
         // Step 1: Create Observation (Without Photos)
         const observationData = {
             content: newObservation,
-            user_id: 1, // Replace with the actual user ID
             potentialvio: false,
         };
 
