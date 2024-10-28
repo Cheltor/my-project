@@ -21,7 +21,7 @@ export default function Conduct() {
   useEffect(() => {
     const fetchInspection = async () => {
       try {
-        const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/inspections/${id}`);
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}`);
         if (!response.ok) {
           throw new Error('Failed to fetch inspection');
         }
@@ -36,7 +36,7 @@ export default function Conduct() {
 
     const fetchAreas = async () => {
       try {
-        const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/inspections/${id}/areas`);
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/areas`);
         if (!response.ok) {
           throw new Error('Failed to fetch areas');
         }
@@ -49,7 +49,7 @@ export default function Conduct() {
 
     const fetchRooms = async () => {
       try {
-        const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/rooms`);
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/rooms`);
         if (!response.ok) {
           throw new Error('Failed to fetch rooms');
         }
@@ -69,7 +69,7 @@ export default function Conduct() {
     const fetchUnits = async () => {
       try {
         if (inspection && inspection.address && inspection.address.id) {
-          const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/addresses/${inspection.address.id}/units`);
+          const response = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${inspection.address.id}/units`);
           if (!response.ok) {
             throw new Error('Failed to fetch units');
           }
@@ -86,7 +86,7 @@ export default function Conduct() {
 
   const fetchAreaCount = async (unitId) => {
     try {
-      const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/inspections/${id}/unit/${unitId}/areas/count`);
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/unit/${unitId}/areas/count`);
       const areaCount = await response.json();
       setUnitAreaCounts(prev => ({ ...prev, [unitId]: areaCount })); // Store count in state
     } catch (error) {
@@ -131,7 +131,7 @@ export default function Conduct() {
     }
   
     try {
-      const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/inspections/${id}/areas`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/areas`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

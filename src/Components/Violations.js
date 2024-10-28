@@ -18,7 +18,7 @@ export default function Violations() {
 
   useEffect(() => {
     // Fetch violations from the API
-    fetch('https://civicode-2eae16143963.herokuapp.com/violations/') // Replace with the actual endpoint
+    fetch(`${process.env.REACT_APP_API_URL}/violations/`) // Replace with the actual endpoint
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch violations');

@@ -13,7 +13,7 @@ const AddressCitations = ({ addressId }) => {
 
   useEffect(() => {
     // Fetch citations for the specific address
-    fetch(`https://civicode-2eae16143963.herokuapp.com/citations/address/${addressId}`)
+    fetch(`${process.env.REACT_APP_API_URL}/citations/address/${addressId}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch citations');

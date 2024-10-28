@@ -18,7 +18,7 @@ const AddressDetails = () => {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`https://civicode-2eae16143963.herokuapp.com/addresses/${id}`)  // Make sure 'id' is correct
+    fetch(`${process.env.REACT_APP_API_URL}/addresses/${id}`)  // Make sure 'id' is correct
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch address');

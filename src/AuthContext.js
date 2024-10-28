@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('token', token);
   
     // Fetch user data after login
-    fetch('https://civicode-2eae16143963.herokuapp.com/user', {
+    fetch(`${process.env.REACT_APP_API_URL}/user`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
     if (token) {
       setToken(token);
   
-      fetch('https://civicode-2eae16143963.herokuapp.com/user', {
+      fetch(`${process.env.REACT_APP_API_URL}/user`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

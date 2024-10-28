@@ -20,7 +20,7 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
 
     setSubmitting(true);
 
-    fetch(`https://civicode-2eae16143963.herokuapp.com/addresses/${addressId}/violations`, {
+    fetch(`${process.env.REACT_APP_API_URL}/addresses/${addressId}/violations`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

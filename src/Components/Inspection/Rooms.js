@@ -13,7 +13,7 @@ export default function Rooms() {
 
   const fetchRooms = () => {
     setLoading(true);
-    fetch('https://civicode-2eae16143963.herokuapp.com/rooms/') // Replace with the actual endpoint
+    fetch(`${process.env.REACT_APP_API_URL}/rooms/`) // Replace with the actual endpoint
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch rooms');

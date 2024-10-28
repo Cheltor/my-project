@@ -18,7 +18,7 @@ export default function AreaDetail() {
     // Fetch inspection details
     const fetchInspectionDetails = async () => {
       try {
-        const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/inspections/${id}`);
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}`);
         if (!response.ok) {
           throw new Error('Failed to fetch inspection details');
         }
@@ -32,7 +32,7 @@ export default function AreaDetail() {
     // Fetch area details and check if the area name matches a room's name
     const fetchAreaAndRoomDetails = async () => {
       try {
-        const areaResponse = await fetch(`https://civicode-2eae16143963.herokuapp.com/areas/${areaId}`);
+        const areaResponse = await fetch(`${process.env.REACT_APP_API_URL}/areas/${areaId}`);
         if (!areaResponse.ok) {
           throw new Error('Failed to fetch area details');
         }
@@ -40,7 +40,7 @@ export default function AreaDetail() {
         setArea(areaData);
 
         // Fetch all rooms to match room.name with area.name
-        const roomsResponse = await fetch(`https://civicode-2eae16143963.herokuapp.com/rooms/`);
+        const roomsResponse = await fetch(`${process.env.REACT_APP_API_URL}/rooms/`);
         if (!roomsResponse.ok) {
           throw new Error('Failed to fetch rooms');
         }
@@ -52,7 +52,7 @@ export default function AreaDetail() {
         if (matchingRoom) {
           console.log("Matching Room found: ", matchingRoom);  // Debugging log
           // Fetch prompts for the matching room
-          const promptsResponse = await fetch(`https://civicode-2eae16143963.herokuapp.com/rooms/${matchingRoom.id}/prompts`);
+          const promptsResponse = await fetch(`${process.env.REACT_APP_API_URL}/rooms/${matchingRoom.id}/prompts`);
           if (!promptsResponse.ok) {
             throw new Error('Failed to fetch prompts');
           }
@@ -73,7 +73,7 @@ export default function AreaDetail() {
     // Fetch existing observations for the area
     const fetchObservations = async () => {
       try {
-        const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/areas/${areaId}/observations`);
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/areas/${areaId}/observations`);
         if (!response.ok) {
           throw new Error('Failed to fetch observations');
         }
@@ -102,7 +102,7 @@ export default function AreaDetail() {
             potentialvio: false,
         };
 
-        const observationResponse = await fetch(`https://civicode-2eae16143963.herokuapp.com/areas/${areaId}/observations`, {
+        const observationResponse = await fetch(`${process.env.REACT_APP_API_URL}/areas/${areaId}/observations`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -126,7 +126,7 @@ export default function AreaDetail() {
             });
 
             const photoUploadResponse = await fetch(
-                `https://civicode-2eae16143963.herokuapp.com/observations/${createdObservation.id}/photos`,
+                `${process.env.REACT_APP_API_URL}/observations/${createdObservation.id}/photos`,
                 {
                     method: 'POST',
                     body: formData,

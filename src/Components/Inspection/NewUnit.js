@@ -10,7 +10,7 @@ export default function NewUnit({ addressId, inspectionId }) {  // Use props ins
     event.preventDefault();
     
     try {
-      const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/addresses/${addressId}/units`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${addressId}/units`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -8,7 +8,7 @@ function useUnitSearch(addressId) {
 
   useEffect(() => {
     // Fetch the list of units for the specific address from the API
-    fetch(`https://civicode-2eae16143963.herokuapp.com/addresses/${addressId}/units`)
+    fetch(`${process.env.REACT_APP_API_URL}/addresses/${addressId}/units`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Network response was not ok');

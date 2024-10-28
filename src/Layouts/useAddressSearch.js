@@ -8,7 +8,7 @@ function useAddressSearch() {
 
   useEffect(() => {
     // Fetch the list of addresses from the API
-    fetch('https://civicode-2eae16143963.herokuapp.com/addresses/')
+    fetch(`${process.env.REACT_APP_API_URL}/addresses/`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Network response was not ok');

@@ -16,7 +16,7 @@ export default function Contacts() {
 
   useEffect(() => {
     // Fetch contacts from the API
-    fetch('https://civicode-2eae16143963.herokuapp.com/contacts/')
+    fetch(`${process.env.REACT_APP_API_URL}/contacts/`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch contacts');

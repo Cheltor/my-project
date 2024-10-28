@@ -13,7 +13,7 @@ const AddressInspections = ({ addressId }) => {
 
   useEffect(() => {
     // Fetch inspections for the specific address
-    fetch(`https://civicode-2eae16143963.herokuapp.com/inspections/address/${addressId}`)
+    fetch(`${process.env.REACT_APP_API_URL}/inspections/address/${addressId}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch inspections');

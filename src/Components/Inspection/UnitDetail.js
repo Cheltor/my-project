@@ -20,7 +20,7 @@ export default function UnitDetail() {
   useEffect(() => {
     const fetchRooms = async () => {
       try {
-        const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/rooms`);
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/rooms`);
         if (!response.ok) {
           throw new Error('Failed to fetch rooms');
         }
@@ -37,7 +37,7 @@ export default function UnitDetail() {
   useEffect(() => {
     const fetchUnit = async () => {
       try {
-        const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/units/${unitId}`);
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/units/${unitId}`);
         if (!response.ok) {
           throw new Error('Failed to fetch unit');
         }
@@ -55,7 +55,7 @@ export default function UnitDetail() {
     if (inspectionId) {
       const fetchAreas = async () => {
         try {
-          const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/inspections/${inspectionId}/unit/${unitId}/areas`);
+          const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${inspectionId}/unit/${unitId}/areas`);
           if (!response.ok) {
             throw new Error('Failed to fetch areas');
           }
@@ -76,7 +76,7 @@ export default function UnitDetail() {
     if (selectedRoomId) {
       // Fetch the selected room details to get the room name
       try {
-        const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/rooms/${selectedRoomId}`);
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/rooms/${selectedRoomId}`);
         if (!response.ok) {
           throw new Error('Failed to fetch selected room');
         }
@@ -90,7 +90,7 @@ export default function UnitDetail() {
 
     // Proceed with adding the area
     try {
-      const response = await fetch(`https://civicode-2eae16143963.herokuapp.com/inspections/${inspectionId}/unit/${unitId}/areas`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${inspectionId}/unit/${unitId}/areas`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
