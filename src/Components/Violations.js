@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom'; // Import Link from react-router-dom
+import { Link } from 'react-router-dom';
 
 export default function Violations() {
-  const [violations, setViolations] = useState([]); // State to store all violations
-  const [loading, setLoading] = useState(true); // State to manage loading state
-  const [error, setError] = useState(null); // State to manage error state
-  const [currentPage, setCurrentPage] = useState(1); // State for the current page
-  const [statusFilter, setStatusFilter] = useState('all'); // State for the status filter
-  const violationsPerPage = 10; // Number of violations to display per page
+  const [violations, setViolations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const violationsPerPage = 10;
 
   const statusMapping = {
     0: 'Current',
@@ -17,8 +17,7 @@ export default function Violations() {
   };
 
   useEffect(() => {
-    // Fetch violations from the API
-    fetch(`${process.env.REACT_APP_API_URL}/violations/`) // Replace with the actual endpoint
+    fetch(`${process.env.REACT_APP_API_URL}/violations/`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch violations');
@@ -26,38 +25,33 @@ export default function Violations() {
         return response.json();
       })
       .then((data) => {
-        setViolations(data); // Store the fetched violations in the state
-        setLoading(false); // Set loading to false after fetching data
+        setViolations(data);
+        setLoading(false);
       })
       .catch((error) => {
-        setError(error.message); // Set error state if the fetch fails
+        setError(error.message);
         setLoading(false);
       });
-  }, []); // Empty dependency array ensures this runs once when component mounts
+  }, []);
 
-  // Calculate the total number of pages
   const filteredViolations = statusFilter === 'all'
     ? violations
     : violations.filter(violation => statusMapping[violation.status] === statusFilter);
 
   const totalPages = Math.ceil(filteredViolations.length / violationsPerPage);
-
-  // Get the current set of violations to display
   const indexOfLastViolation = currentPage * violationsPerPage;
   const indexOfFirstViolation = indexOfLastViolation - violationsPerPage;
   const currentViolations = filteredViolations.slice(indexOfFirstViolation, indexOfLastViolation);
 
-  // Change page
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
-  // Handle filter change
   const handleFilterChange = (event) => {
-    setStatusFilter(event.target.value); // Update the status filter
-    setCurrentPage(1); // Reset to the first page when changing filter
+    setStatusFilter(event.target.value);
+    setCurrentPage(1);
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
 
   return (
     <div className="px-4 sm:px-6 lg:px-8">
@@ -65,18 +59,19 @@ export default function Violations() {
         <div className="sm:flex-auto">
           <h1 className="text-base font-semibold leading-6 text-gray-900">Violations</h1>
           <p className="mt-2 text-sm text-gray-700">
-            A list of all the violations including their status, type, and associated address.
+            A list of all violations, including their status, type, and associated address.
           </p>
         </div>
         <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
           <button
             type="button"
-            className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
           >
             Add violation
           </button>
         </div>
       </div>
+
       {/* Filter UI */}
       <div className="mt-4">
         <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700">
@@ -87,105 +82,74 @@ export default function Violations() {
           name="status-filter"
           value={statusFilter}
           onChange={handleFilterChange}
-          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          className="mt-1 block w-full pl-3 pr-10 py-2 border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
         >
           <option value="all">All</option>
           <option value="Current">Current</option>
           <option value="Resolved">Resolved</option>
-          {/* <option value="Pending Trial">Pending Trial</option>
-          <option value="Dismissed">Dismissed</option> */}
+          <option value="Pending Trial">Pending Trial</option>
+          <option value="Dismissed">Dismissed</option>
         </select>
       </div>
-      <div className="mt-8 flow-root">
-        <div className="-mx-4 -my-2 sm:-mx-6 lg:-mx-8">
-          <div className="inline-block min-w-full py-2 align-middle">
-          <table className="min-w-full border-separate border-spacing-0">
-              <thead>
-                <tr>
-                  <th
-                    scope="col"
-                    className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 px-3 py-3.5 text-center text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter"
+
+      {/* Responsive Table Container */}
+      <div className="mt-8 overflow-x-auto rounded-lg shadow-md">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Type
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Address
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Deadline
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {currentViolations.map((violation) => (
+              <tr key={violation.id}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <Link to={`/violation/${violation.id}`} className="text-indigo-600 hover:text-indigo-900">
+                    {violation.violation_type}
+                  </Link>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <span
+                    className={classNames(
+                      violation.status === 0 ? 'bg-red-100 text-red-800' : '',
+                      violation.status === 1 ? 'bg-green-100 text-green-800' : '',
+                      violation.status === 2 ? 'bg-yellow-100 text-yellow-800' : '',
+                      violation.status === 3 ? 'bg-gray-100 text-gray-800' : '',
+                      'px-2 py-1 rounded'
+                    )}
                   >
-                    Type
-                  </th>
-                  <th
-                    scope="col"
-                    className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 px-3 py-3.5 text-center text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter"
-                  >
-                    Status
-                  </th>
-                  <th
-                    scope="col"
-                    className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 px-3 py-3.5 text-center text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter"
-                  >
-                    Address
-                  </th>
-                  <th
-                    scope="col"
-                    className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 py-3.5 pl-3 pr-4 text-center text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter sm:pr-6 lg:pr-8"
-                  >
-                    Deadline
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentViolations.map((violation, idx) => (
-                  <tr key={violation.id}>
-                    <td
-                      className={classNames(
-                        idx !== currentViolations.length - 1 ? 'border-b border-gray-200' : '',
-                        'whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-center'
-                      )}
-                    >
-                      <Link to={`/violation/${violation.id}`} className="text-indigo-600 hover:text-indigo-900">
-                        {violation.violation_type}
-                      </Link>
-                    </td>
-                    <td
-                      className={classNames(
-                        idx !== currentViolations.length - 1 ? 'border-b border-gray-200' : '',
-                        'whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-center'
-                      )}
-                    >
-                      <span
-                        className={classNames(
-                          violation.status === 0 ? 'bg-red-100 text-red-800' : '',
-                          violation.status === 1 ? 'bg-green-100 text-green-800' : '',
-                          'px-2 py-1 rounded'
-                        )}
-                      >
-                        {statusMapping[violation.status]}
-                      </span>
-                    </td>
-                    <td
-                      className={classNames(
-                        idx !== currentViolations.length - 1 ? 'border-b border-gray-200' : '',
-                        'whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-center'
-                      )}
-                    >
-                      {violation.combadd ? (
-                        <Link to={`/address/${violation.address_id}`} className="text-indigo-600 hover:text-indigo-900">
-                          {violation.combadd}
-                        </Link>
-                      ) : (
-                        'No address'
-                      )}
-                    </td>
-                    <td
-                      className={classNames(
-                        idx !== currentViolations.length - 1 ? 'border-b border-gray-200' : '',
-                        'whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-center'
-                      )}
-                    >
-                      {new Date(violation.deadline_date).toLocaleDateString('en-US')}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                    {statusMapping[violation.status]}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {violation.combadd ? (
+                    <Link to={`/address/${violation.address_id}`} className="text-indigo-600 hover:text-indigo-900">
+                      {violation.combadd}
+                    </Link>
+                  ) : (
+                    'No address'
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {new Date(violation.deadline_date).toLocaleDateString('en-US')}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
+
       {/* Pagination Controls */}
       <div className="mt-4 flex justify-between">
         <button

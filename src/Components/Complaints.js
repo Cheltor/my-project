@@ -2,15 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 export default function Complaints() {
-  const [complaints, setComplaints] = useState([]); // State to store all complaints
-  const [loading, setLoading] = useState(true); // State to manage loading state
-  const [error, setError] = useState(null); // State to manage error state
-  const [currentPage, setCurrentPage] = useState(1); // State for the current page
-  const complaintsPerPage = 10; // Number of complaints to display per page
+  const [complaints, setComplaints] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const complaintsPerPage = 10;
 
   useEffect(() => {
-    // Fetch complaints from the API
-    fetch(`${process.env.REACT_APP_API_URL}/complaints/`) // Replace with the actual endpoint
+    fetch(`${process.env.REACT_APP_API_URL}/complaints/`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch complaints');
@@ -18,28 +17,24 @@ export default function Complaints() {
         return response.json();
       })
       .then((data) => {
-        setComplaints(data); // Store the fetched complaints in the state
-        setLoading(false); // Set loading to false after fetching data
+        setComplaints(data);
+        setLoading(false);
       })
       .catch((error) => {
-        setError(error.message); // Set error state if the fetch fails
+        setError(error.message);
         setLoading(false);
       });
-  }, []); // Empty dependency array ensures this runs once when the component mounts
+  }, []);
 
-  // Calculate the total number of pages
   const totalPages = Math.ceil(complaints.length / complaintsPerPage);
-
-  // Get the current set of complaints to display
   const indexOfLastComplaint = currentPage * complaintsPerPage;
   const indexOfFirstComplaint = indexOfLastComplaint - complaintsPerPage;
   const currentComplaints = complaints.slice(indexOfFirstComplaint, indexOfLastComplaint);
 
-  // Change page
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
 
   return (
     <div className="px-4 sm:px-6 lg:px-8">
@@ -53,89 +48,62 @@ export default function Complaints() {
         <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
           <button
             type="button"
-            className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
           >
             Add complaint
           </button>
         </div>
       </div>
-      <div className="mt-8 flow-root">
-        <div className="-mx-4 -my-2 sm:-mx-6 lg:-mx-8">
-          <div className="inline-block min-w-full py-2 align-middle">
-            <table className="min-w-full border-separate border-spacing-0">
-              <thead>
-                <tr>
-                  <th
-                    scope="col"
-                    className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 px-3 py-3.5 text-center text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter"
+
+      {/* Responsive Table Container */}
+      <div className="mt-8 overflow-x-auto rounded-lg shadow-md">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Source
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Address
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {currentComplaints.map((complaint, idx) => (
+              <tr key={complaint.id}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <Link to={`/complaint/${complaint.id}`} className="text-indigo-600 hover:text-indigo-900">
+                    {complaint.source}
+                  </Link>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <span
+                    className={`inline-block px-2 py-1 text-sm font-semibold rounded 
+                      ${complaint.status === 'Satisfactory' ? 'bg-green-100 text-green-800' :
+                        complaint.status === 'Unsatisfactory' ? 'bg-red-100 text-red-800' :
+                        'bg-yellow-100 text-yellow-800'}`}
                   >
-                    Source
-                  </th>
-                  <th
-                    scope="col"
-                    className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 px-3 py-3.5 text-center text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter"
-                  >
-                    Status
-                  </th>
-                  <th
-                    scope="col"
-                    className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 px-3 py-3.5 text-center text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter"
-                  >
-                    Address
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentComplaints.map((complaint, idx) => (
-                  <tr key={complaint.id}>
-                    <td
-                      className={classNames(
-                        idx !== currentComplaints.length - 1 ? 'border-b border-gray-200' : '',
-                        'whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-center',
-                      )}
-                    >
-                      {/* Link to the complaint details page */}
-                      <Link to={`/complaint/${complaint.id}`} className="text-indigo-600 hover:text-indigo-900">
-                        {complaint.source}
-                      </Link>
-                    </td>
-                    <td
-                      className={classNames(
-                        idx !== currentComplaints.length - 1 ? 'border-b border-gray-200' : '',
-                        'whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-center'
-                      )}
-                    >
-                      <span
-                        className={`inline-block px-2 py-1 text-sm font-semibold rounded 
-                          ${complaint.status === 'Satisfactory' ? 'bg-green-100 text-green-800' :
-                            complaint.status === 'Unsatisfactory' ? 'bg-red-100 text-red-800' :
-                            'bg-yellow-100 text-yellow-800'}`}
-                      >
-                        {complaint.status ? complaint.status : 'Pending'}
-                      </span>
-                    </td>
-                    <td
-                      className={classNames(
-                        idx !== currentComplaints.length - 1 ? 'border-b border-gray-200' : '',
-                        'whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-center',
-                      )}
-                    >
-                      {/* Link to the address details page */}
-                      {complaint.address ? (
-                        <Link to={`/address/${complaint.address.id}`} className="text-indigo-600 hover:text-indigo-900">
-                          {complaint.address.combadd}
-                        </Link>
-                      ) : (
-                        'No address'
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                    {complaint.status || 'Pending'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {complaint.address ? (
+                    <Link to={`/address/${complaint.address.id}`} className="text-indigo-600 hover:text-indigo-900">
+                      {complaint.address.combadd}
+                    </Link>
+                  ) : (
+                    'No address'
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
+
       {/* Pagination Controls */}
       <div className="mt-4 flex justify-between">
         <button

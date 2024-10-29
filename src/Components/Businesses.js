@@ -3,16 +3,15 @@ import { Link } from 'react-router-dom';
 import { formatPhoneNumber, formatWebsite } from '../utils';
 
 const BusinessesList = () => {
-  const [businesses, setBusinesses] = useState([]); // State to store all businesses
-  const [loading, setLoading] = useState(true); // State to manage loading state
-  const [error, setError] = useState(null); // State to manage error state
-  const [currentPage, setCurrentPage] = useState(1); // State for the current page
-  const [searchQuery, setSearchQuery] = useState(''); // State for search query
-  const businessesPerPage = 10; // Number of businesses to display per page
+  const [businesses, setBusinesses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const businessesPerPage = 10;
 
   useEffect(() => {
-    // Fetch businesses from the API
-    fetch(`${process.env.REACT_APP_API_URL}/businesses/`) // Replace with the actual endpoint
+    fetch(`${process.env.REACT_APP_API_URL}/businesses/`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch businesses');
@@ -20,43 +19,32 @@ const BusinessesList = () => {
         return response.json();
       })
       .then((data) => {
-        setBusinesses(data); // Store the fetched businesses in the state
-        setLoading(false); // Set loading to false after fetching data
+        setBusinesses(data);
+        setLoading(false);
       })
       .catch((error) => {
-        setError(error.message); // Set error state if the fetch fails
+        setError(error.message);
         setLoading(false);
       });
-  }, []); // Empty dependency array ensures this runs once when the component mounts
+  }, []);
 
-  // Filter businesses based on search query
-  const filteredBusinesses = businesses.filter((business) => {
-    return (
-      business.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (business.email && business.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (business.phone && business.phone.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (business.address && business.address.combadd && business.address.combadd.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-  });
+  const filteredBusinesses = businesses.filter((business) =>
+    [business.name, business.email, business.phone, business.address?.combadd]
+      .some((field) => field?.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
-  // Calculate the total number of pages
   const totalPages = Math.ceil(filteredBusinesses.length / businessesPerPage);
-
-  // Get the current set of businesses to display
   const indexOfLastBusiness = currentPage * businessesPerPage;
   const indexOfFirstBusiness = indexOfLastBusiness - businessesPerPage;
   const currentBusinesses = filteredBusinesses.slice(indexOfFirstBusiness, indexOfLastBusiness);
 
-  // Change page
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
-  // Handle search query change
   const handleSearchChange = (event) => {
     setSearchQuery(event.target.value);
-    setCurrentPage(1); // Reset to first page on search
+    setCurrentPage(1);
   };
 
-  if (loading) return <div className="flex justify-center items-center h-screen"><div>Loading...</div></div>;
+  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
   if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
 
   return (
@@ -71,7 +59,7 @@ const BusinessesList = () => {
         <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
           <button
             type="button"
-            className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
           >
             Add business
           </button>
@@ -85,68 +73,68 @@ const BusinessesList = () => {
           placeholder="Search businesses..."
           value={searchQuery}
           onChange={handleSearchChange}
-          className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          className="w-full sm:w-1/2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
         />
       </div>
 
       {/* Business List Table */}
-      <div className="mt-8 flow-root">
-        <div className="-mx-4 -my-2 sm:-mx-6 lg:-mx-8">
-          <div className="inline-block min-w-full py-2 align-middle">
-            <table className="min-w-full border-separate border-spacing-0">
-              <thead>
-                <tr>
-                  <th scope="col" className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter">
-                    Name
-                  </th>
-                  <th scope="col" className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter">
-                    Address
-                  </th>
-                  <th scope="col" className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter">
-                    Phone
-                  </th>
-                  <th scope="col" className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter">
-                    Email
-                  </th>
-                  <th scope="col" className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter">
-                    Website
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentBusinesses.map((business, idx) => (
-                  <tr key={business.id}>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                      <Link to={`/business/${business.id}`} className="text-indigo-600 hover:text-indigo-900">
-                        {business.name}
-                      </Link>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                      {business.address ? business.address.combadd : 'N/A'}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                      <a href={`tel:${formatPhoneNumber(business.phone)}`}>{formatPhoneNumber(business.phone) || 'N/A'}</a>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                      {business.email ? (
-                        <a href={`mailto:${business.email}`} className="text-indigo-600 hover:text-indigo-900">
-                          {business.email}
-                        </a>
-                      ) : 'N/A'}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                      {business.website ? (
-                        <a href={business.website} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900">
-                          {formatWebsite(business.website)}
-                        </a>
-                      ) : 'N/A'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      <div className="mt-8 overflow-x-auto rounded-lg shadow-md">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Name
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Address
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Phone
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Email
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Website
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {currentBusinesses.map((business) => (
+              <tr key={business.id}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <Link to={`/business/${business.id}`} className="text-indigo-600 hover:text-indigo-900">
+                    {business.name}
+                  </Link>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {business.address ? business.address.combadd : 'N/A'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {business.phone ? (
+                    <a href={`tel:${formatPhoneNumber(business.phone)}`} className="text-indigo-600 hover:text-indigo-900">
+                      {formatPhoneNumber(business.phone)}
+                    </a>
+                  ) : 'N/A'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {business.email ? (
+                    <a href={`mailto:${business.email}`} className="text-indigo-600 hover:text-indigo-900">
+                      {business.email}
+                    </a>
+                  ) : 'N/A'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {business.website ? (
+                    <a href={business.website} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900">
+                      {formatWebsite(business.website)}
+                    </a>
+                  ) : 'N/A'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* Pagination Controls */}
