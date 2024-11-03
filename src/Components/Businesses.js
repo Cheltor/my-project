@@ -108,7 +108,9 @@ const BusinessesList = () => {
                   </Link>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {business.address ? business.address.combadd : 'N/A'}
+                  <Link to={`/address/${business.address?.id}`} className="text-indigo-600 hover:text-indigo-900">
+                    {business.address ? business.address.combadd : 'N/A'}
+                  </Link>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {business.phone ? (

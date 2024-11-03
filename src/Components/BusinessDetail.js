@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 
 const BusinessDetails = () => {
   const { id } = useParams(); // Extract the business ID from the URL
@@ -45,8 +45,14 @@ const BusinessDetails = () => {
             <h2 className="text-xl font-medium text-gray-700">Address Information</h2>
             {business.address ? (
               <>
-                <p className="text-sm text-gray-600"><strong>Combined Address:</strong> {business.address.combadd}</p>
-                <p className="text-sm text-gray-600"><strong>Owner Name:</strong> {business.address.ownername}</p>
+                <p className="text-sm text-gray-600">
+                  <strong>Combined Address:</strong> 
+                  {business.address ? (
+                    <Link to={`/address/${business.address.id}`} className="text-indigo-600 hover:text-indigo-800">
+                      {business.address.combadd}
+                    </Link>
+                  ) : 'N/A'}
+                </p>                <p className="text-sm text-gray-600"><strong>Owner Name:</strong> {business.address.ownername}</p>
                 <p className="text-sm text-gray-600"><strong>Land Use Code:</strong> {business.address.landusecode}</p>
                 <p className="text-sm text-gray-600"><strong>Zoning:</strong> {business.address.zoning}</p>
                 <p className="text-sm text-gray-600"><strong>Property Type:</strong> {business.address.property_type}</p>

@@ -30,6 +30,7 @@ import AreaDetail from './Components/Inspection/AreaDetail';
 import UnitAreaDetail from './Components/Inspection/UnitAreaDetail';
 import Rooms from './Components/Inspection/Rooms';
 import RoomDetail from './Components/Inspection/RoomDetail';
+import Welcome from './Components/Dashboard/Welcome';
 
 function App() {
   return (
