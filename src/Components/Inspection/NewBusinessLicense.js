@@ -3,6 +3,7 @@ import { useAuth } from "../../AuthContext";
 import ContactSelection from "../Contact/ContactSelection";
 import BusinessSelection from "../Business/BusinessSelection"; // Import the new component
 import NewUnitForm from "../Unit/NewUnitForm";
+import Select from "react-select"; // Import react-select
 
 export default function NewBusinessLicense() {
   const { user } = useAuth();
@@ -12,14 +13,14 @@ export default function NewBusinessLicense() {
   const [addresses, setAddresses] = useState([]);
   const [showNewUnitForm, setShowNewUnitForm] = useState(false); // State to toggle new unit form
   const [formData, setFormData] = useState({
-    address_id: "",
-    unit_id: "",
+    address_id: null,  // Use `null` instead of ""
+    unit_id: null,
     source: "Business License",
     description: "",
     attachments: [],
-    business_id: "",
+    business_id: null,
     scheduled_datetime: "",
-    contact_id: "",
+    contact_id: null,
     new_contact_name: "",
     new_contact_email: "",
     new_contact_phone: "",
@@ -61,6 +62,13 @@ export default function NewBusinessLicense() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Log each field of formData individually to easily view everything in the console
+    console.log("Form Data before submission:");
+    Object.keys(formData).forEach((key) => {
+        console.log(`${key}:`, formData[key]);
+    });
+
     const inspectionData = new FormData();
 
     Object.keys(formData).forEach((key) => {

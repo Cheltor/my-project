@@ -4,7 +4,8 @@ import Select from "react-select";
 export default function BusinessSelection({ businesses, formData, handleInputChange }) {
   const businessOptions = businesses.map((business) => ({
     value: business.id,
-    label: business.name,
+    label: business.trading_as ? `${business.name} (${business.trading_as})` : business.name,
+    addressId: business.address.id, // Include addressId in the option
   }));
 
   const handleBusinessChange = (selectedOption) => {
@@ -14,6 +15,17 @@ export default function BusinessSelection({ businesses, formData, handleInputCha
         value: selectedOption ? selectedOption.value : "",
       },
     });
+  };
+  
+
+  const customFilterOption = (option, searchText) => {
+    if (
+      option.label.toLowerCase().includes(searchText.toLowerCase()) ||
+      (option.data.trading_as && option.data.trading_as.toLowerCase().includes(searchText.toLowerCase()))
+    ) {
+      return true;
+    }
+    return false;
   };
 
   return (
@@ -30,6 +42,7 @@ export default function BusinessSelection({ businesses, formData, handleInputCha
         placeholder="Select Business"
         isClearable
         className="mt-1"
+        filterOption={customFilterOption}
       />
     </div>
   );

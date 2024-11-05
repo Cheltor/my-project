@@ -18,3 +18,13 @@ export const truncateEmail = (email) => {
   return email.split('@')[0];
 };
 
+export const roles = {
+  0: 'Guest',
+  1: 'ONS',
+  2: 'OAS',
+  3: 'Admin'
+};
+
+export const getRoleName = (role) => {
+  return roles[role] || 'Unknown';
+};

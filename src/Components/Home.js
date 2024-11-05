@@ -3,7 +3,7 @@ import Welcome from './Dashboard/Welcome';
 import WeeklyStats from './Dashboard/WeeklyStats';
 import PendingInspections from './Dashboard/PendingInspections';
 import ActiveViolations from './Dashboard/ActiveViolations';
-import NewComplaint from './Dashboard/NewComplaint';
+import NewComplaint from './Inspection/NewComplaint';
 import NewMFLicense from './Inspection/NewMFLicense';
 import NewSFLicense from './Inspection/NewSFLicense';
 import NewBuildingPermit from './Inspection/NewBuildingPermit';
@@ -95,22 +95,20 @@ export default function Example() {
     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
       <Welcome />
 
-      {user.role === 2 && (
+      {(user.role === 2 || user.role === 1 || user.role === 3) && (
         <>
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-4">
             {buttons.map((button, index) => (
-              <div
+              <button
                 key={index}
+                type="button"
+                onClick={button.toggle}
                 className={`relative flex items-center space-x-3 rounded-lg border border-gray-300 px-6 py-5 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-gray-400 ${button.color}`}
               >
-                <button
-                  type="button"
-                  onClick={button.toggle}
-                  className="w-full text-white font-semibold"
-                >
+                <span className="w-full text-white font-semibold">
                   {button.label}
-                </button>
-              </div>
+                </span>
+              </button>
             ))}
           </div>
 

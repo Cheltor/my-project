@@ -30,7 +30,8 @@ import AreaDetail from './Components/Inspection/AreaDetail';
 import UnitAreaDetail from './Components/Inspection/UnitAreaDetail';
 import Rooms from './Components/Inspection/Rooms';
 import RoomDetail from './Components/Inspection/RoomDetail';
-import Welcome from './Components/Dashboard/Welcome';
+import Users from './Components/Users';
+import UserDetail from './Components/UserDetails';
 
 function App() {
   return (
@@ -87,6 +88,8 @@ function MainApp() {
             <Route path="/inspections/:id/unit/:unitId/area/:areaId" element={<UnitAreaDetail />} />
             <Route path="/rooms" element={<Rooms />} />
             <Route path="/rooms/:id" element={<RoomDetail />} />
+            <Route path="/users" element={<Users />} />
+            <Route path="/users/:id" element={<UserDetail />} />
             {/* Add more routes as needed */}
           </Routes>
         </Sidebar>
