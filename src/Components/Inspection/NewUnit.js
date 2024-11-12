@@ -25,8 +25,12 @@ export default function NewUnit({ addressId, inspectionId }) {  // Use props ins
       }
 
       const newUnit = await response.json();
-      // Redirect to the new unit's detail page using the inspectionId from the Conduct component
-      navigate(`/inspections/${inspectionId}/unit/${newUnit.id}`);
+      // Redirect based on whether inspectionId is null or not
+      if (inspectionId) {
+        navigate(`/inspections/${inspectionId}/unit/${newUnit.id}`);
+      } else {
+        navigate(`/address/${addressId}/unit/${newUnit.id}`);
+      }
     } catch (error) {
       setError(error.message);
     }

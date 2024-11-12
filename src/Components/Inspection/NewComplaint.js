@@ -3,7 +3,7 @@ import { useAuth } from "../../AuthContext";
 import AsyncSelect from "react-select/async";
 import ContactSelection from "../Contact/ContactSelection";
 import BusinessSelection from "../Business/BusinessSelection"; // Import the new component
-import NewUnitForm from "../Unit/NewUnitForm";
+import NewUnit from "../Inspection/NewUnit"; // Import NewUnit instead of NewUnitForm
 
 export default function NewComplaint() {
   const { user } = useAuth();
@@ -14,20 +14,18 @@ export default function NewComplaint() {
   const [showBusinessSelection, setShowBusinessSelection] = useState(false); // State to toggle business selection
   const [showNewUnitForm, setShowNewUnitForm] = useState(false); // State to toggle new unit form
   const [formData, setFormData] = useState({
-    address_id: "",
-    unit_id: "",
+    address_id: null,  // Use `null` instead of ""
+    unit_id: null,
     source: "Complaint",
     description: "",
     attachments: [],
-    business_id: "",
-    scheduled_datetime: "",
-    contact_id: "",
-    new_contact_name: "",
-    new_contact_email: "",
-    new_contact_phone: "",
-    inspector_id: user.id,
+    business_id: null,
+    contact_id: null,
     paid: false,
   });
+  const [photos, setPhotos] = useState([]); // State to hold the photos
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     // Fetch initial data for contacts, addresses, and businesses
@@ -42,8 +40,11 @@ export default function NewComplaint() {
         setContacts(await contactsRes.json());
         setAddresses(await addressesRes.json());
         setBusinesses(await businessesRes.json());
+        setLoading(false);
       } catch (error) {
         console.error("Error fetching data:", error);
+        setError(error.message);
+        setLoading(false);
       }
     };
 
@@ -55,7 +56,7 @@ export default function NewComplaint() {
     if (type === "checkbox") {
       setFormData({ ...formData, [name]: checked });
     } else if (type === "file") {
-      setFormData({ ...formData, attachments: files });
+      setPhotos(Array.from(files)); // Set selected files to the state
     } else {
       setFormData({ ...formData, [name]: value });
     }
@@ -63,7 +64,11 @@ export default function NewComplaint() {
 
   const handleAddressChange = async (selectedOption) => {
     const addressId = selectedOption ? selectedOption.value : "";
-    setFormData({ ...formData, address_id: addressId, unit_id: "" });
+    setFormData((prevFormData) => ({
+      ...prevFormData,
+      address_id: addressId,
+      unit_id: "",
+    }));
 
     if (addressId) {
       try {
@@ -81,33 +86,60 @@ export default function NewComplaint() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const inspectionData = new FormData();
+    console.log("Form submitted"); // Add this line to confirm the function is called
 
-    Object.keys(formData).forEach((key) => {
-      if (key === "attachments") {
-        Array.from(formData.attachments).forEach((file) => {
-          inspectionData.append("attachments[]", file);
-        });
-      } else {
-        inspectionData.append(key, formData[key]);
-      }
-    });
+    if (!formData.description.trim()) {
+      return; // Don't submit if description is empty
+    }
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/`, {
+      // Step 1: Create Complaint (Without Photos)
+      const complaintData = {
+        ...formData,
+        attachments: [], // Exclude attachments for now
+      };
+
+      const complaintResponse = await fetch(`${process.env.REACT_APP_API_URL}/inspections/`, {
         method: "POST",
         headers: {
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${user.token}`,
         },
-        body: inspectionData,
+        body: JSON.stringify(complaintData),
       });
 
-      if (!response.ok) throw new Error("Failed to create inspection");
+      if (!complaintResponse.ok) {
+        throw new Error("Failed to create complaint");
+      }
 
-      alert("Inspection created successfully!");
+      const createdComplaint = await complaintResponse.json();
+      alert("Complaint created successfully!");
+
+      // Step 2: Upload Photos for the Created Complaint
+      if (photos.length > 0) {
+        const formData = new FormData();
+        photos.forEach((photo) => {
+          formData.append('files', photo);
+        });
+
+        const photoUploadResponse = await fetch(
+          `${process.env.REACT_APP_API_URL}/inspections/${createdComplaint.id}/photos`,
+          {
+            method: 'POST',
+            body: formData,
+          }
+        );
+
+        if (!photoUploadResponse.ok) {
+          throw new Error('Failed to upload photos');
+        }
+
+        alert("Photos uploaded successfully!");
+        setPhotos([]); // Clear the selected photos
+      }
     } catch (error) {
-      console.error("Error creating inspection:", error);
-      alert("Error creating inspection.");
+      console.error("Error creating complaint:", error);
+      alert("Error creating complaint.");
     }
   };
 
@@ -163,6 +195,14 @@ export default function NewComplaint() {
     }));
   };
 
+  if (loading) {
+    return <p>Loading...</p>;
+  }
+
+  if (error) {
+    return <p>Error: {error}</p>;
+  }
+
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
       <h1 className="text-2xl font-semibold text-gray-900">New Complaint</h1>
@@ -211,25 +251,26 @@ export default function NewComplaint() {
 
         {/* New Unit Form */}
         {formData.address_id && (
-<div className="mb-4">
-  <button
-    type="button"
-    onClick={() => setShowNewUnitForm(!showNewUnitForm)}
-    className="bg-transparent hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-1 px-2 border border-blue-500 hover:border-transparent rounded"
-  >
-    {showNewUnitForm ? "Hide New Unit Form" : "Add a New Unit"}
-  </button>
-  {showNewUnitForm && (
-    <NewUnitForm
-      addressId={formData.address_id}
-      onUnitCreated={(newUnit) => {
-        setUnits([...units, newUnit]);
-        setFormData({ ...formData, unit_id: newUnit.id });
-        setShowNewUnitForm(false);
-      }}
-    />
-  )}
-</div>
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={() => setShowNewUnitForm(!showNewUnitForm)}
+              className="bg-transparent hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-1 px-2 border border-blue-500 hover:border-transparent rounded"
+            >
+              {showNewUnitForm ? "Hide New Unit Form" : "Add a New Unit"}
+            </button>
+            {showNewUnitForm && (
+              <NewUnit
+                addressId={formData.address_id}
+                inspectionId={null} // Pass null or appropriate value for inspectionId
+                onUnitCreated={(newUnit) => {
+                  setUnits([...units, newUnit]);
+                  setFormData({ ...formData, unit_id: newUnit.id });
+                  setShowNewUnitForm(false);
+                }}
+              />
+            )}
+          </div>
         )}
 
         {/* Description Field */}
@@ -261,9 +302,9 @@ export default function NewComplaint() {
               />
             </label>
             <div className="ml-3 text-sm text-gray-500">
-              {formData.attachments.length > 0 ? (
+              {photos.length > 0 ? (
                 <ul>
-                  {Array.from(formData.attachments).map((file, index) => (
+                  {photos.map((file, index) => (
                     <li key={index}>{file.name}</li>
                   ))}
                 </ul>
@@ -291,21 +332,6 @@ export default function NewComplaint() {
             />
           )}
         </div>
-
-        {/* Scheduled Date 
-        <div className="mb-4">
-          <label htmlFor="scheduled_datetime" className="block text-sm font-medium text-gray-700">
-            Scheduled Date
-          </label>
-          <input
-            type="datetime-local"
-            id="scheduled_datetime"
-            name="scheduled_datetime"
-            value={formData.scheduled_datetime}
-            onChange={handleInputChange}
-            className="mt-1 block w-full shadow-sm border-gray-300 rounded-md"
-          />
-        </div>*/}
 
         {/* Contact Selection */}
         <ContactSelection

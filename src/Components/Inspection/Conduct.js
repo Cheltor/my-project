@@ -17,7 +17,6 @@ export default function Conduct() {
   const [rooms, setRooms] = useState([]); // State for rooms
   const [selectedRoomId, setSelectedRoomId] = useState(''); // State for selected room
 
-
   useEffect(() => {
     const fetchInspection = async () => {
       try {
@@ -156,12 +155,6 @@ export default function Conduct() {
       console.error('Error:', error);
     }
   };
-  
-  
-  
-  
-  
-
 
   if (loading) {
     return <p>Loading inspection...</p>;
@@ -204,8 +197,6 @@ export default function Conduct() {
                 </Link>
               </li>
             ))}
-
-
           </ul>
         ) : (
           <p>No units found matching your search.</p>
@@ -250,8 +241,6 @@ export default function Conduct() {
           <p className="mt-2 text-sm leading-5 text-gray-500">No general areas inspected.</p>
         )}
       </div>
-
-
 
       {/* Add a new area component */}
       <div className="px-4 py-6 sm:px-0">

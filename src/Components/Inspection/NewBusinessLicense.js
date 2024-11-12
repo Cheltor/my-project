@@ -19,12 +19,11 @@ export default function NewBusinessLicense() {
     description: "",
     attachments: [],
     business_id: null,
-    scheduled_datetime: "",
     contact_id: null,
-    new_contact_name: "",
-    new_contact_email: "",
-    new_contact_phone: "",
-    inspector_id: user.id,
+    // new_contact_name: "",
+    // new_contact_email: "",
+    // new_contact_phone: "",
+    // inspector_id: user.id,
     paid: false,
   });
 

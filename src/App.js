@@ -32,6 +32,7 @@ import Rooms from './Components/Inspection/Rooms';
 import RoomDetail from './Components/Inspection/RoomDetail';
 import Users from './Components/Users';
 import UserDetail from './Components/UserDetails';
+import AddressUnitDetail from './Components/Unit/AddressUnitDetail'; // Import the AddressUnitDetail component
 
 function App() {
   return (
@@ -90,6 +91,7 @@ function MainApp() {
             <Route path="/rooms/:id" element={<RoomDetail />} />
             <Route path="/users" element={<Users />} />
             <Route path="/users/:id" element={<UserDetail />} />
+            <Route path="/address/:addressId/unit/:unitId" element={<AddressUnitDetail />} />
             {/* Add more routes as needed */}
           </Routes>
         </Sidebar>
