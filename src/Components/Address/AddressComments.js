@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import NewAddressComment from './NewAddressComment';
+import FullScreenPhotoViewer from '../FullScreenPhotoViewer';
 
 // Utility function to format the date
 const formatDate = (dateString) => {
@@ -14,6 +15,7 @@ const AddressComments = ({ addressId }) => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedPhotoUrl, setSelectedPhotoUrl] = useState(null);
 
   useEffect(() => {
     // Fetch comments for the address
@@ -96,7 +98,12 @@ const AddressComments = ({ addressId }) => {
     <div className="border-b pb-4">
       <h2 className="text-2xl font-semibold text-gray-700">Comments</h2>
       <NewAddressComment addressId={addressId} onCommentAdded={handleCommentAdded} />
-
+      {selectedPhotoUrl && (
+        <FullScreenPhotoViewer
+          photoUrl={selectedPhotoUrl}
+          onClose={() => setSelectedPhotoUrl(null)}
+        />
+      )}
       <ul className="space-y-4 mt-4">
         {comments.length > 0 ? (
           comments.map((comment) => (
@@ -108,22 +115,58 @@ const AddressComments = ({ addressId }) => {
                   By {comment.user.name ? comment.user.name : comment.user.email}
                 </p>
               )}
-              {/* Display photos if available */}
               {comment.photos && comment.photos.length > 0 && (
                 <div className="mt-2">
-                  <h3 className="text-sm font-semibold text-gray-600">Photos:</h3>
+                  <h3 className="text-sm font-semibold text-gray-600">
+                    Attachment{comment.photos.length > 1 ? 's' : ''}:
+                  </h3>
                   <div className="flex space-x-2 mt-2">
-                    {comment.photos.map((photo, index) => (
-                      <img
-                        key={index}
-                        src={photo.url}
-                        alt={photo.filename || `Comment photo ${index}`}
-                        className="w-24 h-24 object-cover rounded-md shadow"
-                      />
-                    ))}
+                    {comment.photos
+                      .filter((photo) => !photo.filename.endsWith('.docx'))
+                      .map((photo, index) => (
+                        <img
+                          key={index}
+                          src={photo.url}
+                          alt={photo.filename || `Comment photo ${index}`}
+                          className="w-24 h-24 object-cover rounded-md shadow cursor-pointer"
+                          onClick={() => setSelectedPhotoUrl(photo.url)}
+                        />
+                      ))}
                   </div>
                 </div>
               )}
+              {/* Display .docx files if available */}
+              {comment.photos &&
+                comment.photos
+                  .filter((photo) => photo.filename.endsWith('.docx'))
+                  .map((doc, index) => (
+                    <div key={index} className="mt-2">
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-500 hover:underline"
+                      >
+                        {doc.filename}
+                      </a>
+                    </div>
+                  ))}
+              {/* Display PDF files if available */}
+              {comment.photos &&
+                comment.photos
+                  .filter((photo) => photo.filename.endsWith('.pdf'))
+                  .map((pdf, index) => (
+                    <div key={index} className="mt-2">
+                      <a
+                        href={pdf.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-500 hover:underline"
+                      >
+                        {pdf.filename}
+                      </a>
+                    </div>
+                  ))}
             </li>
           ))
         ) : (
