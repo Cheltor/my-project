@@ -3,7 +3,10 @@ import NewAddressComment from './NewAddressComment';
 
 // Utility function to format the date
 const formatDate = (dateString) => {
-  const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+  const options = {
+    year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  };
   return new Date(dateString).toLocaleDateString(undefined, options);
 };
 
@@ -13,6 +16,7 @@ const AddressComments = ({ addressId }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Fetch comments for the address
     fetch(`${process.env.REACT_APP_API_URL}/comments/address/${addressId}`)
       .then((response) => {
         if (!response.ok) {
@@ -21,8 +25,37 @@ const AddressComments = ({ addressId }) => {
         return response.json();
       })
       .then((data) => {
-        setComments(data);
-        setLoading(false);
+        // Once comments are fetched, fetch photos for each comment
+        const fetchPhotosPromises = data.map((comment) => {
+          return fetch(`${process.env.REACT_APP_API_URL}/comments/${comment.id}/photos`)
+            .then((response) => {
+              if (!response.ok) {
+                // If no photos are found, return an empty array
+                return [];
+              }
+              return response.json();
+            })
+            .then((photos) => {
+              // Attach the photos to the comment
+              return { ...comment, photos };
+            })
+            .catch((error) => {
+              console.error(`Error fetching photos for comment ${comment.id}:`, error);
+              // Return the comment without photos in case of error
+              return { ...comment, photos: [] };
+            });
+        });
+
+        // Wait for all comments with their photos to be fetched
+        Promise.all(fetchPhotosPromises)
+          .then((commentsWithPhotos) => {
+            setComments(commentsWithPhotos);
+            setLoading(false);
+          })
+          .catch((error) => {
+            setError(error.message);
+            setLoading(false);
+          });
       })
       .catch((error) => {
         setError(error.message);
@@ -31,7 +64,24 @@ const AddressComments = ({ addressId }) => {
   }, [addressId]);
 
   const handleCommentAdded = (newComment) => {
-    setComments([newComment, ...comments]);
+    // Optionally fetch photos for the new comment
+    fetch(`${process.env.REACT_APP_API_URL}/comments/${newComment.id}/photos`)
+      .then((response) => {
+        if (!response.ok) {
+          // If no photos are found, return an empty array
+          return [];
+        }
+        return response.json();
+      })
+      .then((photos) => {
+        // Attach the photos to the new comment
+        const newCommentWithPhotos = { ...newComment, photos };
+        setComments([newCommentWithPhotos, ...comments]);
+      })
+      .catch((error) => {
+        console.error(`Error fetching photos for new comment ${newComment.id}:`, error);
+        setComments([newComment, ...comments]);
+      });
   };
 
   if (loading) {
@@ -63,11 +113,11 @@ const AddressComments = ({ addressId }) => {
                 <div className="mt-2">
                   <h3 className="text-sm font-semibold text-gray-600">Photos:</h3>
                   <div className="flex space-x-2 mt-2">
-                    {comment.photos.map((photoUrl, index) => (
+                    {comment.photos.map((photo, index) => (
                       <img
                         key={index}
-                        src={photoUrl}
-                        alt={`Comment photo ${index}`}
+                        src={photo.url}
+                        alt={photo.filename || `Comment photo ${index}`}
                         className="w-24 h-24 object-cover rounded-md shadow"
                       />
                     ))}
