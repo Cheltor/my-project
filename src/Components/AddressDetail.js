@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Photos from './Address/AddressPhotos';
+import AddressPhotos from './Address/AddressPhotos'; // Update the import statement
 import Citations from './Address/AddressCitations';
 import Violations from './Address/AddressViolations';
 import Comments from './Address/AddressComments';
@@ -213,7 +213,7 @@ const AddressDetails = () => {
 
       {/* Tab Content */}
       <div className="mt-6">
-        {activeTab === 'photos' && <Photos photos={address.photos} />}
+        {activeTab === 'photos' && <AddressPhotos addressId={id} />}
         {activeTab === 'citations' && <Citations addressId={id} />}
         {activeTab === 'comments' && <Comments addressId={id} />}
         {activeTab === 'violations' && <Violations addressId={id} />}

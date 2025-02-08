@@ -1,12 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const Photos = ({ photos }) => {
+const AddressPhotos = ({ addressId }) => {
+  const [photos, setPhotos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(null); // Track the absolute index of the selected photo
   const [currentPage, setCurrentPage] = useState(1); // Current page state
   const [editingPage, setEditingPage] = useState(false); // Track whether the page number is being edited
   const [inputPage, setInputPage] = useState(currentPage); // Hold the page input value
   const [loadedImages, setLoadedImages] = useState([]); // Track loaded images
   const photosPerPage = 6; // Define how many photos you want per page
+
+  useEffect(() => {
+    fetch(`${process.env.REACT_APP_API_URL}/addresses/${addressId}/photos`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch photos');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setPhotos(data);
+        setLoading(false);
+      })
+      .catch((error) => {
+        setError(error.message);
+        setLoading(false);
+      });
+  }, [addressId]);
 
   // Calculate total number of pages
   const totalPages = Math.ceil(photos.length / photosPerPage);
@@ -78,6 +99,14 @@ const Photos = ({ photos }) => {
     setLoadedImages((prevLoadedImages) => [...prevLoadedImages, index]);
   };
 
+  if (loading) {
+    return <p>Loading photos...</p>;
+  }
+
+  if (error) {
+    return <p className="text-red-500">Error: {error}</p>;
+  }
+
   if (photos.length === 0) {
     return <p>No photos available.</p>;
   }
@@ -95,8 +124,8 @@ const Photos = ({ photos }) => {
               </div>
             )}
             <img 
-              src={photo} 
-              alt={`${index}`} 
+              src={photo.url} 
+              alt={photo.filename || `${index}`} 
               className={`w-full h-full object-cover cursor-pointer transition-transform duration-300 transform hover:scale-105 ${
                 loadedImages.includes(index) ? 'opacity-100' : 'opacity-0'
               }`}
@@ -162,7 +191,7 @@ const Photos = ({ photos }) => {
               &#x2715; {/* Close button */}
             </button>
 
-            <img src={photos[selectedPhotoIndex]} alt="Selected" className="w-full h-auto" />
+            <img src={photos[selectedPhotoIndex].url} alt="Selected" className="w-full h-auto" />
 
             {/* Previous and Next Buttons */}
             <button
@@ -186,4 +215,4 @@ const Photos = ({ photos }) => {
   );
 };
 
-export default Photos;
+export default AddressPhotos;
