@@ -167,7 +167,7 @@ export default function Conduct() {
   return (
     <div>
       <div className="px-4 sm:px-0">
-        <h3 className="text-base font-semibold leading-7 text-gray-900">Conduct Inspection for {inspection.source} - #{inspection.id}</h3>
+        <h3 className="text-base font-semibold leading-7 text-gray-900 text-center">Conduct Inspection for {inspection.source} - #{inspection.id}</h3>
       </div>
 
       {/* Search input for filtering units */}
@@ -244,7 +244,7 @@ export default function Conduct() {
 
       {/* Add a new area component */}
       <div className="px-4 py-6 sm:px-0">
-        <h4 className="text-sm font-semibold leading-5 text-gray-900">Add General/Common Area</h4>
+        <h4 className="text-sm font-semibold leading-5 text-gray-900 text-center">Add General/Common Area</h4>
         <form className="mt-2" onSubmit={handleAddArea}>
           <div className="mt-4">
             <label htmlFor="areaName" className="block text-sm font-medium leading-5 text-gray-700">Custom Area Name</label>

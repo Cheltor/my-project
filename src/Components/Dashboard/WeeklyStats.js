@@ -85,7 +85,7 @@ export default function WeeklyStats() {
             <dd className="mt-1 flex items-baseline justify-between md:block lg:flex">
               <div className="flex items-baseline text-2xl font-semibold text-indigo-600">
                 {stat.thisWeek}
-                <span className="ml-2 text-sm font-medium text-gray-500">from {stat.lastWeek}</span>
+                <span className="ml-2 text-sm font-medium text-gray-500">from {stat.lastWeek} last week</span>
               </div>
 
               {stat.changeType && (
