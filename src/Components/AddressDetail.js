@@ -79,7 +79,9 @@ const AddressDetails = () => {
 
         <h2 className="text-2xl font-semibold text-gray-700">Owner Name</h2>
         <p className="text-lg text-gray-600">{address.ownername}</p>
-
+        <p className="text-lg text-gray-600">{address.owneraddress}, {address.owneraddress}, {address.ownerzip}
+        </p>
+        
         {address.aka && (
           <>
             <h2 className="text-2xl font-semibold text-gray-700">AKA:</h2>
