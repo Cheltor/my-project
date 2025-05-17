@@ -32,6 +32,7 @@ const navigation = [
   { name: 'Licenses', href: '/licenses', icon: BuildingOffice2Icon, current: false },
   { name: 'Codes', href: '/codes', icon: BuildingOffice2Icon, current: false },
   { name: 'Businesses', href: '/businesses', icon: BuildingOffice2Icon, current: false },
+  { name: 'SIR', href: '/sir', icon: BuildingOffice2Icon, current: false },
   { name: 'Users', href: '/users', icon: UsersIcon, current: false, roles: ['Admin'] },
   { name: 'Rooms', href: '/rooms', icon: DocumentDuplicateIcon, current: false, roles: ['Admin'] },
   { name: 'Helpful Links', href: '/Helpful', icon: DocumentDuplicateIcon, current: false },
