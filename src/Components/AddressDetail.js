@@ -19,6 +19,7 @@ const AddressDetails = () => {
   const [activeTab, setActiveTab] = useState('comments');
   const { searchTerm, showDropdown, filteredUnits, handleSearchChange, handleDropdownSelect } = useUnitSearch(id);
   const [showNewUnitForm, setShowNewUnitForm] = useState(false);  // State to toggle NewUnit form
+  const [isEditing, setIsEditing] = useState(false); // State to toggle edit mode
 
   useEffect(() => {
     setLoading(true);
@@ -57,6 +58,28 @@ const AddressDetails = () => {
     navigate(`/address/${id}/unit/${unitId}`);
   };
 
+  const saveAddress = async () => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${address.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(address), // Send the updated address object
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save address');
+      }
+
+      const updatedAddress = await response.json();
+      setAddress(updatedAddress); // Update the state with the saved address
+      setIsEditing(false); // Exit edit mode
+    } catch (error) {
+      console.error('Error saving address:', error);
+    }
+  };
+
   if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
   if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
   if (!address) return <div className="text-center mt-10">No address details available.</div>;
@@ -78,10 +101,47 @@ const AddressDetails = () => {
         </h1>
 
         <h2 className="text-2xl font-semibold text-gray-700">Owner Name</h2>
-        <p className="text-lg text-gray-600">{address.ownername}</p>
-        <p className="text-lg text-gray-600">{address.owneraddress}, {address.owneraddress}, {address.ownerzip}
-        </p>
-        
+        {isEditing ? (
+          <>
+            <input
+              type="text"
+              className="text-lg text-gray-600 border border-gray-300 rounded-md p-2 w-full"
+              value={address.ownername || ''}
+              onChange={(e) => setAddress({ ...address, ownername: e.target.value })}
+            />
+            <input
+              type="text"
+              className="text-lg text-gray-600 border border-gray-300 rounded-md p-2 w-full mt-2"
+              value={address.owneraddress || ''}
+              onChange={(e) => setAddress({ ...address, owneraddress: e.target.value })}
+            />
+            <input
+              type="text"
+              className="text-lg text-gray-600 border border-gray-300 rounded-md p-2 w-full mt-2"
+              value={address.ownerzip || ''}
+              onChange={(e) => setAddress({ ...address, ownerzip: e.target.value })}
+            />
+            <button
+              onClick={saveAddress}
+              className="mt-2 px-4 py-2 bg-green-500 text-white rounded-md"
+            >
+              Save
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="text-lg text-gray-600">{address.ownername || 'N/A'}</p>
+            <p className="text-lg text-gray-600 mt-2">{address.owneraddress || 'N/A'}</p>
+            <p className="text-lg text-gray-600 mt-2">{address.ownerzip || 'N/A'}</p>
+            <button
+              onClick={() => setIsEditing(true)}
+              className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md"
+            >
+              Edit
+            </button>
+          </>
+        )}
+
         {address.aka && (
           <>
             <h2 className="text-2xl font-semibold text-gray-700">AKA:</h2>
