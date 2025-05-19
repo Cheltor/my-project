@@ -100,30 +100,55 @@ const AddressDetails = () => {
           <span className="break-words">{address.combadd}</span>
         </h1>
 
-        <h2 className="text-2xl font-semibold text-gray-700">Owner Name</h2>
         {isEditing ? (
           <>
+            <label htmlFor="property-name" className="block text-lg font-semibold text-gray-700">
+              Property Name:
+            </label>
             <input
+              id="property-name"
+              type="text"
+              className="text-lg text-gray-600 border border-gray-300 rounded-md p-2 w-full"
+              value={address.property_name || ''}
+              onChange={(e) => setAddress({ ...address, property_name: e.target.value })}
+            />
+
+            <label htmlFor="owner-name" className="block text-lg font-semibold text-gray-700 mt-4">
+              Owner Name:
+            </label>
+            <input
+              id="owner-name"
               type="text"
               className="text-lg text-gray-600 border border-gray-300 rounded-md p-2 w-full"
               value={address.ownername || ''}
               onChange={(e) => setAddress({ ...address, ownername: e.target.value })}
             />
+
+            <label htmlFor="owner-address" className="block text-lg font-semibold text-gray-700 mt-4">
+              Owner Address:
+            </label>
             <input
+              id="owner-address"
               type="text"
-              className="text-lg text-gray-600 border border-gray-300 rounded-md p-2 w-full mt-2"
+              className="text-lg text-gray-600 border border-gray-300 rounded-md p-2 w-full"
               value={address.owneraddress || ''}
               onChange={(e) => setAddress({ ...address, owneraddress: e.target.value })}
             />
+
+            <label htmlFor="owner-zip" className="block text-lg font-semibold text-gray-700 mt-4">
+              Owner ZIP Code:
+            </label>
             <input
+              id="owner-zip"
               type="text"
-              className="text-lg text-gray-600 border border-gray-300 rounded-md p-2 w-full mt-2"
+              className="text-lg text-gray-600 border border-gray-300 rounded-md p-2 w-full"
               value={address.ownerzip || ''}
               onChange={(e) => setAddress({ ...address, ownerzip: e.target.value })}
             />
+
             <button
               onClick={saveAddress}
-              className="mt-2 px-4 py-2 bg-green-500 text-white rounded-md"
+              className="mt-4 px-4 py-2 bg-green-500 text-white rounded-md"
             >
               Save
             </button>
@@ -149,6 +174,17 @@ const AddressDetails = () => {
           </>
         )}
       </div>
+
+            {/* Google Maps Button */}
+            <button
+        onClick={() => {
+          const query = encodeURIComponent(`${address.streetnumb} ${address.streetname} ${address.ownerstate} ${address.ownerzip}`);
+          window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+        }}
+        className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md"
+      >
+        Open in Google Maps
+      </button>
 
       {/* Unit Search Input with Dropdown */}
       {units.length > 5 && (
@@ -282,6 +318,8 @@ const AddressDetails = () => {
         {activeTab === 'inspections' && <Inspections addressId={id} />}
         {activeTab === 'complaints' && <Complaints addressId={id} />}
       </div>
+
+
     </div>
   );
 };
