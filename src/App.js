@@ -34,6 +34,7 @@ import Users from './Components/Users';
 import UserDetail from './Components/UserDetails';
 import AddressUnitDetail from './Components/Unit/AddressUnitDetail'; // Import the AddressUnitDetail component
 import Helpful from './Components/Helpful'; // Import the HelpfulLinks component
+import NewAddressPage from './Components/NewAddressPage';
 
 function App() {
   return (
@@ -94,6 +95,7 @@ function MainApp() {
             <Route path="/users/:id" element={<UserDetail />} />
             <Route path="/address/:addressId/unit/:unitId" element={<AddressUnitDetail />} />
             <Route path="/helpful" element={<Helpful />} />
+            <Route path="/new-address" element={<NewAddressPage />} />
             {/* Add more routes as needed */}
           </Routes>
         </Sidebar>
