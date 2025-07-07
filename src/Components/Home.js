@@ -4,6 +4,7 @@ import WeeklyStats from './Dashboard/WeeklyStats';
 import PendingInspections from './Dashboard/PendingInspections';
 import ActiveViolations from './Dashboard/ActiveViolations';
 import NewComplaint from './Inspection/NewComplaint';
+import NewViolationForm from './Inspection/NewViolationForm';
 import NewMFLicense from './Inspection/NewMFLicense';
 import NewSFLicense from './Inspection/NewSFLicense';
 import NewBuildingPermit from './Inspection/NewBuildingPermit';
@@ -17,6 +18,7 @@ export default function Example() {
   const [showNewSFLicense, setShowNewSFLicense] = useState(false); // State to toggle NewSFLicense form
   const [showNewBuildingPermit, setShowNewBuildingPermit] = useState(false); // State to toggle NewBuildingPermit form
   const [showNewBusinessLicense, setShowNewBusinessLicense] = useState(false); // State to toggle NewBusinessLicense form
+  const [showNewViolationForm, setShowNewViolationForm] = useState(false); // State to toggle NewViolationForm
 
   const toggleNewComplaint = () => {
     setShowNewComplaint(!showNewComplaint);
@@ -24,6 +26,7 @@ export default function Example() {
     if (showNewSFLicense) setShowNewSFLicense(false);
     if (showNewBuildingPermit) setShowNewBuildingPermit(false);
     if (showNewBusinessLicense) setShowNewBusinessLicense(false);
+    if (showNewViolationForm) setShowNewViolationForm(false);
   };
 
   const toggleNewMFLicense = () => {
@@ -32,6 +35,7 @@ export default function Example() {
     if (showNewSFLicense) setShowNewSFLicense(false);
     if (showNewBuildingPermit) setShowNewBuildingPermit(false);
     if (showNewBusinessLicense) setShowNewBusinessLicense(false);
+    if (showNewViolationForm) setShowNewViolationForm(false);
   };
 
   const toggleNewSFLicense = () => {
@@ -40,6 +44,7 @@ export default function Example() {
     if (showNewMFLicense) setShowNewMFLicense(false);
     if (showNewBuildingPermit) setShowNewBuildingPermit(false);
     if (showNewBusinessLicense) setShowNewBusinessLicense(false);
+    if (showNewViolationForm) setShowNewViolationForm(false);
   };
 
   const toggleNewBuildingPermit = () => {
@@ -48,6 +53,7 @@ export default function Example() {
     if (showNewMFLicense) setShowNewMFLicense(false);
     if (showNewSFLicense) setShowNewSFLicense(false);
     if (showNewBusinessLicense) setShowNewBusinessLicense(false);
+    if (showNewViolationForm) setShowNewViolationForm(false);
   };
 
   const toggleNewBusinessLicense = () => {
@@ -56,9 +62,25 @@ export default function Example() {
     if (showNewMFLicense) setShowNewMFLicense(false);
     if (showNewSFLicense) setShowNewSFLicense(false);
     if (showNewBuildingPermit) setShowNewBuildingPermit(false);
+    if (showNewViolationForm) setShowNewViolationForm(false);
+  };
+
+  const toggleNewViolationForm = () => {
+    setShowNewViolationForm(!showNewViolationForm);
+    if (showNewComplaint) setShowNewComplaint(false);
+    if (showNewMFLicense) setShowNewMFLicense(false);
+    if (showNewSFLicense) setShowNewSFLicense(false);
+    if (showNewBuildingPermit) setShowNewBuildingPermit(false);
+    if (showNewBusinessLicense) setShowNewBusinessLicense(false);
   };
 
   const buttons = [
+    {
+      label: showNewViolationForm ? "Hide Violation Form" : "New Violation",
+      state: showNewViolationForm,
+      toggle: toggleNewViolationForm,
+      color: "bg-red-500",
+    },
     {
       label: showNewComplaint ? "Hide Complaint Form" : "New Complaint",
       state: showNewComplaint,
@@ -112,6 +134,7 @@ export default function Example() {
             ))}
           </div>
 
+          {showNewViolationForm && <NewViolationForm />}
           {showNewComplaint && <NewComplaint />}
           {showNewMFLicense && <NewMFLicense />}
           {showNewSFLicense && <NewSFLicense />}

@@ -1,5 +1,5 @@
 import React from 'react';
-import NewAddressForm from './Address/NewAddressForm';
+import NewAddressForm from './NewAddressForm';
 
 const NewAddressPage = () => {
   return (
