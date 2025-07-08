@@ -78,7 +78,11 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+    <form
+      onSubmit={handleSubmit}
+      className="mt-4 space-y-4 bg-white border border-indigo-200 shadow-lg rounded-xl p-6 mb-6"
+      style={{ zIndex: 10 }}
+    >
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Violation Type</label>
         <select

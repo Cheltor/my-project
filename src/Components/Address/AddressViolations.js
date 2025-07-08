@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import NewAddressViolation from './NewAddressViolation';
 
 // Utility function to format the date
@@ -11,6 +12,8 @@ const AddressViolations = ({ addressId }) => {
   const [violations, setViolations] = useState([]);
   const [loading, setLoading] = useState(true);  // For loading state
   const [error, setError] = useState(null);      // For error state
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [codeFilter, setCodeFilter] = useState('all');
 
   // Define the status mapping object
   const statusMapping = {
@@ -52,48 +55,116 @@ const AddressViolations = ({ addressId }) => {
     return <p className="text-red-500">Error: {error}</p>;
   }
 
-  if (violations.length === 0) {
-    return <p>No violations available.</p>;
-  }
+
+  // Gather all unique codes for filter dropdown
+  const allCodes = Array.from(
+    violations.reduce((acc, v) => {
+      (v.codes || []).forEach(code => acc.set(code.id, code));
+      return acc;
+    }, new Map()).values()
+  );
+
+  // Filtering logic
+  const filteredViolations = violations.filter(v => {
+    const statusMatch = statusFilter === 'all' || v.status === parseInt(statusFilter, 10);
+    const codeMatch = codeFilter === 'all' || (v.codes && v.codes.some(c => String(c.id) === codeFilter));
+    return statusMatch && codeMatch;
+  });
+
+  // Do not return early if no results; always show selectors and message below
 
   return (
     <div className="border-b pb-4">
       <h2 className="text-2xl font-semibold text-gray-700">Violations</h2>
-      
+
       {/* Render the NewAddressViolation form */}
       <NewAddressViolation addressId={addressId} onViolationAdded={handleViolationAdded} />
 
+      {/* Filter controls */}
+      <div className="flex flex-wrap gap-4 mt-2 mb-4">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+          <select
+            className="border border-gray-300 rounded px-2 py-1"
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+          >
+            <option value="all">All</option>
+            <option value="0">Current</option>
+            <option value="1">Resolved</option>
+            <option value="2">Pending Trial</option>
+            <option value="3">Dismissed</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Violation Code</label>
+          <select
+            className="border border-gray-300 rounded px-2 py-1"
+            value={codeFilter}
+            onChange={e => setCodeFilter(e.target.value)}
+          >
+            <option value="all">All</option>
+            {allCodes.map(code => (
+              <option key={code.id} value={code.id}>
+                {code.chapter}{code.section ? `.${code.section}` : ''}: {code.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
-      <ul className="space-y-4 mt-4">
-        {violations.map((violation) => (
-          <li key={violation.id} className="bg-gray-100 p-4 rounded-lg shadow">
-            <p className="text-gray-700">Violation Type: {violation.violation_type}</p>
-            <p className="text-gray-700">
-              Status: 
-              <span
-                className={`ml-2 px-2 py-1 rounded ${
-                  violation.status === 0 ? 'bg-red-100 text-red-800' :
-                  violation.status === 1 ? 'bg-green-100 text-green-800' :
-                  violation.status === 2 ? 'bg-yellow-100 text-yellow-800' :
-                  violation.status === 3 ? 'bg-gray-100 text-gray-800' : ''
-                }`}
-              >
-                {statusMapping[violation.status]}
-              </span>
-            </p>
-            {violation.deadline_date && (
-              <p className="text-gray-700">Deadline: {new Date(violation.deadline_date).toLocaleDateString('en-US')}</p>
-            )}
-            <p className="text-sm text-gray-500 mt-2">Created on {formatDate(violation.created_at)}</p>
-            {violation.updated_at && (
-              <p className="text-sm text-gray-500">Updated on {formatDate(violation.updated_at)}</p>
-            )}
-            {violation.comment && (
-              <p className="text-sm text-gray-500">Comment: {violation.comment}</p>
-            )}
-          </li>
-        ))}
-      </ul>
+      {filteredViolations.length === 0 ? (
+        <p className="text-gray-500 italic">No violations match your filter.</p>
+      ) : (
+        <ul className="space-y-4 mt-4">
+          {filteredViolations.map((violation) => (
+            <li key={violation.id} className="bg-gray-100 p-4 rounded-lg shadow">
+              <p className="text-gray-700">Violation Type: {violation.violation_type}</p>
+              {violation.codes && violation.codes.length > 0 && (
+                <div className="text-gray-700 text-sm mt-1">
+                  <span className="font-medium">Codes:</span>
+                  <ul className="list-disc ml-6">
+                    {violation.codes.map((code) => (
+                      <li key={code.id} title={code.description}>
+                        <Link
+                          to={`/code/${code.id}`}
+                          className="font-semibold text-blue-700 hover:underline"
+                        >
+                          {code.chapter}{code.section ? `.${code.section}` : ''}: {code.name}
+                        </Link>
+                        {code.description ? ` — ${code.description.length > 80 ? code.description.slice(0, 80) + '...' : code.description}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <p className="text-gray-700">
+                Status: 
+                <span
+                  className={`ml-2 px-2 py-1 rounded ${
+                    violation.status === 0 ? 'bg-red-100 text-red-800' :
+                    violation.status === 1 ? 'bg-green-100 text-green-800' :
+                    violation.status === 2 ? 'bg-yellow-100 text-yellow-800' :
+                    violation.status === 3 ? 'bg-gray-100 text-gray-800' : ''
+                  }`}
+                >
+                  {statusMapping[violation.status]}
+                </span>
+              </p>
+              {violation.deadline_date && (
+                <p className="text-gray-700">Deadline: {new Date(violation.deadline_date).toLocaleDateString('en-US')}</p>
+              )}
+              <p className="text-sm text-gray-500 mt-2">Created on {formatDate(violation.created_at)}</p>
+              {violation.updated_at && (
+                <p className="text-sm text-gray-500">Updated on {formatDate(violation.updated_at)}</p>
+              )}
+              {violation.comment && (
+                <p className="text-sm text-gray-500">Comment: {violation.comment}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };
