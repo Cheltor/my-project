@@ -118,8 +118,30 @@ const AddressViolations = ({ addressId }) => {
       ) : (
         <ul className="space-y-4 mt-4">
           {filteredViolations.map((violation) => (
-            <li key={violation.id} className="bg-gray-100 p-4 rounded-lg shadow">
-              <p className="text-gray-700">Violation Type: {violation.violation_type}</p>
+            <li key={violation.id} className="bg-gray-100 p-4 rounded-lg shadow relative">
+              <div className="flex justify-between items-start">
+                <p className="text-gray-700">
+                  <Link
+                    to={`/violation/${violation.id}`}
+                    className="font-semibold text-indigo-700 hover:underline"
+                  >
+                    {violation.violation_type
+                      ? violation.violation_type.charAt(0).toUpperCase() + violation.violation_type.slice(1)
+                      : ''}
+                  </Link>
+                </p>
+                <span
+                  className={`ml-2 px-2 py-1 rounded text-xs whitespace-nowrap ${
+                    violation.status === 0 ? 'bg-red-100 text-red-800' :
+                    violation.status === 1 ? 'bg-green-100 text-green-800' :
+                    violation.status === 2 ? 'bg-yellow-100 text-yellow-800' :
+                    violation.status === 3 ? 'bg-gray-100 text-gray-800' : ''
+                  }`}
+                  title={statusMapping[violation.status]}
+                >
+                  {statusMapping[violation.status]}
+                </span>
+              </div>
               {violation.codes && violation.codes.length > 0 && (
                 <div className="text-gray-700 text-sm mt-1">
                   <span className="font-medium">Codes:</span>
@@ -138,29 +160,52 @@ const AddressViolations = ({ addressId }) => {
                   </ul>
                 </div>
               )}
-              <p className="text-gray-700">
-                Status: 
-                <span
-                  className={`ml-2 px-2 py-1 rounded ${
-                    violation.status === 0 ? 'bg-red-100 text-red-800' :
-                    violation.status === 1 ? 'bg-green-100 text-green-800' :
-                    violation.status === 2 ? 'bg-yellow-100 text-yellow-800' :
-                    violation.status === 3 ? 'bg-gray-100 text-gray-800' : ''
-                  }`}
-                >
-                  {statusMapping[violation.status]}
-                </span>
-              </p>
-              {violation.deadline_date && (
-                <p className="text-gray-700">Deadline: {new Date(violation.deadline_date).toLocaleDateString('en-US')}</p>
-              )}
-              <p className="text-sm text-gray-500 mt-2">Created on {formatDate(violation.created_at)}</p>
-              {violation.updated_at && (
-                <p className="text-sm text-gray-500">Updated on {formatDate(violation.updated_at)}</p>
-              )}
+              {/* Status moved to top right */}
               {violation.comment && (
                 <p className="text-sm text-gray-500">Comment: {violation.comment}</p>
               )}
+              <div className="flex justify-between mt-4 text-xs">
+                <div className="text-left">
+                  {violation.deadline_date && (() => {
+                    const deadline = new Date(violation.deadline_date);
+                    const now = new Date();
+                    const diffMs = deadline - now;
+                    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+                    let deadlineStatus = '';
+                    let badgeClass = '';
+                    // If resolved, no color or badge
+                    if (violation.status === 1) {
+                      deadlineStatus = '';
+                      badgeClass = '';
+                    } else if (diffDays < 0) {
+                      deadlineStatus = 'Past Due';
+                      badgeClass = 'bg-red-200 text-red-800';
+                    } else if (diffDays <= 3) {
+                      deadlineStatus = 'Approaching';
+                      badgeClass = 'bg-yellow-200 text-yellow-900';
+                    } else {
+                      deadlineStatus = 'Plenty of Time';
+                      badgeClass = 'bg-green-100 text-green-800';
+                    }
+                    return (
+                      <>
+                        <span className="text-gray-700 mr-2 text-base font-semibold">Deadline: {deadline.toLocaleDateString('en-US')}</span>
+                        {deadlineStatus && (
+                          <span className={`ml-1 px-2 py-0.5 rounded text-xs font-semibold align-middle ${badgeClass}`}>
+                            {deadlineStatus}
+                          </span>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+                <div className="text-right">
+                  <p className="text-gray-500">Created on {formatDate(violation.created_at)}</p>
+                  {violation.updated_at && (
+                    <p className="text-gray-500">Updated on {formatDate(violation.updated_at)}</p>
+                  )}
+                </div>
+              </div>
             </li>
           ))}
         </ul>

@@ -68,33 +68,100 @@ const ViolationDetail = () => {
   return (
     <div className="border-b pb-4">
       <h2 className="text-2xl font-semibold text-gray-700">Violation Details</h2>
-      <div className="bg-gray-100 p-4 rounded-lg shadow mt-4">
-        <p className="text-gray-700">Violation Type: {violation.violation_type}</p>
-        
-        {/* Status with badge */}
-        <span
-          className={classNames(
-            violation.status === 0 ? 'bg-red-100 text-red-800' : '',
-            violation.status === 1 ? 'bg-green-100 text-green-800' : '',
-            violation.status === 2 ? 'bg-yellow-100 text-yellow-800' : '',
-            violation.status === 3 ? 'bg-gray-100 text-gray-800' : '',
-            'px-2 py-1 rounded'
-          )}
-        >
-          {statusMapping[violation.status]}
-        </span>
-
-        {violation.deadline && (
-          <p className="text-gray-700">Deadline: {new Date(violation.deadline).toLocaleDateString('en-US')}</p>
-        )}
-        <p className="text-sm text-gray-500 mt-2">Created on {new Date(violation.created_at).toLocaleDateString('en-US')}</p>
-        {violation.updated_at && (
-          <p className="text-sm text-gray-500">Updated on {new Date(violation.updated_at).toLocaleDateString('en-US')}</p>
+      <div className="bg-gray-100 p-4 rounded-lg shadow mt-4 relative">
+        <div className="flex justify-between items-start">
+          <p className="text-gray-700">
+            {violation.violation_type}
+          </p>
+          <span
+            className={classNames(
+              'ml-2 px-2 py-1 rounded text-xs whitespace-nowrap',
+              violation.status === 0 ? 'bg-red-100 text-red-800' : '',
+              violation.status === 1 ? 'bg-green-100 text-green-800' : '',
+              violation.status === 2 ? 'bg-yellow-100 text-yellow-800' : '',
+              violation.status === 3 ? 'bg-gray-100 text-gray-800' : ''
+            )}
+            title={statusMapping[violation.status]}
+          >
+            {statusMapping[violation.status]}
+          </span>
+        </div>
+        {/* Codes (if present) */}
+        {violation.codes && violation.codes.length > 0 && (
+          <div className="text-gray-700 text-sm mt-1">
+            <span className="font-medium">Codes:</span>
+            <ul className="list-disc ml-6">
+              {violation.codes.map((code) => (
+                <li key={code.id} title={code.description}>
+                  <Link
+                    to={`/code/${code.id}`}
+                    className="font-semibold text-blue-700 hover:underline"
+                  >
+                    {code.chapter}{code.section ? `.${code.section}` : ''}: {code.name}
+                  </Link>
+                  {code.description ? ` — ${code.description.length > 80 ? code.description.slice(0, 80) + '...' : code.description}` : ''}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         {violation.comment && (
           <p className="text-sm text-gray-500">Comment: {violation.comment}</p>
         )}
-        <p className="text-gray-700">Address: {violation.combadd}</p>
+        <div className="flex justify-between mt-4 text-xs">
+          <div className="text-left">
+            {violation.deadline && (() => {
+              const deadline = new Date(violation.deadline);
+              const now = new Date();
+              const diffMs = deadline - now;
+              const diffDays = diffMs / (1000 * 60 * 60 * 24);
+              let deadlineStatus = '';
+              let badgeClass = '';
+              // If resolved, no color or badge
+              if (violation.status === 1) {
+                deadlineStatus = '';
+                badgeClass = '';
+              } else if (diffDays < 0) {
+                deadlineStatus = 'Past Due';
+                badgeClass = 'bg-red-200 text-red-800';
+              } else if (diffDays <= 3) {
+                deadlineStatus = 'Approaching';
+                badgeClass = 'bg-yellow-200 text-yellow-900';
+              } else {
+                deadlineStatus = 'Plenty of Time';
+                badgeClass = 'bg-green-100 text-green-800';
+              }
+              return (
+                <>
+                  <span className="text-gray-700 mr-2 text-base font-semibold">Deadline: {deadline.toLocaleDateString('en-US')}</span>
+                  {deadlineStatus && (
+                    <span className={`ml-1 px-2 py-0.5 rounded text-xs font-semibold align-middle ${badgeClass}`}>
+                      {deadlineStatus}
+                    </span>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+          <div className="text-right">
+            <p className="text-gray-500">Created on {new Date(violation.created_at).toLocaleDateString('en-US')}</p>
+            {violation.updated_at && (
+              <p className="text-gray-500">Updated on {new Date(violation.updated_at).toLocaleDateString('en-US')}</p>
+            )}
+          </div>
+        </div>
+        <p className="text-gray-700 mt-2">
+          Address: {violation.address_id ? (
+            <Link
+              to={`/address/${violation.address_id}`}
+              className="text-blue-700 hover:underline font-semibold"
+            >
+              {violation.combadd}
+            </Link>
+          ) : (
+            violation.combadd
+          )}
+        </p>
       </div>
       <div className="mt-8">
         <h3 className="text-2xl font-semibold text-gray-800 mb-4 ">Citations</h3>
