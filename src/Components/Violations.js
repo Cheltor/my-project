@@ -9,12 +9,19 @@ export default function Violations() {
   const [statusFilter, setStatusFilter] = useState('all');
   const violationsPerPage = 10;
 
+
+  // Map status integer to string for display
   const statusMapping = {
-    0: 'Current',
-    1: 'Resolved',
-    2: 'Pending Trial',
-    3: 'Dismissed'
+    0: 'current',
+    1: 'resolved',
+    2: 'pending trial',
+    3: 'dismissed'
   };
+
+  // Utility function for capitalizing first letter
+  function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
 
   useEffect(() => {
     fetch(`${process.env.REACT_APP_API_URL}/violations/`)
@@ -85,10 +92,10 @@ export default function Violations() {
           className="mt-1 block w-full pl-3 pr-10 py-2 border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
         >
           <option value="all">All</option>
-          <option value="Current">Current</option>
-          <option value="Resolved">Resolved</option>
-          <option value="Pending Trial">Pending Trial</option>
-          <option value="Dismissed">Dismissed</option>
+          <option value="current">Current</option>
+          <option value="resolved">Resolved</option>
+          <option value="pending trial">Pending Trial</option>
+          <option value="dismissed">Dismissed</option>
         </select>
       </div>
 
@@ -129,7 +136,7 @@ export default function Violations() {
                       'px-2 py-1 rounded'
                     )}
                   >
-                    {statusMapping[violation.status]}
+                    {capitalize(statusMapping[violation.status])}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

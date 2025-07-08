@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import AsyncSelect from "react-select/async";
 import CodeSelect from "../CodeSelect";
+import { useAuth } from "../../AuthContext";
 
 export default function NewViolationForm({ onCreated }) {
+  const { user } = useAuth();
   const [form, setForm] = useState({
     codes: [], // array of code objects
     address_id: ""
@@ -29,9 +31,6 @@ export default function NewViolationForm({ onCreated }) {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
 
   // Handle code select change (multi)
   const handleCodeChange = (selectedOptions) => {
@@ -48,32 +47,61 @@ export default function NewViolationForm({ onCreated }) {
     }));
   };
 
+  const DEADLINE_OPTIONS = [
+    "Immediate",
+    "1 day",
+    "3 days",
+    "7 days",
+    "14 days",
+    "30 days"
+  ];
+  const [deadline, setDeadline] = useState(DEADLINE_OPTIONS[0]);
+
+  const VIOLATION_TYPE_OPTIONS = [
+    { value: "doorhanger", label: "Doorhanger" },
+    { value: "Formal Notice", label: "Formal Notice" }
+  ];
+  const [violationType, setViolationType] = useState(VIOLATION_TYPE_OPTIONS[0].value);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setSuccess(false);
+
+    // Validate deadline
+    let safeDeadline = deadline;
+    if (!DEADLINE_OPTIONS.includes(deadline)) {
+      safeDeadline = "Immediate";
+      setDeadline("Immediate");
+      setError("Invalid deadline selected. Defaulted to 'Immediate'.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      // Use current date in YYYY-MM-DD format
-      const today = new Date();
-      const yyyy = today.getFullYear();
-      const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const dd = String(today.getDate()).padStart(2, '0');
-      const currentDate = `${yyyy}-${mm}-${dd}`;
-      // Submit one violation per code
-      for (const code of form.codes) {
-        const violationData = {
-          code: code.name,
-          description: code.description,
-          address_id: form.address_id,
-          date: currentDate
-        };
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/violations/`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(violationData),
-        });
-        if (!response.ok) throw new Error("Failed to create violation");
+      // Submit one violation with all selected codes
+      const violationData = {
+        address_id: form.address_id ? parseInt(form.address_id, 10) : undefined,
+        codes: selectedCodes.map(c => c.code.id),
+        user_id: user?.id,
+        deadline: safeDeadline, // always valid
+        violation_type: violationType, // new field
+        // Do NOT send status! Backend sets status=0 (current) by default
+      };
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/violations/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(violationData),
+      });
+      if (!response.ok) {
+        // Try to parse backend error for more detail
+        let msg = "Failed to create violation";
+        try {
+          const errJson = await response.json();
+          if (errJson.detail) msg = errJson.detail;
+        } catch {}
+        throw new Error(msg);
       }
       setSuccess(true);
       setForm({ codes: [], address_id: "" });
@@ -104,6 +132,19 @@ export default function NewViolationForm({ onCreated }) {
             className="mb-2"
           />
         </div>
+        {/* Violation Type Selection */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Violation Type</label>
+          <select
+            className="w-full border border-gray-300 rounded px-2 py-1"
+            value={violationType}
+            onChange={e => setViolationType(e.target.value)}
+          >
+            {VIOLATION_TYPE_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
         {/* Violation Code Selection (multi) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Violation Codes</label>
@@ -126,6 +167,19 @@ export default function NewViolationForm({ onCreated }) {
             </ul>
           </div>
         )}
+        {/* Violation Deadline Selection */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
+          <select
+            className="w-full border border-gray-300 rounded px-2 py-1"
+            value={deadline}
+            onChange={e => setDeadline(e.target.value)}
+          >
+            {DEADLINE_OPTIONS.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        </div>
         {/* Attachments */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700">Attachments</label>
@@ -143,7 +197,6 @@ export default function NewViolationForm({ onCreated }) {
             {/* Optionally, show selected file names here if you add state for them */}
           </div>
         </div>
-        {/* Date field removed; current date will be used automatically */}
         <button
           type="submit"
           className="w-full bg-blue-600 text-white py-2 rounded disabled:opacity-50"
