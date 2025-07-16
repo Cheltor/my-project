@@ -99,6 +99,48 @@ const ViolationDetail = () => {
     return <p>No violation available.</p>;
   }
 
+  // Handler for marking as abated (closed)
+  const handleMarkAbated = async () => {
+    if (!window.confirm("Are you sure you want to mark this violation as abated (closed)?")) return;
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/abate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: 1 }) // 1 = Resolved/Closed
+      });
+      if (!response.ok) throw new Error("Failed to mark as abated");
+      // Refetch violation to update UI
+      const updated = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}`);
+      setViolation(await updated.json());
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  // Handler for reopening a violation (set status back to 0)
+  const handleReopen = async () => {
+    if (!window.confirm("Are you sure you want to reopen this violation?")) return;
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/reopen`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: 0 }) // 0 = Current/Open
+      });
+      if (!response.ok) throw new Error("Failed to reopen violation");
+      // Refetch violation to update UI
+      const updated = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}`);
+      setViolation(await updated.json());
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   return (
     <div className="border-b pb-4">
       <h2 className="text-2xl font-semibold text-gray-700">Violation Details</h2>
@@ -119,18 +161,38 @@ const ViolationDetail = () => {
           <p className="text-gray-700">
             {violation.violation_type}
           </p>
-          <span
-            className={classNames(
-              'ml-2 px-2 py-1 rounded text-xs whitespace-nowrap',
-              violation.status === 0 ? 'bg-red-100 text-red-800' : '',
-              violation.status === 1 ? 'bg-green-100 text-green-800' : '',
-              violation.status === 2 ? 'bg-yellow-100 text-yellow-800' : '',
-              violation.status === 3 ? 'bg-gray-100 text-gray-800' : ''
+          <div className="flex flex-col items-end ml-4">
+            <span
+              className={classNames(
+                'px-2 py-1 rounded text-xs whitespace-nowrap',
+                violation.status === 0 ? 'bg-red-100 text-red-800' : '',
+                violation.status === 1 ? 'bg-green-100 text-green-800' : '',
+                violation.status === 2 ? 'bg-yellow-100 text-yellow-800' : '',
+                violation.status === 3 ? 'bg-gray-100 text-gray-800' : ''
+              )}
+              title={statusMapping[violation.status]}
+            >
+              {statusMapping[violation.status]}
+            </span>
+            {/* Mark as Abated button, only show if status is Current (0) and user is logged in */}
+            {violation.status === 0 && user && (
+              <button
+                onClick={handleMarkAbated}
+                className="mt-2 px-4 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-semibold"
+              >
+                Mark as Abated
+              </button>
             )}
-            title={statusMapping[violation.status]}
-          >
-            {statusMapping[violation.status]}
-          </span>
+            {/* Reopen button, only show if status is Resolved (1) and user is logged in */}
+            {violation.status === 1 && user && (
+              <button
+                onClick={handleReopen}
+                className="mt-2 px-4 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-xs font-semibold"
+              >
+                Reopen Violation
+              </button>
+            )}
+          </div>
         </div>
         {/* Codes (if present) */}
         {violation.codes && violation.codes.length > 0 && (
