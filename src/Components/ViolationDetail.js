@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useAuth } from "../AuthContext";
 
 // Status mapping for display
 const statusMapping = {
@@ -15,10 +16,13 @@ function classNames(...classes) {
 
 const ViolationDetail = () => {
   const { id } = useParams();
+  const { user, token } = useAuth();
   const [violation, setViolation] = useState(null);
   const [citations, setCitations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [newComment, setNewComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchViolation = async () => {
@@ -53,6 +57,36 @@ const ViolationDetail = () => {
     fetchCitations();
   }, [id]);
 
+  // Add comment submit handler
+  const handleCommentSubmit = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+    setSubmitting(true);
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          content: newComment,
+          user_id: user.id,
+          violation_id: id,
+        }),
+      });
+      if (!response.ok) throw new Error("Failed to post comment");
+      setNewComment("");
+      // Refetch violation to update comments
+      const updated = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}`);
+      setViolation(await updated.json());
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return <p>Loading violation...</p>;
   }
@@ -70,6 +104,18 @@ const ViolationDetail = () => {
       <h2 className="text-2xl font-semibold text-gray-700">Violation Details</h2>
       <div className="bg-gray-100 p-4 rounded-lg shadow mt-4 relative">
         <div className="flex justify-between items-start">
+          <p className="text-gray-700 mt-2">
+            {violation.address_id ? (
+              <Link
+                to={`/address/${violation.address_id}`}
+                className="text-blue-700 hover:underline font-semibold"
+              >
+                {violation.combadd}
+              </Link>
+            ) : (
+              violation.combadd
+            )}
+          </p>
           <p className="text-gray-700">
             {violation.violation_type}
           </p>
@@ -108,10 +154,51 @@ const ViolationDetail = () => {
         {violation.comment && (
           <p className="text-sm text-gray-500">Comment: {violation.comment}</p>
         )}
+        {/* Violation Comments */}
+        {violation.violation_comments && (
+          <div className="mt-4">
+            <span className="font-medium text-gray-700">Violation Comments:</span>
+            <ul className="list-disc ml-6 mt-1">
+              {violation.violation_comments.length > 0 ? violation.violation_comments.map((c) => {
+                let displayName = 'User';
+                if (c.user && c.user.email) {
+                  displayName = c.user.email.split('@')[0];
+                }
+                return (
+                  <li key={c.id} className="text-sm text-gray-700">
+                    <span className="font-semibold">{displayName}:</span> {c.content}
+                    {c.created_at && (
+                      <span className="ml-2 text-xs text-gray-400">({new Date(c.created_at).toLocaleDateString('en-US')})</span>
+                    )}
+                  </li>
+                );
+              }) : <li className="text-sm text-gray-500">No comments yet.</li>}
+            </ul>
+            {user && (
+              <form onSubmit={handleCommentSubmit} className="mt-4 flex flex-col gap-2">
+                <textarea
+                  value={newComment}
+                  onChange={e => setNewComment(e.target.value)}
+                  className="border rounded p-2 text-sm"
+                  rows={2}
+                  placeholder="Add a comment..."
+                  disabled={submitting}
+                />
+                <button
+                  type="submit"
+                  className="self-end px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm"
+                  disabled={submitting || !newComment.trim()}
+                >
+                  {submitting ? "Posting..." : "Post Comment"}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
         <div className="flex justify-between mt-4 text-xs">
           <div className="text-left">
-            {violation.deadline && (() => {
-              const deadline = new Date(violation.deadline);
+            {violation.deadline_date && (() => {
+              const deadline = new Date(violation.deadline_date);
               const now = new Date();
               const diffMs = deadline - now;
               const diffDays = diffMs / (1000 * 60 * 60 * 24);
@@ -150,18 +237,7 @@ const ViolationDetail = () => {
             )}
           </div>
         </div>
-        <p className="text-gray-700 mt-2">
-          Address: {violation.address_id ? (
-            <Link
-              to={`/address/${violation.address_id}`}
-              className="text-blue-700 hover:underline font-semibold"
-            >
-              {violation.combadd}
-            </Link>
-          ) : (
-            violation.combadd
-          )}
-        </p>
+
       </div>
       <div className="mt-8">
         <h3 className="text-2xl font-semibold text-gray-800 mb-4 ">Citations</h3>

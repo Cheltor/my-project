@@ -116,6 +116,9 @@ export default function Violations() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Deadline
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Deadline Status
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -150,6 +153,19 @@ export default function Violations() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {new Date(violation.deadline_date).toLocaleDateString('en-US')}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {(() => {
+                    if (!violation.deadline_date) return '';
+                    const deadline = new Date(violation.deadline_date);
+                    const now = new Date();
+                    const diffMs = deadline - now;
+                    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+                    if (violation.status === 1) return '';
+                    if (diffDays < 0) return <span className="bg-red-200 text-red-800 px-2 py-0.5 rounded font-semibold">Past Due</span>;
+                    if (diffDays <= 3) return <span className="bg-yellow-200 text-yellow-900 px-2 py-0.5 rounded font-semibold">Approaching</span>;
+                    return <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded font-semibold">Plenty of Time</span>;
+                  })()}
                 </td>
               </tr>
             ))}
