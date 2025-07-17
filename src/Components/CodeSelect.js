@@ -1,19 +1,16 @@
 import React from "react";
 import AsyncSelect from "react-select/async";
 
-export default function CodeSelect({ onChange, value, isMulti = false }) {
-  // Load code options from the API, filtered by chapter, section, name, or description
-  const loadCodeOptions = async (inputValue) => {
+export default function CodeSelect({ onChange, value, isMulti = false, loadOptions }) {
+  // Default: Load code options from the API, filtered by chapter, section, name, or description
+  const defaultLoadCodeOptions = async (inputValue) => {
     const response = await fetch(
       `${process.env.REACT_APP_API_URL}/codes/?search=${encodeURIComponent(inputValue)}`
     );
     const data = await response.json();
-    // Filter client-side as well for chapter/section if needed
     const lowerInput = inputValue.toLowerCase();
-    // Helper to truncate long descriptions
     const truncate = (str, max = 50) =>
       str && str.length > max ? str.substring(0, max) + '...' : str;
-
     return data
       .filter((code) =>
         [
@@ -34,7 +31,7 @@ export default function CodeSelect({ onChange, value, isMulti = false }) {
     <AsyncSelect
       cacheOptions
       defaultOptions
-      loadOptions={loadCodeOptions}
+      loadOptions={loadOptions || defaultLoadCodeOptions}
       onChange={onChange}
       value={value}
       placeholder="Type to search by chapter, section, name, or description..."
