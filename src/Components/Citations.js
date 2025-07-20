@@ -3,6 +3,39 @@ import { Link, useNavigate } from 'react-router-dom';
 // import CitationDetails from './CitationDetails';
 
 export default function Citations() {
+  // Filter state
+  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 0, 1, 2, 3
+  const [filterPastDue, setFilterPastDue] = useState('all'); // 'all', 'pastdue', 'notpastdue'
+  // Sorting state
+  const [sortBy, setSortBy] = useState(null); // 'unpaid' | 'pastdue' | null
+  const [sortDirection, setSortDirection] = useState('desc'); // 'asc' | 'desc'
+
+  // Sorting logic
+  function getIsPastDue(citation) {
+    if (!citation.deadline) return false;
+    const deadline = new Date(citation.deadline);
+    const now = new Date();
+    return (citation.status !== 1 && citation.status !== 3 && deadline < now);
+  }
+
+  function sortCitations(citations) {
+    if (!sortBy) return citations;
+    let sorted = [...citations];
+    if (sortBy === 'unpaid') {
+      sorted.sort((a, b) => {
+        const aUnpaid = a.status === 0 ? 1 : 0;
+        const bUnpaid = b.status === 0 ? 1 : 0;
+        return sortDirection === 'asc' ? aUnpaid - bUnpaid : bUnpaid - aUnpaid;
+      });
+    } else if (sortBy === 'pastdue') {
+      sorted.sort((a, b) => {
+        const aPastDue = getIsPastDue(a) ? 1 : 0;
+        const bPastDue = getIsPastDue(b) ? 1 : 0;
+        return sortDirection === 'asc' ? aPastDue - bPastDue : bPastDue - aPastDue;
+      });
+    }
+    return sorted;
+  }
   const [citations, setCitations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,7 +65,25 @@ export default function Citations() {
   const totalPages = Math.ceil(citations.length / citationsPerPage);
   const indexOfLastCitation = currentPage * citationsPerPage;
   const indexOfFirstCitation = indexOfLastCitation - citationsPerPage;
-  const currentCitations = citations.slice(indexOfFirstCitation, indexOfLastCitation);
+  // Filtering logic
+  function filterCitations(citations) {
+    return citations.filter(citation => {
+      let statusMatch = true;
+      let pastDueMatch = true;
+      if (filterStatus !== 'all') {
+        statusMatch = citation.status === Number(filterStatus);
+      }
+      if (filterPastDue !== 'all') {
+        const isPastDue = getIsPastDue(citation);
+        pastDueMatch = filterPastDue === 'pastdue' ? isPastDue : !isPastDue;
+      }
+      return statusMatch && pastDueMatch;
+    });
+  }
+
+  const filteredCitations = filterCitations(citations);
+  const sortedCitations = sortCitations(filteredCitations);
+  const currentCitations = sortedCitations.slice(indexOfFirstCitation, indexOfLastCitation);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
@@ -47,9 +98,38 @@ export default function Citations() {
     <div className="flex flex-col md:flex-row px-4 sm:px-6 lg:px-8 gap-8">
       {/* Sidebar/Table */}
       <div className="w-full">
-        <div className="sm:flex sm:items-center">
+        <div className="sm:flex sm:items-center justify-between flex-wrap gap-4">
           <div className="sm:flex-auto">
             <h1 className="text-base font-semibold leading-6 text-gray-900">Citations</h1>
+          </div>
+          {/* Filters */}
+          <div className="flex flex-wrap gap-4 items-center mt-2">
+            <label className="text-sm text-gray-700">
+              Status:
+              <select
+                className="ml-2 border rounded p-1 text-sm"
+                value={filterStatus}
+                onChange={e => setFilterStatus(e.target.value)}
+              >
+                <option value="all">All</option>
+                <option value="0">Unpaid</option>
+                <option value="1">Paid</option>
+                <option value="2">Pending Trial</option>
+                <option value="3">Dismissed</option>
+              </select>
+            </label>
+            <label className="text-sm text-gray-700">
+              Past Due:
+              <select
+                className="ml-2 border rounded p-1 text-sm"
+                value={filterPastDue}
+                onChange={e => setFilterPastDue(e.target.value)}
+              >
+                <option value="all">All</option>
+                <option value="pastdue">Past Due</option>
+                <option value="notpastdue">Not Past Due</option>
+              </select>
+            </label>
           </div>
         </div>
         <div className="mt-8 overflow-x-auto rounded-lg shadow-md">
@@ -60,13 +140,29 @@ export default function Citations() {
                   Citation ID
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Violation ID
+                  Address
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none" onClick={() => {
+                    if (sortBy === 'pastdue') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortBy('pastdue');
+                      setSortDirection('desc');
+                    }
+                  }}>
                   Deadline
+                  <span className="ml-1 text-xs align-middle">{sortBy === 'pastdue' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}</span>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Details
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none" onClick={() => {
+                    if (sortBy === 'unpaid') {
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                    } else {
+                      setSortBy('unpaid');
+                      setSortDirection('desc');
+                    }
+                  }}>
+                  Status
+                  <span className="ml-1 text-xs align-middle">{sortBy === 'unpaid' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}</span>
                 </th>
               </tr>
             </thead>
@@ -74,20 +170,64 @@ export default function Citations() {
               {currentCitations.map((citation, idx) => (
                 <tr key={citation.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {citation.citationid}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <Link to={`/violation/${citation.violation_id}`} className="text-indigo-600 hover:text-indigo-900">
-                      Violation ID: {citation.violation_id}
+                    <Link to={`/citation/${citation.id}`} className="text-indigo-600 hover:text-indigo-900">
+                      {citation.citationid ? citation.citationid : 'Missing'}
                     </Link>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {citation.deadline ? new Date(citation.deadline).toLocaleDateString() : 'N/A'}
+                    {citation.combadd ? (
+                      <span>{citation.combadd}</span>
+                    ) : (
+                      <span className="text-gray-400 italic">No Address</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 flex items-center gap-2">
+                    {(() => {
+                      if (!citation.deadline) return 'N/A';
+                      const deadline = new Date(citation.deadline);
+                      const now = new Date();
+                      const diffMs = deadline - now;
+                      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+                      let deadlineStatus = '';
+                      let badgeClass = '';
+                      // Remove deadline hints for Paid (1) and Dismissed (3)
+                      if (citation.status === 1 || citation.status === 3) {
+                        deadlineStatus = '';
+                        badgeClass = '';
+                      } else if (diffDays < 0) {
+                        deadlineStatus = 'Past Due';
+                        badgeClass = 'bg-red-200 text-red-800';
+                      } else if (diffDays <= 3) {
+                        deadlineStatus = 'Approaching';
+                        badgeClass = 'bg-yellow-200 text-yellow-900';
+                      } else {
+                        deadlineStatus = 'Plenty of Time';
+                        badgeClass = 'bg-green-100 text-green-800';
+                      }
+                      return <>
+                        {deadline.toLocaleDateString('en-US')}
+                        {deadlineStatus && (
+                          <span className={`ml-2 px-2 py-0.5 rounded text-xs font-semibold align-middle ${badgeClass}`}>
+                            {deadlineStatus}
+                          </span>
+                        )}
+                      </>;
+                    })()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <Link to={`/citation/${citation.id}`} className="text-indigo-600 hover:text-indigo-900">
-                      View Details
-                    </Link>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium 
+                      ${citation.status === 0 ? 'bg-red-100 text-red-800 border border-red-200' :
+                        citation.status === 1 ? 'bg-green-100 text-green-800 border border-green-200' :
+                        citation.status === 2 ? 'bg-yellow-100 text-yellow-900 border border-yellow-200' :
+                        citation.status === 3 ? 'bg-gray-200 text-gray-700 border border-gray-300' :
+                        'bg-gray-100 text-gray-700 border border-gray-200'}`}
+                    >
+                      {citation.status === 0 && 'Unpaid'}
+                      {citation.status === 1 && 'Paid'}
+                      {citation.status === 2 && 'Pending Trial'}
+                      {citation.status === 3 && 'Dismissed'}
+                      {![0,1,2,3].includes(citation.status) && 'Unknown'}
+                    </span>
                   </td>
                 </tr>
               ))}
