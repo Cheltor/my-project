@@ -6,6 +6,7 @@ export default function Citations() {
   // Filter state
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 0, 1, 2, 3
   const [filterPastDue, setFilterPastDue] = useState('all'); // 'all', 'pastdue', 'notpastdue'
+  const [filterCitationId, setFilterCitationId] = useState(''); // citation ID filter
   // Sorting state
   const [sortBy, setSortBy] = useState(null); // 'unpaid' | 'pastdue' | null
   const [sortDirection, setSortDirection] = useState('desc'); // 'asc' | 'desc'
@@ -70,6 +71,7 @@ export default function Citations() {
     return citations.filter(citation => {
       let statusMatch = true;
       let pastDueMatch = true;
+      let citationIdMatch = true;
       if (filterStatus !== 'all') {
         statusMatch = citation.status === Number(filterStatus);
       }
@@ -77,7 +79,10 @@ export default function Citations() {
         const isPastDue = getIsPastDue(citation);
         pastDueMatch = filterPastDue === 'pastdue' ? isPastDue : !isPastDue;
       }
-      return statusMatch && pastDueMatch;
+      if (filterCitationId.trim() !== '') {
+        citationIdMatch = citation.citationid && citation.citationid.toString().toLowerCase().includes(filterCitationId.trim().toLowerCase());
+      }
+      return statusMatch && pastDueMatch && citationIdMatch;
     });
   }
 
@@ -104,6 +109,16 @@ export default function Citations() {
           </div>
           {/* Filters */}
           <div className="flex flex-wrap gap-4 items-center mt-2">
+            <label className="text-sm text-gray-700">
+              Citation ID:
+              <input
+                type="text"
+                className="ml-2 border rounded p-1 text-sm"
+                placeholder="Search by ID"
+                value={filterCitationId}
+                onChange={e => setFilterCitationId(e.target.value)}
+              />
+            </label>
             <label className="text-sm text-gray-700">
               Status:
               <select
