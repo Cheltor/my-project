@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AddressPhotos from './Address/AddressPhotos'; // Update the import statement
@@ -8,6 +9,12 @@ import Complaints from './Address/AddressComplaints';
 import Inspections from './Address/AddressInspections';
 import useUnitSearch from './Address/useUnitSearch';
 import NewUnit from './Inspection/NewUnit';  // Import NewUnit component
+
+// Utility function to titlize a string
+function titlize(str) {
+  if (!str) return '';
+  return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+}
 
 const AddressDetails = () => {
   const { id } = useParams();
@@ -146,6 +153,22 @@ const AddressDetails = () => {
               onChange={(e) => setAddress({ ...address, ownerzip: e.target.value })}
             />
 
+            <label htmlFor="vacancy-status" className="block text-lg font-semibold text-gray-700 mt-4">
+              Vacancy Status:
+            </label>
+            <select
+              id="vacancy-status"
+              className="text-lg text-gray-600 border border-gray-300 rounded-md p-2 w-full"
+              value={address.vacancy_status || ''}
+              onChange={(e) => setAddress({ ...address, vacancy_status: e.target.value })}
+            >
+              <option value="">Select status</option>
+              <option value="occupied">Occupied</option>
+              <option value="potentially vacant">Potentially Vacant</option>
+              <option value="vacant">Vacant</option>
+              <option value="registered">Registered</option>
+            </select>
+
             <button
               onClick={saveAddress}
               className="mt-4 px-4 py-2 bg-green-500 text-white rounded-md"
@@ -158,6 +181,7 @@ const AddressDetails = () => {
             <p className="text-lg text-gray-600">{address.ownername || 'N/A'}</p>
             <p className="text-lg text-gray-600 mt-2">{address.owneraddress || 'N/A'}</p>
             <p className="text-lg text-gray-600 mt-2">{address.ownerzip || 'N/A'}</p>
+            <p className="text-lg text-gray-600 mt-2">Vacancy Status: {address.vacancy_status ? titlize(address.vacancy_status) : 'N/A'}</p>
             <button
               onClick={() => setIsEditing(true)}
               className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md"
