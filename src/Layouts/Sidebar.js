@@ -37,6 +37,7 @@ const navigation = [
   { name: 'Rooms', href: '/rooms', icon: DocumentDuplicateIcon, current: false, roles: ['Admin'] },
   { name: 'Helpful Links', href: '/Helpful', icon: DocumentDuplicateIcon, current: false },
   { name: 'New Address', href: '/new-address', icon: BuildingOffice2Icon, current: false, roles: ['Admin'] },
+  { name: 'Vacancy Statuses', href: '/vacancy-statuses', icon: BuildingOffice2Icon, current: false },
 ];
 
 function classNames(...classes) {

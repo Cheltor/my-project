@@ -36,6 +36,7 @@ import UserDetail from './Components/UserDetails';
 import AddressUnitDetail from './Components/Unit/AddressUnitDetail'; // Import the AddressUnitDetail component
 import Helpful from './Components/Helpful'; // Import the HelpfulLinks component
 import NewAddressPage from './Components/Address/NewAddressPage';
+import VacancyStatusList from './Components/VacancyStatusList';
 
 function App() {
   return (
@@ -98,6 +99,7 @@ function MainApp() {
             <Route path="/address/:addressId/unit/:unitId" element={<AddressUnitDetail />} />
             <Route path="/helpful" element={<Helpful />} />
             <Route path="/new-address" element={<NewAddressPage />} />
+            <Route path="/vacancy-statuses" element={<VacancyStatusList />} />
             {/* Add more routes as needed */}
           </Routes>
         </Sidebar>
