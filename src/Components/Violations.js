@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from 'react';
+import { useAuth } from '../AuthContext';
 import { Link } from 'react-router-dom';
 
 export default function Violations() {
+  const { user } = useAuth();
   const [violations, setViolations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [emailFilter, setEmailFilter] = useState('');
+  const [showMyViolations, setShowMyViolations] = useState(false);
+  const [onsUsers, setOnsUsers] = useState([]); // <-- Add state for ONS users
   const violationsPerPage = 10;
 
 
@@ -39,11 +44,33 @@ export default function Violations() {
         setError(error.message);
         setLoading(false);
       });
+    // Fetch ONS users for dropdown
+    fetch(`${process.env.REACT_APP_API_URL}/users/ons/`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch ONS users');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setOnsUsers(data);
+      })
+      .catch(() => {
+        setOnsUsers([]);
+      });
   }, []);
 
-  const filteredViolations = statusFilter === 'all'
-    ? violations
-    : violations.filter(violation => statusMapping[violation.status] === statusFilter);
+  // Filter by status, ONS user email, and "my violations" for role 1
+  const filteredViolations = violations.filter(violation => {
+    const statusMatch = statusFilter === 'all' || statusMapping[violation.status] === statusFilter;
+    let emailMatch = true;
+    if (user?.role === 1 && showMyViolations) {
+      emailMatch = violation.user && violation.user.email === user.email;
+    } else {
+      emailMatch = !emailFilter || (violation.user && violation.user.email === emailFilter);
+    }
+    return statusMatch && emailMatch;
+  });
 
   const totalPages = Math.ceil(filteredViolations.length / violationsPerPage);
   const indexOfLastViolation = currentPage * violationsPerPage;
@@ -79,6 +106,22 @@ export default function Violations() {
         </div>
       </div>
 
+      {/* Show "My Violations" button for role 1 */}
+      {user?.role === 1 && (
+        <div className="mt-4">
+          <button
+            type="button"
+            className={`rounded bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 mr-2 ${showMyViolations ? 'bg-blue-800' : ''}`}
+            onClick={() => {
+              setShowMyViolations(!showMyViolations);
+              setCurrentPage(1);
+            }}
+          >
+            {showMyViolations ? 'Show All Violations' : 'Show My Violations'}
+          </button>
+        </div>
+      )}
+
       {/* Filter UI */}
       <div className="mt-4">
         <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700">
@@ -98,6 +141,27 @@ export default function Violations() {
           <option value="dismissed">Dismissed</option>
         </select>
       </div>
+
+      {user?.role === 3 && (
+        <div className="mt-4">
+          <label htmlFor="email-filter" className="block text-sm font-medium text-gray-700">
+            Filter by ONS User Email:
+          </label>
+          <select
+            id="email-filter"
+            value={emailFilter}
+            onChange={e => { setEmailFilter(e.target.value); setCurrentPage(1); }}
+            className="mt-1 block w-full pl-3 pr-10 py-2 border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          >
+            <option value="">All</option>
+            {onsUsers.map(user => (
+              <option key={user.id} value={user.email}>
+                {user.email}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Responsive Table Container */}
       <div className="mt-8 overflow-x-auto rounded-lg shadow-md">

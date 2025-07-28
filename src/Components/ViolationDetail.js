@@ -116,6 +116,32 @@ const ViolationDetail = () => {
     return <p>No violation available.</p>;
   }
 
+  // Add this handler function inside the ViolationDetail component
+  const handleDownloadNotice = async () => {
+    try {
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/violation/${id}/notice`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (!response.ok) throw new Error("Failed to download notice");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `violation_notice_${id}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   // Handler for marking as abated (closed)
   const handleMarkAbated = async () => {
     if (!window.confirm("Are you sure you want to mark this violation as abated (closed)?")) return;
@@ -176,6 +202,7 @@ const ViolationDetail = () => {
                 violation.combadd
               )}
             </p>
+
             {/* Deadline moved here */}
             {violation.deadline_date && (() => {
               const deadline = new Date(violation.deadline_date);
@@ -265,22 +292,28 @@ const ViolationDetail = () => {
       {violation.comment && (
         <p className="text-sm text-gray-500">Comment: {violation.comment}</p>
       )}
-      {/* Violation User */}
-      {violation.user && (
-        <p className="text-xs text-gray-500 mt-1">
-          <span className="font-semibold">User:</span> {violation.user.email ? violation.user.email : (violation.user.name || 'Unknown')}
-        </p>
-      )}
-      {/* Created/Updated info moved here */}
+      {/* Created/Updated info and User Email */}
       <div className="flex justify-between mt-4 text-xs">
         <div />
         <div className="text-right">
+          {violation.user && (
+            <p className="text-gray-500 font-semibold mb-1">{violation.user.email}</p>
+          )}
           <p className="text-gray-500">Created on {new Date(violation.created_at).toLocaleDateString('en-US')}</p>
           {violation.updated_at && (
             <p className="text-gray-500">Updated on {new Date(violation.updated_at).toLocaleDateString('en-US')}</p>
           )}
         </div>
       </div>
+      {/* Download Violation Notice button above Violation Comments, only if status is Current (0) */}
+      {violation.status === 0 && (
+        <button
+          className="mt-2 mb-4 px-3 py-1 bg-gray-700 text-white rounded hover:bg-blue-800 text-xs font-semibold"
+          onClick={handleDownloadNotice}
+        >
+          Download Violation Notice
+        </button>
+      )}
       {/* Violation Comments */}
       {violation.violation_comments && (
         <div className="mt-4">
@@ -348,6 +381,7 @@ const ViolationDetail = () => {
                   showCitationForm={showCitationForm}
                   setShowCitationForm={setShowCitationForm}
                   user={user}
+                  violationStatus={violation.status}
                 />
               </div>
             ) : (
@@ -383,16 +417,20 @@ function ToggleCitationForm({ violationId, onCitationAdded, codes, showCitationF
   const [localShowForm, setLocalShowForm] = useState(false);
   const showForm = typeof showCitationForm === 'boolean' ? showCitationForm : localShowForm;
   const setShowForm = setShowCitationForm || setLocalShowForm;
+  // Accept violationStatus as a prop (fix: add to argument list)
+  // eslint error fix: add violationStatus to function arguments
   return (
     <div className="mt-6 w-full">
       {!showForm ? (
         <div className="flex justify-end">
-          <button
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-semibold"
-            onClick={() => setShowForm(true)}
-          >
-            Add New Citation
-          </button>
+          {typeof arguments[5] !== 'undefined' && arguments[5] === 0 && (
+            <button
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-semibold"
+              onClick={() => setShowForm(true)}
+            >
+              Add New Citation
+            </button>
+          )}
         </div>
       ) : (
         <div className="w-full">
