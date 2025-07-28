@@ -492,18 +492,23 @@ const ViolationDetail = () => {
 }
 
 // Toggleable citation form component
-function ToggleCitationForm({ violationId, onCitationAdded, codes, showCitationForm, setShowCitationForm, user }) {
-  // If parent controls showCitationForm, use that, else fallback to local state for backward compatibility
+function ToggleCitationForm({ violationId, onCitationAdded, codes, showCitationForm, setShowCitationForm, user, violationStatus }) {
+  // Accept violationStatus as a prop
   const [localShowForm, setLocalShowForm] = useState(false);
   const showForm = typeof showCitationForm === 'boolean' ? showCitationForm : localShowForm;
   const setShowForm = setShowCitationForm || setLocalShowForm;
-  // Accept violationStatus as a prop (fix: add to argument list)
-  // eslint error fix: add violationStatus to function arguments
+  // Get violationStatus from props (directly from prop)
+  // Remove arguments hack, use violationStatus prop
+  // violationStatus is now passed as a named prop
+  // If not provided, default to undefined
+  // (no need for arguments[] hack)
+  // Already handled by parent
+  // Use violationStatus directly
   return (
     <div className="mt-6 w-full">
       {!showForm ? (
         <div className="flex justify-end">
-          {typeof arguments[5] !== 'undefined' && arguments[5] === 0 && (
+          {typeof violationStatus !== 'undefined' && violationStatus === 0 && (
             <button
               className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-semibold"
               onClick={() => setShowForm(true)}
