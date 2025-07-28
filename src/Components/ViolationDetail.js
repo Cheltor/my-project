@@ -17,6 +17,43 @@ function classNames(...classes) {
 }
 
 const ViolationDetail = () => {
+  // State for extending deadline
+  const [extendingDeadline, setExtendingDeadline] = useState(false);
+  const [extendDays, setExtendDays] = useState('');
+  const [deadlineSubmitting, setDeadlineSubmitting] = useState(false);
+  const [extendError, setExtendError] = useState(null);
+
+  // Handler for extend deadline submit
+  const handleExtendDeadline = async (e) => {
+    e.preventDefault();
+    setDeadlineSubmitting(true);
+    setExtendError(null);
+    try {
+      const daysToExtend = parseInt(extendDays, 10);
+      if (isNaN(daysToExtend) || daysToExtend <= 0) {
+        setExtendError("Please enter a positive number of days.");
+        setDeadlineSubmitting(false);
+        return;
+      }
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/deadline`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ extend: violation.extend + daysToExtend })
+      });
+      if (!response.ok) throw new Error('Failed to update deadline');
+      const updated = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}`);
+      setViolation(await updated.json());
+      setExtendingDeadline(false);
+      setExtendDays('');
+    } catch (err) {
+      setExtendError(err.message);
+    } finally {
+      setDeadlineSubmitting(false);
+    }
+  };
   // State for toggling citation form
   const [showCitationForm, setShowCitationForm] = useState(false);
   const { id } = useParams();
@@ -232,6 +269,49 @@ const ViolationDetail = () => {
                     <span className={`ml-2 px-2 py-0.5 rounded text-xs font-semibold align-middle ${badgeClass}`}>
                       {deadlineStatus}
                     </span>
+                  )}
+                  {/* Extend Deadline button for logged-in users */}
+                  {user && !extendingDeadline && (
+                    <button
+                      className="ml-4 px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-xs font-semibold"
+                      onClick={() => {
+                        setExtendDays('');
+                        setExtendingDeadline(true);
+                      }}
+                    >
+                      Extend Deadline
+                    </button>
+                  )}
+                  {extendingDeadline && (
+                    <form className="inline-block ml-4" onSubmit={handleExtendDeadline}>
+                      <input
+                        type="number"
+                        min="1"
+                        value={extendDays}
+                        onChange={e => setExtendDays(e.target.value)}
+                        className="border rounded px-2 py-1 text-xs mr-2"
+                        placeholder="Days to extend"
+                        required
+                      />
+                      <button
+                        type="submit"
+                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-semibold"
+                        disabled={deadlineSubmitting}
+                      >
+                        {deadlineSubmitting ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        type="button"
+                        className="ml-2 px-3 py-1 bg-gray-300 text-gray-700 rounded text-xs"
+                        onClick={() => setExtendingDeadline(false)}
+                        disabled={deadlineSubmitting}
+                      >
+                        Cancel
+                      </button>
+                      {extendError && (
+                        <div className="text-xs text-red-600 mt-2">{extendError}</div>
+                      )}
+                    </form>
                   )}
                 </div>
               );
