@@ -75,7 +75,7 @@ const AddressUnitDetail = () => {
 
 
       {/* Unit Comments */}
-      <UnitComments unitId={unitId} />  {/* Integrate UnitComments component */}
+      <UnitComments unitId={unitId} addressId={address.id} />
     </div>
   );
 };

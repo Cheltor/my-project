@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import NewAddressComment from './NewAddressComment';
 import FullScreenPhotoViewer from '../FullScreenPhotoViewer';
 
@@ -113,6 +114,9 @@ const AddressComments = ({ addressId }) => {
               {comment.user && (
                 <p className="text-sm text-gray-500">
                   By {comment.user.name ? comment.user.name : comment.user.email}
+                  {comment.unit_id && (
+                    <span> &middot; <Link to={`/address/${comment.address_id}/unit/${comment.unit_id}`} className="text-blue-500 hover:underline">Unit {comment.unit && comment.unit.number ? comment.unit.number : comment.unit_id}</Link></span>
+                  )}
                 </p>
               )}
               {comment.photos && comment.photos.length > 0 && (

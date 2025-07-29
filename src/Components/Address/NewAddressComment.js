@@ -27,12 +27,12 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
   
     setSubmitting(true);
   
-    fetch(`${process.env.REACT_APP_API_URL}/addresses/${addressId}/comments`, {
+    fetch(`${process.env.REACT_APP_API_URL}/comments/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ content: newComment, user_id: userId }), 
+      body: JSON.stringify({ content: newComment, user_id: userId, address_id: Number(addressId) }), // Pass address_id explicitly
     })
       .then((response) => {
         console.log("Response status:", response.status); // Log the response status

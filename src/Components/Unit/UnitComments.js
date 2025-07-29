@@ -7,13 +7,15 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString(undefined, options);
 };
 
-const UnitComments = ({ unitId }) => {
+const UnitComments = ({ unitId, addressId }) => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/comments/unit/${unitId}`)
+    // Ensure unitId is always an integer for API calls
+    const unitIdInt = Number(unitId);
+    fetch(`${process.env.REACT_APP_API_URL}/comments/unit/${unitIdInt}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to fetch comments');
@@ -49,7 +51,8 @@ const UnitComments = ({ unitId }) => {
   return (
     <div className="border-b pb-4">
       <h2 className="text-2xl font-semibold text-gray-700">Comments</h2>
-      <NewUnitComment unitId={unitId} onCommentAdded={handleCommentAdded} />  {/* Assuming you have this component */}
+      {/* Pass integer values to NewUnitComment to ensure correct types in payload */}
+      <NewUnitComment unitId={Number(unitId)} addressId={Number(addressId)} onCommentAdded={handleCommentAdded} />
 
       <ul className="space-y-4 mt-4">
         {comments.length > 0 ? (

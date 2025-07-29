@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../AuthContext'; // Import the useAuth hook from the AuthContext
 
-const NewUnitComment = ({ unitId, onCommentAdded }) => {
+const NewUnitComment = ({ unitId, addressId, onCommentAdded }) => {
   const [newComment, setNewComment] = useState(''); // State for new comment input
   const [submitting, setSubmitting] = useState(false); // State for form submission
   const { user } = useAuth(); // Get user data from context
@@ -17,29 +17,19 @@ const NewUnitComment = ({ unitId, onCommentAdded }) => {
       console.error('User is not authenticated.');
       return;
     }
-  
     const userId = user.id; // Get the user ID from the user context
 
-    // Log the comment and unit ID before submission
-    console.log("Submitting comment:", newComment);
-    console.log("Unit ID:", unitId);
-    console.log("User ID:", userId); // Hardcoded user ID for testing
-  
     setSubmitting(true);
-  
-    fetch(`${process.env.REACT_APP_API_URL}/addresses/${unitId}/comments`, { // Updated endpoint
+
+    fetch(`${process.env.REACT_APP_API_URL}/comments/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ content: newComment, user_id: userId, unit_id: unitId }), // Include unit_id in the request body
+      body: JSON.stringify({ content: newComment, user_id: userId, unit_id: unitId, address_id: addressId }), // Include address_id
     })
-      .then((response) => {
-        console.log("Response status:", response.status); // Log the response status
-        return response.json();
-      })
+      .then((response) => response.json())
       .then((newComment) => {
-        console.log("Received response:", newComment); // Log the response data
         onCommentAdded(newComment); // Notify parent component of the new comment
         setNewComment(''); // Clear the input field
         setSubmitting(false);
