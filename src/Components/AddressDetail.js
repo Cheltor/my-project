@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AddressPhotos from './Address/AddressPhotos'; // Update the import statement
@@ -24,6 +23,87 @@ const AddressDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('comments');
+  // Contacts state
+  const [contacts, setContacts] = useState([]);
+  const [showAddContact, setShowAddContact] = useState(false);
+  const [contactSearch, setContactSearch] = useState('');
+  const [contactResults, setContactResults] = useState([]);
+  const [newContact, setNewContact] = useState({ name: '', email: '', phone: '' });
+  const [addContactError, setAddContactError] = useState(null);
+  // Fetch contacts for this address
+  useEffect(() => {
+    if (!id) return;
+    fetch(`${process.env.REACT_APP_API_URL}/addresses/${id}/contacts`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch contacts');
+        return res.json();
+      })
+      .then(setContacts)
+      .catch(() => setContacts([]));
+  }, [id]);
+  // Search for existing contacts
+  useEffect(() => {
+    if (contactSearch.trim().length < 2) {
+      setContactResults([]);
+      return;
+    }
+    fetch(`${process.env.REACT_APP_API_URL}/contacts?search=${encodeURIComponent(contactSearch)}`)
+      .then((res) => res.ok ? res.json() : [])
+      .then(setContactResults)
+      .catch(() => setContactResults([]));
+  }, [contactSearch]);
+  // Add existing contact to address
+  const handleAddExistingContact = async (contactId) => {
+    setAddContactError(null);
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${id}/contacts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contact_id: contactId })
+      });
+      if (!res.ok) throw new Error('Failed to add contact');
+      const updated = await res.json();
+      setContacts(updated);
+      setShowAddContact(false);
+      setContactSearch('');
+    } catch (err) {
+      setAddContactError('Could not add contact.');
+    }
+  };
+
+  // Create new contact and add to address
+  const handleCreateAndAddContact = async (e) => {
+    e.preventDefault();
+    setAddContactError(null);
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${id}/contacts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newContact)
+      });
+      if (!res.ok) throw new Error('Failed to create contact');
+      const updated = await res.json();
+      setContacts(updated);
+      setShowAddContact(false);
+      setNewContact({ name: '', email: '', phone: '' });
+    } catch (err) {
+      setAddContactError('Could not create contact.');
+    }
+  };
+
+  // Remove contact from address
+  const handleRemoveContact = async (contactId) => {
+    if (!window.confirm('Remove this contact from the address?')) return;
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${id}/contacts/${contactId}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) throw new Error('Failed to remove contact');
+      setContacts(contacts.filter(c => c.id !== contactId));
+    } catch (err) {
+      alert('Could not remove contact.');
+    }
+  };
   const { searchTerm, showDropdown, filteredUnits, handleSearchChange, handleDropdownSelect } = useUnitSearch(id);
   const [showNewUnitForm, setShowNewUnitForm] = useState(false);  // State to toggle NewUnit form
   const [isEditing, setIsEditing] = useState(false); // State to toggle edit mode
@@ -96,6 +176,7 @@ const AddressDetails = () => {
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg mt-10 space-y-8">
       {/* Address Information */}
+
       <div className="mb-4">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 flex flex-wrap items-center">
           {address.property_name && (
@@ -210,79 +291,99 @@ const AddressDetails = () => {
         Open in Google Maps
       </button>
 
-      {/* Unit Search Input with Dropdown */}
-      {units.length > 5 && (
-        <div className="relative mb-4">
-          <label htmlFor="unit-search" className="block text-lg font-semibold text-gray-700">
-            Search Units by Number:
-          </label>
-          <input
-            type="text"
-            id="unit-search"
-            placeholder="Enter unit number..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-          
-          {showDropdown && (
-            <div className="absolute w-full bg-white shadow-md rounded-md z-50 mt-1 max-h-60 overflow-auto">
-              <ul>
-                {filteredUnits.map((unit) => (
-                  <li
-                    key={unit.id}
-                    onMouseDown={() => handleUnitSelect(unit.id)}  // Navigate to unit detail page
-                    className="cursor-pointer p-2 hover:bg-gray-200"
-                  >
-                    Unit {unit.number}
-                  </li>
-                ))}
-              </ul>
+      {/* Units Tab Content */}
+      {activeTab === 'units' && (
+        <div className="mb-6">
+          {/* Unit Search Input with Dropdown */}
+          {units.length > 5 && (
+            <div className="relative mb-4">
+              <label htmlFor="unit-search" className="block text-lg font-semibold text-gray-700">
+                Search Units by Number:
+              </label>
+              <input
+                type="text"
+                id="unit-search"
+                placeholder="Enter unit number..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              />
+              {showDropdown && (
+                <div className="absolute w-full bg-white shadow-md rounded-md z-50 mt-1 max-h-60 overflow-auto">
+                  <ul>
+                    {filteredUnits.map((unit) => (
+                      <li
+                        key={unit.id}
+                        onMouseDown={() => handleUnitSelect(unit.id)}
+                        className="cursor-pointer p-2 hover:bg-gray-200"
+                      >
+                        Unit {unit.number}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
+
+          {/* Button to toggle NewUnit form */}
+          <div className="mb-4">
+            <button
+              onClick={() => setShowNewUnitForm(!showNewUnitForm)}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500"
+            >
+              {showNewUnitForm ? 'Cancel' : 'Add New Unit'}
+            </button>
+          </div>
+
+          {/* Conditionally render NewUnit form */}
+          {showNewUnitForm && <NewUnit addressId={id} inspectionId={null} />}
+
+          {/* Display existing units as buttons */}
+          <div className="mb-4 text-center">
+            {units.length > 0 ? (
+              <div>
+                {units.length <= 5 ? (
+                  <div className="flex flex-wrap space-x-2">
+                    {units.map((unit) => (
+                      <button
+                        key={unit.id}
+                        onClick={() => handleUnitSelect(unit.id)}
+                        className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-100"
+                      >
+                        Unit {unit.number}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-600"></p>
+                )}
+              </div>
+            ) : (
+              <p className="text-gray-600">No units for this address in CodeSoft.</p>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Button to toggle NewUnit form */}
-      <div className="mb-4">
-        <button
-          onClick={() => setShowNewUnitForm(!showNewUnitForm)}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500"
-        >
-          {showNewUnitForm ? 'Cancel' : 'Add New Unit'}
-        </button>
-      </div>
-
-      {/* Conditionally render NewUnit form */}
-      {showNewUnitForm && <NewUnit addressId={id} inspectionId={null} />}
-
-      {/* Display existing units as buttons */}
-      <div className="mb-4 text-center">
-        {units.length > 0 ? (
-          <div>
-            {units.length <= 5 ? (
-              <div className="flex flex-wrap space-x-2">
-                {units.map((unit) => (
-                  <button
-                    key={unit.id}
-                    onClick={() => handleUnitSelect(unit.id)}  // Navigate to unit detail page
-                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-100"
-                  >
-                    Unit {unit.number}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-600"></p>
-            )}
-          </div>
-        ) : (
-          <p className="text-gray-600">No units for this address in CodeSoft.</p>
-        )}
-      </div>
-
       {/* Pill-style Tab Navigation with Icons */}
-      <div className="flex space-x-2 overflow-x-auto py-2 scrollbar-hide">
+      <div className="flex flex-col sm:flex-row gap-2 py-2">
+        <button
+          className={`px-4 py-2 rounded-full ${
+            activeTab === 'contacts' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
+          }`}
+          onClick={() => setActiveTab('contacts')}
+        >
+          <i className="fas fa-user mr-1"></i> Contacts
+        </button>
+        <button
+          className={`px-4 py-2 rounded-full ${
+            activeTab === 'units' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
+          }`}
+          onClick={() => setActiveTab('units')}
+        >
+          <i className="fas fa-building mr-1"></i> Units
+        </button>
         <button
           className={`px-4 py-2 rounded-full ${
             activeTab === 'comments' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
@@ -335,6 +436,66 @@ const AddressDetails = () => {
 
       {/* Tab Content */}
       <div className="mt-6">
+        {activeTab === 'contacts' && (
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-gray-700 mb-2 flex items-center">Contacts
+              <button
+                className="ml-4 px-3 py-1 bg-green-500 text-white rounded text-sm"
+                onClick={() => setShowAddContact(!showAddContact)}
+              >{showAddContact ? 'Cancel' : 'Add Contact'}</button>
+            </h2>
+            {contacts.length === 0 && <p className="text-gray-500">No contacts associated with this address.</p>}
+            <ul className="space-y-2">
+              {contacts.map(contact => (
+                <li key={contact.id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                  <div>
+                    <span className="font-semibold">{contact.name}</span>
+                    {contact.email && <span className="ml-2 text-gray-500">{contact.email}</span>}
+                    {contact.phone && <span className="ml-2 text-gray-500">{contact.phone}</span>}
+                  </div>
+                  <button
+                    className="ml-2 px-2 py-1 bg-red-400 text-white rounded text-xs"
+                    onClick={() => handleRemoveContact(contact.id)}
+                  >Remove</button>
+                </li>
+              ))}
+            </ul>
+
+            {/* Add Contact Modal/Form */}
+            {showAddContact && (
+              <div className="mt-4 p-4 bg-white border rounded shadow">
+                <h3 className="font-semibold mb-2">Add Existing Contact</h3>
+                <input
+                  type="text"
+                  className="border px-2 py-1 rounded w-full mb-2"
+                  placeholder="Search by name, email, or phone..."
+                  value={contactSearch}
+                  onChange={e => setContactSearch(e.target.value)}
+                />
+                {contactResults.length > 0 && (
+                  <ul className="mb-2 max-h-40 overflow-auto">
+                    {contactResults.map(c => (
+                      <li key={c.id} className="flex justify-between items-center p-1 hover:bg-gray-100 cursor-pointer">
+                        <span>{c.name} {c.email && <span className='text-gray-400'>({c.email})</span>}</span>
+                        <button className="ml-2 px-2 py-1 bg-blue-500 text-white rounded text-xs" onClick={() => handleAddExistingContact(c.id)}>Add</button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="border-t pt-2 mt-2">
+                  <h3 className="font-semibold mb-2">Or Create New Contact</h3>
+                  <form onSubmit={handleCreateAndAddContact} className="space-y-2">
+                    <input required type="text" className="border px-2 py-1 rounded w-full" placeholder="Name" value={newContact.name} onChange={e => setNewContact({ ...newContact, name: e.target.value })} />
+                    <input type="email" className="border px-2 py-1 rounded w-full" placeholder="Email" value={newContact.email} onChange={e => setNewContact({ ...newContact, email: e.target.value })} />
+                    <input type="text" className="border px-2 py-1 rounded w-full" placeholder="Phone" value={newContact.phone} onChange={e => setNewContact({ ...newContact, phone: e.target.value })} />
+                    <button type="submit" className="px-3 py-1 bg-green-600 text-white rounded">Create & Add</button>
+                  </form>
+                  {addContactError && <div className="text-red-500 mt-2">{addContactError}</div>}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         {activeTab === 'photos' && <AddressPhotos addressId={id} />}
         {activeTab === 'citations' && <Citations addressId={id} />}
         {activeTab === 'comments' && <Comments addressId={id} />}
