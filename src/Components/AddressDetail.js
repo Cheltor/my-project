@@ -449,9 +449,33 @@ const AddressDetails = () => {
               {contacts.map(contact => (
                 <li key={contact.id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
                   <div>
-                    <span className="font-semibold">{contact.name}</span>
-                    {contact.email && <span className="ml-2 text-gray-500">{contact.email}</span>}
-                    {contact.phone && <span className="ml-2 text-gray-500">{contact.phone}</span>}
+                    <a
+                      href={`/contacts/${contact.id}`}
+                      className="font-semibold text-blue-700 hover:underline hover:text-blue-900"
+                      title={`View contact ${contact.name}`}
+                    >
+                      {contact.name}
+                    </a>
+                    {contact.email && (
+                      <a
+                        href={`mailto:${contact.email}`}
+                        className="ml-2 inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors text-xs font-medium"
+                        title={`Email ${contact.email}`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12H8m8 0a4 4 0 11-8 0 4 4 0 018 0zm0 0v4m0-4V8" /></svg>
+                        {contact.email}
+                      </a>
+                    )}
+                    {contact.phone && (
+                      <a
+                        href={`tel:${contact.phone}`}
+                        className="ml-2 inline-flex items-center px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors text-xs font-medium"
+                        title={`Call ${contact.phone}`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm0 10a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2zm10-10a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zm0 10a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                        {contact.phone}
+                      </a>
+                    )}
                   </div>
                   <button
                     className="ml-2 px-2 py-1 bg-red-400 text-white rounded text-xs"
