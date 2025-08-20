@@ -67,6 +67,11 @@ const AddressComments = ({ addressId }) => {
   }, [addressId]);
 
   const handleCommentAdded = (newComment) => {
+    if (!newComment || typeof newComment.id === 'undefined' || newComment.id === null) {
+      // Just prepend the comment without photos
+      setComments([newComment, ...comments]);
+      return;
+    }
     // Optionally fetch photos for the new comment
     fetch(`${process.env.REACT_APP_API_URL}/comments/${newComment.id}/photos`)
       .then((response) => {
