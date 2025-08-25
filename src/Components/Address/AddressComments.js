@@ -18,6 +18,31 @@ const AddressComments = ({ addressId }) => {
   const [error, setError] = useState(null);
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState(null);
 
+  const downloadAttachments = async (commentId) => {
+    if (!commentId) return;
+    try {
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/comments/${commentId}/photos?download=true`);
+      if (!resp.ok) throw new Error('Failed to get signed download URLs');
+      const downloadPhotos = await resp.json();
+      (downloadPhotos || []).forEach((att, idx) => {
+        const src = att?.url;
+        if (!src) return;
+        const name = att?.filename || `attachment-${idx + 1}`;
+        const a = document.createElement('a');
+        a.href = src; // already signed with content_disposition
+        a.download = name;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => a.remove(), 0);
+      });
+    } catch (e) {
+      console.error('Download failed:', e);
+    }
+  };
+
   useEffect(() => {
     // Fetch comments for the address
     fetch(`${process.env.REACT_APP_API_URL}/comments/address/${addressId}`)
@@ -126,9 +151,18 @@ const AddressComments = ({ addressId }) => {
               )}
               {comment.photos && comment.photos.length > 0 && (
                 <div className="mt-2">
-                  <h3 className="text-sm font-semibold text-gray-600">
-                    Attachment{comment.photos.length > 1 ? 's' : ''}:
-                  </h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-gray-600">
+                      Attachment{comment.photos.length > 1 ? 's' : ''}:
+                    </h3>
+                    <button
+                      type="button"
+                      className="text-indigo-600 hover:underline text-sm font-medium"
+                      onClick={() => downloadAttachments(comment.id)}
+                    >
+                      Download attachments ({comment.photos.length})
+                    </button>
+                  </div>
                   <div className="flex space-x-2 mt-2">
                     {comment.photos
                       .filter((photo) => !photo.filename.endsWith('.docx'))

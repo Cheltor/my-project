@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import NewUnitComment from './NewUnitComment';  // Assuming you have a component for adding new comments
+import NewUnitComment from './NewUnitComment';
+import FullScreenPhotoViewer from '../FullScreenPhotoViewer';
 
 // Utility function to format the date
 const formatDate = (dateString) => {
@@ -11,6 +12,32 @@ const UnitComments = ({ unitId, addressId }) => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedPhotoUrl, setSelectedPhotoUrl] = useState(null);
+
+  const downloadAttachments = async (commentId) => {
+    if (!commentId) return;
+    try {
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/comments/${commentId}/photos?download=true`);
+      if (!resp.ok) throw new Error('Failed to get signed download URLs');
+      const downloadPhotos = await resp.json();
+      (downloadPhotos || []).forEach((att, idx) => {
+        const src = att?.url;
+        if (!src) return;
+        const name = att?.filename || `attachment-${idx + 1}`;
+        const a = document.createElement('a');
+        a.href = src;
+        a.download = name;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => a.remove(), 0);
+      });
+    } catch (e) {
+      console.error('Download failed:', e);
+    }
+  };
 
   useEffect(() => {
     // Ensure unitId is always an integer for API calls
@@ -23,8 +50,25 @@ const UnitComments = ({ unitId, addressId }) => {
         return response.json();
       })
       .then((data) => {
-        setComments(data);
-        setLoading(false);
+        // For each comment, fetch photos
+        const fetchPhotosPromises = data.map((comment) => {
+          return fetch(`${process.env.REACT_APP_API_URL}/comments/${comment.id}/photos`)
+            .then((response) => {
+              if (!response.ok) return [];
+              return response.json();
+            })
+            .then((photos) => ({ ...comment, photos }))
+            .catch(() => ({ ...comment, photos: [] }));
+        });
+        Promise.all(fetchPhotosPromises)
+          .then((commentsWithPhotos) => {
+            setComments(commentsWithPhotos);
+            setLoading(false);
+          })
+          .catch((error) => {
+            setError(error.message);
+            setLoading(false);
+          });
       })
       .catch((error) => {
         setError(error.message);
@@ -33,7 +77,22 @@ const UnitComments = ({ unitId, addressId }) => {
   }, [unitId]);
 
   const handleCommentAdded = (newComment) => {
-    setComments([newComment, ...comments]);
+    if (!newComment || typeof newComment.id === 'undefined' || newComment.id === null) {
+      setComments([newComment, ...comments]);
+      return;
+    }
+    fetch(`${process.env.REACT_APP_API_URL}/comments/${newComment.id}/photos`)
+      .then((response) => {
+        if (!response.ok) return [];
+        return response.json();
+      })
+      .then((photos) => {
+        const newCommentWithPhotos = { ...newComment, photos };
+        setComments([newCommentWithPhotos, ...comments]);
+      })
+      .catch(() => {
+        setComments([newComment, ...comments]);
+      });
   };
 
   if (loading) {
@@ -51,9 +110,13 @@ const UnitComments = ({ unitId, addressId }) => {
   return (
     <div className="border-b pb-4">
       <h2 className="text-2xl font-semibold text-gray-700">Comments</h2>
-      {/* Pass integer values to NewUnitComment to ensure correct types in payload */}
       <NewUnitComment unitId={Number(unitId)} addressId={Number(addressId)} onCommentAdded={handleCommentAdded} />
-
+      {selectedPhotoUrl && (
+        <FullScreenPhotoViewer
+          photoUrl={selectedPhotoUrl}
+          onClose={() => setSelectedPhotoUrl(null)}
+        />
+      )}
       <ul className="space-y-4 mt-4">
         {comments.length > 0 ? (
           comments.map((comment) => (
@@ -68,14 +131,30 @@ const UnitComments = ({ unitId, addressId }) => {
               {/* Display photos if available */}
               {comment.photos && comment.photos.length > 0 && (
                 <div className="mt-2">
-                  <h3 className="text-sm font-semibold text-gray-600">Photos:</h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <button
+                      type="button"
+                      className="text-indigo-600 hover:underline text-sm font-medium"
+                      onClick={() => setSelectedPhotoUrl(comment.photos[0].url || comment.photos[0])}
+                    >
+                      View attachments ({comment.photos.length})
+                    </button>
+                    <button
+                      type="button"
+                      className="text-indigo-600 hover:underline text-sm font-medium"
+                      onClick={() => downloadAttachments(comment.id)}
+                    >
+                      Download attachments ({comment.photos.length})
+                    </button>
+                  </div>
                   <div className="flex space-x-2 mt-2">
-                    {comment.photos.map((photoUrl, index) => (
+                    {comment.photos.map((photo, index) => (
                       <img
                         key={index}
-                        src={photoUrl}
-                        alt={`Comment photo ${index}`}
-                        className="w-24 h-24 object-cover rounded-md shadow"
+                        src={photo.url || photo}
+                        alt={photo.filename || `Comment photo ${index}`}
+                        className="w-24 h-24 object-cover rounded-md shadow cursor-pointer"
+                        onClick={() => setSelectedPhotoUrl(photo.url || photo)}
                       />
                     ))}
                   </div>
