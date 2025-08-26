@@ -3,15 +3,20 @@ import AsyncSelect from "react-select/async";
 import CodeSelect from "../CodeSelect";
 import { useAuth } from "../../AuthContext";
 
-export default function NewViolationForm({ onCreated }) {
+export default function NewViolationForm({ onCreated, initialAddressId, initialAddressLabel, lockAddress = false }) {
   const { user } = useAuth();
   const [form, setForm] = useState({
     codes: [], // array of code objects
-    address_id: ""
+    address_id: initialAddressId || ""
   });
   const [files, setFiles] = useState([]);
   const [selectedCodes, setSelectedCodes] = useState([]);
-  const [addressLabel, setAddressLabel] = useState("");
+  const [addressLabel, setAddressLabel] = useState(initialAddressLabel || "");
+  React.useEffect(() => {
+    // Keep form in sync if initial props change
+    setForm((prev) => ({ ...prev, address_id: initialAddressId || "" }));
+    setAddressLabel(initialAddressLabel || "");
+  }, [initialAddressId, initialAddressLabel]);
   // Function to load address options asynchronously
   const loadAddressOptions = async (inputValue) => {
     const response = await fetch(
@@ -125,11 +130,11 @@ export default function NewViolationForm({ onCreated }) {
         }
       }
 
-      setSuccess(true);
-      setForm({ codes: [], address_id: "" });
-      setSelectedCodes([]);
-      setFiles([]);
-      if (onCreated) onCreated();
+  setSuccess(true);
+  setForm({ codes: [], address_id: "" });
+  setSelectedCodes([]);
+  setFiles([]);
+  if (onCreated) onCreated(created);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -152,6 +157,7 @@ export default function NewViolationForm({ onCreated }) {
             value={form.address_id ? { value: form.address_id, label: addressLabel } : null}
             placeholder="Type to search addresses..."
             isClearable
+            isDisabled={!!lockAddress}
             className="mb-2"
           />
         </div>

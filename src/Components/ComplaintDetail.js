@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
+import NewViolationForm from "./Inspection/NewViolationForm";
 
 export default function ComplaintDetail() {
 	const { id } = useParams();
+	const navigate = useNavigate();
 	const { user, token } = useAuth();
 	const authToken = token || user?.token;
 
@@ -23,6 +25,7 @@ export default function ComplaintDetail() {
 	const [statusValue, setStatusValue] = useState("Pending");
 	const [savingStatus, setSavingStatus] = useState(false);
 	const [statusMessage, setStatusMessage] = useState("");
+	const [showViolationPrompt, setShowViolationPrompt] = useState(false);
 
 	// Contact management
 	const [contactSearch, setContactSearch] = useState("");
@@ -240,6 +243,10 @@ export default function ComplaintDetail() {
 			const updated = await resp.json();
 			setComplaint(updated);
 			setStatusMessage("Status saved");
+			// If Violation Found, prompt to add a violation for this address
+			if ((statusValue || "").toLowerCase() === "violation found") {
+				setShowViolationPrompt(true);
+			}
 		} catch (e) {
 			setStatusMessage(e.message || "Failed to save status");
 		} finally {
@@ -520,6 +527,35 @@ export default function ComplaintDetail() {
 
 			{selectedPhotoUrl && (
 				<FullScreenPhotoViewer photoUrl={selectedPhotoUrl} onClose={() => setSelectedPhotoUrl(null)} />
+			)}
+
+			{showViolationPrompt && complaint?.address && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+					<div className="bg-white rounded-md shadow-lg w-full max-w-2xl p-4">
+						<div className="flex items-center justify-between mb-2">
+							<h4 className="text-base font-semibold text-gray-900">Add a Violation for this Address?</h4>
+							<button
+								className="text-gray-500 hover:text-gray-800"
+								onClick={() => setShowViolationPrompt(false)}
+							>
+								✕
+							</button>
+						</div>
+						<p className="text-sm text-gray-600 mb-3">
+							You marked this complaint as “Violation Found”. Would you like to create a new violation for
+							<span className="font-medium"> {complaint.address.combadd}</span>?
+						</p>
+						<NewViolationForm
+							initialAddressId={complaint.address.id}
+							initialAddressLabel={complaint.address.combadd}
+							lockAddress={true}
+							onCreated={(v) => {
+								setShowViolationPrompt(false);
+								if (v?.id) navigate(`/violation/${v.id}`);
+							}}
+						/>
+					</div>
+				</div>
 			)}
 		</div>
 	);
