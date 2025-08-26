@@ -9,6 +9,7 @@ export default function NewViolationForm({ onCreated }) {
     codes: [], // array of code objects
     address_id: ""
   });
+  const [files, setFiles] = useState([]);
   const [selectedCodes, setSelectedCodes] = useState([]);
   const [addressLabel, setAddressLabel] = useState("");
   // Function to load address options asynchronously
@@ -103,9 +104,31 @@ export default function NewViolationForm({ onCreated }) {
         } catch {}
         throw new Error(msg);
       }
+      const created = await response.json();
+
+      // If there are files selected, upload them to /violation/{id}/photos
+      if (files.length > 0 && created?.id) {
+        const fd = new FormData();
+        for (const f of files) fd.append('files', f);
+        const upResp = await fetch(`${process.env.REACT_APP_API_URL}/violation/${created.id}/photos`, {
+          method: 'POST',
+          body: fd,
+        });
+        if (!upResp.ok) {
+          // Don't fail the whole UI; report but continue
+          try {
+            const data = await upResp.json();
+            console.error('Attachment upload failed:', data);
+          } catch (e) {
+            console.error('Attachment upload failed');
+          }
+        }
+      }
+
       setSuccess(true);
       setForm({ codes: [], address_id: "" });
       setSelectedCodes([]);
+      setFiles([]);
       if (onCreated) onCreated();
     } catch (err) {
       setError(err.message);
@@ -190,12 +213,32 @@ export default function NewViolationForm({ onCreated }) {
                 type="file"
                 name="attachments"
                 multiple
+                accept="image/*,application/pdf"
                 className="sr-only"
-                // You can add onChange handler for attachments if you want to handle uploads
+                onChange={(e) => setFiles(Array.from(e.target.files || []))}
               />
             </label>
             {/* Optionally, show selected file names here if you add state for them */}
           </div>
+          {files.length > 0 && (
+            <div className="mt-2">
+              <div className="flex flex-wrap gap-2">
+                {files.map((f, idx) => (
+                  <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-indigo-50 text-indigo-700 text-xs border border-indigo-200">
+                    <span className="truncate max-w-[12rem]" title={f.name}>{f.name}</span>
+                  </span>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="mt-2 text-xs text-gray-600 hover:text-gray-900 underline"
+                onClick={() => setFiles([])}
+                disabled={loading}
+              >
+                Clear selection
+              </button>
+            </div>
+          )}
         </div>
         <button
           type="submit"

@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import NewCitationForm from "./NewCitationForm";
 import CitationsList from "./CitationsList";
+import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
 
 // Status mapping for display
 const statusMapping = {
@@ -60,6 +61,8 @@ const ViolationDetail = () => {
   const { user, token } = useAuth();
   const [violation, setViolation] = useState(null);
   const [citations, setCitations] = useState([]);
+  const [attachments, setAttachments] = useState([]);
+  const [selectedPhotoUrl, setSelectedPhotoUrl] = useState(null);
   // Helper to refresh citations after adding
   const refreshCitations = async () => {
     try {
@@ -77,8 +80,36 @@ const ViolationDetail = () => {
   const [error, setError] = useState(null);
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [commentFiles, setCommentFiles] = useState([]);
+  const [commentAttachments, setCommentAttachments] = useState({}); // { [commentId]: Attachment[] }
 
   useEffect(() => {
+    const prefetchCommentAttachments = async (comments) => {
+      if (!Array.isArray(comments) || comments.length === 0) {
+        setCommentAttachments({});
+        return;
+      }
+      try {
+        const entries = await Promise.all(
+          comments.map(async (c) => {
+            try {
+              const r = await fetch(`${process.env.REACT_APP_API_URL}/violation/comment/${c.id}/attachments`);
+              if (!r.ok) return [c.id, []];
+              const data = await r.json();
+              return [c.id, Array.isArray(data) ? data : []];
+            } catch {
+              return [c.id, []];
+            }
+          })
+        );
+        const map = {};
+        entries.forEach(([id, arr]) => { map[id] = arr; });
+        setCommentAttachments(map);
+      } catch {
+        setCommentAttachments({});
+      }
+    };
+
     const fetchViolation = async () => {
       try {
         const response = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}`);
@@ -87,6 +118,12 @@ const ViolationDetail = () => {
         }
         const data = await response.json();
         setViolation(data);
+        // Prefetch attachments for each violation comment
+        if (data && Array.isArray(data.violation_comments)) {
+          prefetchCommentAttachments(data.violation_comments);
+        } else {
+          setCommentAttachments({});
+        }
       } catch (error) {
         setError(error.message);
       } finally {
@@ -107,8 +144,20 @@ const ViolationDetail = () => {
       }
     };
 
+    const fetchPhotos = async () => {
+      try {
+        const r = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/photos`);
+        if (!r.ok) return setAttachments([]);
+        const data = await r.json();
+        setAttachments(Array.isArray(data) ? data : []);
+      } catch {
+        setAttachments([]);
+      }
+    };
+
     fetchViolation();
     fetchCitations();
+    fetchPhotos();
   }, [id]);
 
   // Add comment submit handler
@@ -117,28 +166,80 @@ const ViolationDetail = () => {
     if (!newComment.trim()) return;
     setSubmitting(true);
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/comments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          content: newComment,
-          user_id: user.id,
-          violation_id: id,
-        }),
-      });
+      let response;
+      if (commentFiles.length > 0) {
+        const fd = new FormData();
+        fd.append('content', newComment);
+        fd.append('user_id', user.id);
+        for (const f of commentFiles) fd.append('files', f);
+        response = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/comments/upload`, {
+          method: 'POST',
+          body: fd,
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } else {
+        response = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/comments`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            content: newComment,
+            user_id: user.id,
+            violation_id: id,
+          }),
+        });
+      }
       if (!response.ok) throw new Error("Failed to post comment");
       setNewComment("");
+      setCommentFiles([]);
       // Refetch violation to update comments
       const updated = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}`);
-      setViolation(await updated.json());
+      const updatedData = await updated.json();
+      setViolation(updatedData);
+      if (updatedData && Array.isArray(updatedData.violation_comments)) {
+        // Refresh per-comment attachments too
+        const last = updatedData.violation_comments[0]; // newest first if backend returns so; otherwise still fetch all
+        // Fetch all to keep counts correct
+        const entries = await Promise.all(
+          updatedData.violation_comments.map(async (c) => {
+            try {
+              const r = await fetch(`${process.env.REACT_APP_API_URL}/violation/comment/${c.id}/attachments`);
+              if (!r.ok) return [c.id, []];
+              const data = await r.json();
+              return [c.id, Array.isArray(data) ? data : []];
+            } catch {
+              return [c.id, []];
+            }
+          })
+        );
+        const map = {};
+        entries.forEach(([id, arr]) => { map[id] = arr; });
+        setCommentAttachments(map);
+      } else {
+        setCommentAttachments({});
+      }
     } catch (err) {
       alert(err.message);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleDownloadCommentAttachments = async (commentId) => {
+    try {
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/violation/comment/${commentId}/attachments?download=true`);
+      if (!resp.ok) return;
+      const files = await resp.json();
+      (files || []).forEach((att, idx) => {
+        const src = att?.url; if (!src) return;
+        const name = att?.filename || `attachment-${idx + 1}`;
+        const a = document.createElement('a');
+        a.href = src; a.download = name; a.target = '_blank'; a.rel = 'noopener'; a.style.display = 'none';
+        document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 0);
+      });
+    } catch {}
   };
 
   if (loading) {
@@ -177,6 +278,22 @@ const ViolationDetail = () => {
     } catch (err) {
       alert(err.message);
     }
+  };
+
+  // Download all violation attachments using signed URLs
+  const handleDownloadAttachments = async () => {
+    try {
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/photos?download=true`);
+      if (!resp.ok) return;
+      const files = await resp.json();
+      (files || []).forEach((att, idx) => {
+        const src = att?.url; if (!src) return;
+        const name = att?.filename || `attachment-${idx + 1}`;
+        const a = document.createElement('a');
+        a.href = src; a.download = name; a.target = '_blank'; a.rel = 'noopener'; a.style.display = 'none';
+        document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 0);
+      });
+    } catch {}
   };
 
   // Handler for marking as abated (closed)
@@ -225,6 +342,12 @@ const ViolationDetail = () => {
     <div className="border-b pb-4">
       <h2 className="text-2xl font-semibold text-gray-700">Violation Details</h2>
       <div className="bg-gray-100 p-4 rounded-lg shadow mt-4 relative">
+        {selectedPhotoUrl && (
+          <FullScreenPhotoViewer
+            photoUrl={selectedPhotoUrl}
+            onClose={() => setSelectedPhotoUrl(null)}
+          />
+        )}
         <div className="flex justify-between items-start">
           <div className="flex-1">
             <p className="text-gray-700 mt-2">
@@ -369,6 +492,31 @@ const ViolationDetail = () => {
             </ul>
           </div>
         )}
+        {/* Attachments (if any) */}
+        {attachments.length > 0 && (
+          <div className="mt-3">
+            <div className="flex items-center justify-start mb-2">
+              <button
+                type="button"
+                className="text-indigo-600 hover:underline text-sm font-medium"
+                onClick={() => setSelectedPhotoUrl(attachments[0].url || attachments[0])}
+              >
+                View attachments ({attachments.length})
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {attachments.map((photo, index) => (
+                <img
+                  key={index}
+                  src={photo.url || photo}
+                  alt={photo.filename || `Violation photo ${index}`}
+                  className="w-24 h-24 object-cover rounded-md shadow cursor-pointer"
+                  onClick={() => setSelectedPhotoUrl(photo.url || photo)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       {violation.comment && (
         <p className="text-sm text-gray-500">Comment: {violation.comment}</p>
       )}
@@ -385,14 +533,25 @@ const ViolationDetail = () => {
           )}
         </div>
       </div>
-      {/* Download Violation Notice button above Violation Comments, only if status is Current (0) */}
+      {/* Download buttons above Violation Comments, only if status is Current (0) */}
       {violation.status === 0 && (
-        <button
-          className="mt-2 mb-4 px-3 py-1 bg-gray-700 text-white rounded hover:bg-blue-800 text-xs font-semibold"
-          onClick={handleDownloadNotice}
-        >
-          Download Violation Notice
-        </button>
+        <div className="mt-2 mb-4 flex items-center gap-2">
+          <button
+            className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-blue-800 text-xs font-semibold"
+            onClick={handleDownloadNotice}
+          >
+            Download Violation Notice
+          </button>
+          {attachments.length > 0 && (
+            <button
+              type="button"
+              className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-xs font-semibold"
+              onClick={handleDownloadAttachments}
+            >
+              Download attachments ({attachments.length})
+            </button>
+          )}
+        </div>
       )}
       {/* Violation Comments */}
       {violation.violation_comments && (
@@ -408,6 +567,32 @@ const ViolationDetail = () => {
                 placeholder="Add a comment..."
                 disabled={submitting}
               />
+              <div className="flex items-center gap-2">
+                <label className={`inline-flex items-center gap-2 px-3 py-1 rounded-md border shadow-sm text-xs font-medium transition-colors cursor-pointer ${submitting ? 'pointer-events-none opacity-60 bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500'}`}>
+                  <span>Choose files</span>
+                  <input
+                    type="file"
+                    className="sr-only"
+                    multiple
+                    accept="image/*,application/pdf"
+                    onChange={(e) => setCommentFiles(Array.from(e.target.files || []))}
+                    disabled={submitting}
+                  />
+                </label>
+                {commentFiles.length > 0 && (
+                  <span className="text-xs text-gray-600">{commentFiles.length} file(s) selected</span>
+                )}
+                {commentFiles.length > 0 && (
+                  <button
+                    type="button"
+                    className="text-xs text-gray-600 hover:text-gray-900 underline"
+                    onClick={() => setCommentFiles([])}
+                    disabled={submitting}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
               <button
                 type="submit"
                 className="self-end px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm"
@@ -433,6 +618,37 @@ const ViolationDetail = () => {
                         <span className="ml-2 text-xs text-gray-400">
                           ({new Date(c.created_at).toLocaleString('en-US', { timeZone: 'America/New_York', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })})
                         </span>
+                      )}
+                      {(commentAttachments[c.id]?.length || 0) > 0 && (
+                        <div className="mt-1 ml-6">
+                          <div className="flex items-center justify-start gap-3">
+                            <button
+                              type="button"
+                              className="text-indigo-600 hover:underline text-xs font-medium"
+                              onClick={() => setSelectedPhotoUrl(commentAttachments[c.id][0].url || commentAttachments[c.id][0])}
+                            >
+                              View attachments ({commentAttachments[c.id].length})
+                            </button>
+                            <button
+                              type="button"
+                              className="text-indigo-600 hover:underline text-xs font-medium"
+                              onClick={() => handleDownloadCommentAttachments(c.id)}
+                            >
+                              Download attachments ({commentAttachments[c.id].length})
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {commentAttachments[c.id].map((att, idx) => (
+                              <img
+                                key={idx}
+                                src={att.url || att}
+                                alt={att.filename || `Comment attachment ${idx}`}
+                                className="w-16 h-16 object-cover rounded-md shadow cursor-pointer"
+                                onClick={() => setSelectedPhotoUrl(att.url || att)}
+                              />
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </li>
                   );
