@@ -93,19 +93,21 @@ export default function NewComplaint() {
     }
 
     try {
-      // Step 1: Create Complaint (Without Photos)
-      const complaintData = {
-        ...formData,
-        attachments: [], // Exclude attachments for now
-      };
+      // Step 1: Create Complaint (send as multipart/form-data to match API Form fields)
+      const createForm = new FormData();
+      if (formData.address_id) createForm.append('address_id', String(formData.address_id));
+      if (formData.unit_id) createForm.append('unit_id', String(formData.unit_id));
+      createForm.append('source', formData.source || 'Complaint');
+      createForm.append('description', formData.description || '');
+      if (formData.contact_id) createForm.append('contact_id', String(formData.contact_id));
+      createForm.append('paid', formData.paid ? 'true' : 'false');
 
       const complaintResponse = await fetch(`${process.env.REACT_APP_API_URL}/inspections/`, {
         method: "POST",
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${user.token}`,
         },
-        body: JSON.stringify(complaintData),
+        body: createForm,
       });
 
       if (!complaintResponse.ok) {
@@ -126,6 +128,9 @@ export default function NewComplaint() {
           `${process.env.REACT_APP_API_URL}/inspections/${createdComplaint.id}/photos`,
           {
             method: 'POST',
+            headers: {
+              Authorization: `Bearer ${user.token}`,
+            },
             body: formData,
           }
         );
@@ -297,6 +302,7 @@ export default function NewComplaint() {
                 type="file"
                 name="attachments"
                 multiple
+                accept="image/*,application/pdf"
                 onChange={handleInputChange}
                 className="sr-only"
               />
