@@ -19,6 +19,7 @@ import Codes from './Components/Codes';
 import CodeDetail from './Components/CodeDetail';
 import Licenses from './Components/Licenses';
 import Complaints from './Components/Complaints';
+import ComplaintDetail from './Components/ComplaintDetail';
 import Citations from './Components/Citations';
 import CitationDetailsPage from './Components/CitationDetailsPage';
 import ViolationDetail from './Components/ViolationDetail';
@@ -83,6 +84,7 @@ function MainApp() {
             <Route path="/code/:id" element={<CodeDetail />} />
             <Route path="/licenses" element={<Licenses />} />
             <Route path="/complaints" element={<Complaints />} />
+            <Route path="/complaint/:id" element={<ComplaintDetail />} />
             <Route path="/citations" element={<Citations />} />
             <Route path="/citation/:id" element={<CitationDetailsPage />} />
             <Route path="/violation/:id" element={<ViolationDetail />} />
