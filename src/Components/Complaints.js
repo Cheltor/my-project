@@ -36,6 +36,21 @@ export default function Complaints() {
   if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
   if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
 
+  const normalizeStatus = (s) => {
+    if (!s) return 'Pending';
+    const v = String(s).toLowerCase();
+    if (v === 'unsatisfactory' || v === 'violation found' || v === 'violation') return 'Violation Found';
+    if (v === 'satisfactory' || v === 'no violation found' || v === 'no violation') return 'No Violation Found';
+    if (v === 'pending' || v === 'unknown') return 'Pending';
+    return s;
+  };
+
+  const statusClasses = (label) => {
+    if (label === 'Violation Found') return 'bg-red-100 text-red-800';
+    if (label === 'No Violation Found') return 'bg-green-100 text-green-800';
+    return 'bg-yellow-100 text-yellow-800'; // Pending/others
+  };
+
   return (
     <div className="px-4 sm:px-6 lg:px-8">
       <div className="sm:flex sm:items-center">
@@ -80,14 +95,14 @@ export default function Complaints() {
                   </Link>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <span
-                    className={`inline-block px-2 py-1 text-sm font-semibold rounded 
-                      ${complaint.status === 'Satisfactory' ? 'bg-green-100 text-green-800' :
-                        complaint.status === 'Unsatisfactory' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'}`}
-                  >
-                    {complaint.status || 'Pending'}
-                  </span>
+                  {(() => {
+                    const label = normalizeStatus(complaint.status);
+                    return (
+                      <span className={`inline-block px-2 py-1 text-sm font-semibold rounded ${statusClasses(label)}`}>
+                        {label}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {complaint.address ? (

@@ -19,6 +19,25 @@ export default function ComplaintDetail() {
 	const [uploading, setUploading] = useState(false);
 	const [uploadError, setUploadError] = useState(null);
 
+	// Status editing (express as whether a violation was found)
+	const [statusValue, setStatusValue] = useState("Pending");
+	const [savingStatus, setSavingStatus] = useState(false);
+	const [statusMessage, setStatusMessage] = useState("");
+
+	// Contact management
+	const [contactSearch, setContactSearch] = useState("");
+	const [contactResults, setContactResults] = useState([]);
+	const [contactLoading, setContactLoading] = useState(false);
+	const [assigningContact, setAssigningContact] = useState(false);
+	const [newContact, setNewContact] = useState({ name: "", email: "", phone: "" });
+	const [contactMessage, setContactMessage] = useState("");
+	const [showNewContactForm, setShowNewContactForm] = useState(false);
+
+	// Scheduling
+	const [scheduleValue, setScheduleValue] = useState("");
+	const [savingSchedule, setSavingSchedule] = useState(false);
+	const [scheduleMessage, setScheduleMessage] = useState("");
+
 	useEffect(() => {
 		const fetchComplaint = async () => {
 			try {
@@ -48,9 +67,124 @@ export default function ComplaintDetail() {
 		fetchAttachments();
 	}, [id]);
 
+	useEffect(() => {
+		if (complaint) {
+			// Map legacy statuses to new wording
+			const normalizeStatus = (s) => {
+				if (!s) return "Pending";
+				const v = String(s).toLowerCase();
+				if (v === "satisfactory" || v === "no violation found" || v === "no violation") return "No Violation Found";
+				if (v === "unsatisfactory" || v === "violation found" || v === "violation") return "Violation Found";
+				if (v === "pending" || v === "unknown") return "Pending";
+				return s; // preserve any unexpected custom status
+			};
+			setStatusValue(normalizeStatus(complaint.status));
+			// Initialize schedule input as datetime-local string
+			if (complaint.scheduled_datetime) {
+				const d = new Date(complaint.scheduled_datetime);
+				const isoLocal = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+					.toISOString()
+					.slice(0, 16); // YYYY-MM-DDTHH:MM
+				setScheduleValue(isoLocal);
+			} else {
+				setScheduleValue("");
+			}
+		}
+	}, [complaint]);
+
+	// Debounced contact search
+	useEffect(() => {
+		const t = setTimeout(async () => {
+			if (!contactSearch || contactSearch.length < 2) {
+				setContactResults([]);
+				return;
+			}
+			setContactLoading(true);
+			try {
+				const r = await fetch(`${process.env.REACT_APP_API_URL}/contacts/?search=${encodeURIComponent(contactSearch)}`);
+				if (!r.ok) throw new Error("Failed to search contacts");
+				const data = await r.json();
+				setContactResults(Array.isArray(data) ? data : []);
+			} catch {
+				setContactResults([]);
+			} finally {
+				setContactLoading(false);
+			}
+		}, 300);
+		return () => clearTimeout(t);
+	}, [contactSearch]);
+
 	const handleFilesChange = (e) => {
 		const files = Array.from(e.target.files || []);
 		setUploadFiles(files);
+	};
+
+	const handleAssignContact = async (contactId) => {
+		setAssigningContact(true);
+		setContactMessage("");
+		try {
+			const fd = new FormData();
+			fd.append("contact_id", String(contactId));
+			const resp = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/contact`, {
+				method: "PATCH",
+				headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+				body: fd,
+			});
+			if (!resp.ok) throw new Error("Failed to assign contact");
+			const updated = await resp.json();
+			setComplaint(updated);
+			setContactMessage("Contact assigned");
+		} catch (e) {
+			setContactMessage(e.message || "Failed to assign contact");
+		} finally {
+			setAssigningContact(false);
+		}
+	};
+
+	const handleSaveSchedule = async () => {
+		setSavingSchedule(true);
+		setScheduleMessage("");
+		try {
+			const fd = new FormData();
+			if (scheduleValue) fd.append("scheduled_datetime", scheduleValue);
+			else fd.append("scheduled_datetime", "");
+			const resp = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/schedule`, {
+				method: "PATCH",
+				headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+				body: fd,
+			});
+			if (!resp.ok) throw new Error("Failed to update schedule");
+			const updated = await resp.json();
+			setComplaint(updated);
+			setScheduleMessage("Schedule saved");
+		} catch (e) {
+			setScheduleMessage(e.message || "Failed to save schedule");
+		} finally {
+			setSavingSchedule(false);
+		}
+	};
+
+	const handleCreateContact = async () => {
+		setAssigningContact(true);
+		setContactMessage("");
+		try {
+			const resp = await fetch(`${process.env.REACT_APP_API_URL}/contacts/`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+				},
+				body: JSON.stringify({ ...newContact }),
+			});
+			if (!resp.ok) throw new Error("Failed to create contact");
+			const contact = await resp.json();
+			await handleAssignContact(contact.id);
+			setNewContact({ name: "", email: "", phone: "" });
+		} catch (e) {
+			setContactMessage(e.message || "Failed to create contact");
+		} finally {
+			setAssigningContact(false);
+		}
 	};
 
 	const handleUpload = async () => {
@@ -91,6 +225,28 @@ export default function ComplaintDetail() {
 		}
 	};
 
+	const handleSaveStatus = async () => {
+		setSavingStatus(true);
+		setStatusMessage("");
+		try {
+			const fd = new FormData();
+			fd.append("status", statusValue);
+			const resp = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/status`, {
+				method: "PATCH",
+				headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+				body: fd,
+			});
+			if (!resp.ok) throw new Error("Failed to update status");
+			const updated = await resp.json();
+			setComplaint(updated);
+			setStatusMessage("Status saved");
+		} catch (e) {
+			setStatusMessage(e.message || "Failed to save status");
+		} finally {
+			setSavingStatus(false);
+		}
+	};
+
 	if (loading) return <p>Loading complaint…</p>;
 	if (error) return <p className="text-red-600">Error: {error}</p>;
 	if (!complaint) return <p>Complaint not found.</p>;
@@ -124,14 +280,62 @@ export default function ComplaintDetail() {
 					</div>
 
 					<div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-						<dt className="text-sm font-medium leading-6 text-gray-900">Status</dt>
-						<dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">{complaint.status || "Pending"}</dd>
+						<dt className="text-sm font-medium leading-6 text-gray-900">Violation found?</dt>
+						<dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
+							<div className="flex items-center gap-3">
+								<select
+									className="block w-48 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+									value={statusValue}
+									onChange={(e) => setStatusValue(e.target.value)}
+								>
+									<option value="Pending">Pending</option>
+									<option value="Violation Found">Violation Found</option>
+									<option value="No Violation Found">No Violation Found</option>
+								</select>
+								<button
+									type="button"
+									onClick={handleSaveStatus}
+									disabled={savingStatus}
+									className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-indigo-500"
+								>
+									{savingStatus ? "Saving…" : "Save"}
+								</button>
+								{statusMessage && (
+									<span className="text-xs text-gray-500">{statusMessage}</span>
+								)}
+							</div>
+						</dd>
 					</div>
 
 					<div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
 						<dt className="text-sm font-medium leading-6 text-gray-900">Scheduled</dt>
 						<dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
-							{complaint.scheduled_datetime ? new Date(complaint.scheduled_datetime).toLocaleString() : "Not scheduled"}
+							<div className="flex items-center gap-3 flex-wrap">
+								<input
+									type="datetime-local"
+									className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+									value={scheduleValue}
+									onChange={(e) => setScheduleValue(e.target.value)}
+								/>
+								<button
+									onClick={handleSaveSchedule}
+									disabled={savingSchedule}
+									className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-indigo-500"
+								>
+									{savingSchedule ? "Saving…" : "Save"}
+								</button>
+								<button
+									onClick={() => setScheduleValue("")}
+									disabled={savingSchedule}
+									className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-200"
+								>
+									Clear
+								</button>
+								{scheduleMessage && <span className="text-xs text-gray-500">{scheduleMessage}</span>}
+							</div>
+							<div className="text-xs text-gray-500 mt-1">
+								{complaint.scheduled_datetime ? new Date(complaint.scheduled_datetime).toLocaleString() : "Not scheduled"}
+							</div>
 						</dd>
 					</div>
 
@@ -143,25 +347,103 @@ export default function ComplaintDetail() {
 					<div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
 						<dt className="text-sm font-medium leading-6 text-gray-900">Contact</dt>
 						<dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
-							{complaint.contact ? (
-								<>
-									<Link to={`/contacts/${complaint.contact.id}`} className="text-indigo-600 hover:text-indigo-900">
-										{complaint.contact.name}
-									</Link>
-									{" "}|{" "}
-									{complaint.contact.email ? (
-										<a href={`mailto:${complaint.contact.email}`} className="text-indigo-600 hover:text-indigo-900">
-											{complaint.contact.email}
-										</a>
-									) : (
-										"N/A"
-									)}
-									{" | "}
-									{complaint.contact.phone || "N/A"}
-								</>
-							) : (
-								"No contact information"
-							)}
+							<div className="space-y-2">
+								{complaint.contact ? (
+									<div className="flex items-center gap-2">
+										<Link to={`/contacts/${complaint.contact.id}`} className="text-indigo-600 hover:text-indigo-900">
+											{complaint.contact.name}
+										</Link>
+										<span className="text-gray-400">|</span>
+										{complaint.contact.email ? (
+											<a href={`mailto:${complaint.contact.email}`} className="text-indigo-600 hover:text-indigo-900">
+												{complaint.contact.email}
+											</a>
+										) : (
+											<span className="text-gray-500">N/A</span>
+										)}
+										<span className="text-gray-400">|</span>
+										<span>{complaint.contact.phone || "N/A"}</span>
+									</div>
+								) : (
+									<p className="text-gray-500">No contact information</p>
+								)}
+
+								{/* Assign existing contact */}
+								<div className="flex items-center gap-2">
+									<input
+										type="text"
+										placeholder="Search contacts by name, email, or phone"
+										className="w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+										value={contactSearch}
+										onChange={(e) => setContactSearch(e.target.value)}
+									/>
+									{contactLoading && <span className="text-xs text-gray-500">Searching…</span>}
+								</div>
+								{contactResults.length > 0 && (
+									<ul className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+										{contactResults.map((c) => (
+											<li key={c.id} className="flex items-center justify-between border rounded-md p-2">
+												<div className="text-sm">
+													<div className="font-medium text-gray-900">{c.name}</div>
+													<div className="text-gray-500 text-xs">{c.email || "—"} {c.phone ? ` | ${c.phone}` : ""}</div>
+												</div>
+												<button
+													onClick={() => handleAssignContact(c.id)}
+													disabled={assigningContact}
+													className="rounded-md bg-indigo-600 px-2 py-1 text-xs font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-indigo-500"
+												>
+													Assign
+												</button>
+											</li>
+										))}
+									</ul>
+								)}
+
+
+								{/* Toggle new contact form */}
+								<div className="mt-3">
+									<button
+										onClick={() => setShowNewContactForm((v) => !v)}
+										className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-200"
+									>
+										{showNewContactForm ? "Cancel" : "Add new contact"}
+									</button>
+								</div>
+
+								{showNewContactForm && (
+									<div className="mt-3 grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+										<input
+											type="text"
+											placeholder="New contact name"
+											className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+											value={newContact.name}
+											onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+										/>
+										<input
+											type="email"
+											placeholder="Email (optional)"
+											className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+											value={newContact.email}
+											onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
+										/>
+										<input
+											type="tel"
+											placeholder="Phone (optional)"
+											className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+											value={newContact.phone}
+											onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+										/>
+										<button
+											onClick={handleCreateContact}
+											disabled={assigningContact || !newContact.name.trim()}
+											className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-green-500"
+										>
+											{assigningContact ? "Saving…" : "Add & Assign"}
+										</button>
+									</div>
+								)}
+								{contactMessage && <p className="text-xs text-gray-500 mt-1">{contactMessage}</p>}
+							</div>
 						</dd>
 					</div>
 
