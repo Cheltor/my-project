@@ -22,6 +22,19 @@ export default function Conduct() {
   const [statusSavedAt, setStatusSavedAt] = useState(null);
   const [showNewAreaForm, setShowNewAreaForm] = useState(false);
 
+  const canonicalStatus = (s) => {
+    if (!s) return 'Pending';
+    const v = String(s).trim().toLowerCase();
+    if (v === 'pending') return 'Pending';
+    if (v === 'scheduled') return 'Scheduled';
+    if (v === 'in progress' || v === 'in-progress') return 'In Progress';
+    if (v === 'under review' || v === 'under-review') return 'under review';
+    if (v === 'completed') return 'Completed';
+    if (v === 'cancelled' || v === 'canceled') return 'Cancelled';
+    // Fallback to original (ensures we don't break on unexpected values)
+    return s;
+  };
+
   useEffect(() => {
     const fetchInspection = async () => {
       try {
@@ -31,7 +44,7 @@ export default function Conduct() {
         }
   const data = await response.json();
   setInspection(data);
-  setStatusValue(data.status || '');
+  setStatusValue(canonicalStatus(data.status));
       } catch (error) {
         setError(error.message);
       } finally {
@@ -219,7 +232,6 @@ export default function Conduct() {
             value={statusValue}
             onChange={(e) => setStatusValue(e.target.value)}
           >
-            <option value="">— None —</option>
             <option value="Pending">Pending</option>
             <option value="Scheduled">Scheduled</option>
             <option value="In Progress">In Progress</option>
@@ -261,7 +273,7 @@ export default function Conduct() {
           <h4 className="text-sm font-semibold leading-5 text-gray-900">Units</h4>
           {/* Search input for filtering units */}
           <div className="mt-3">
-            <label htmlFor="search" className="block text-sm font-medium text-gray-700">Search Units</label>
+            <label htmlFor="search" className="block text-sm font-medium text-gray-700">Search Existing Units</label>
             <input
               type="text"
               id="search"

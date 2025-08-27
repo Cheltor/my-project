@@ -7,6 +7,7 @@ export default function Complaints() {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const complaintsPerPage = 10;
+  const [statusFilter, setStatusFilter] = useState('');
 
   useEffect(() => {
     fetch(`${process.env.REACT_APP_API_URL}/complaints/`)
@@ -26,16 +27,6 @@ export default function Complaints() {
       });
   }, []);
 
-  const totalPages = Math.ceil(complaints.length / complaintsPerPage);
-  const indexOfLastComplaint = currentPage * complaintsPerPage;
-  const indexOfFirstComplaint = indexOfLastComplaint - complaintsPerPage;
-  const currentComplaints = complaints.slice(indexOfFirstComplaint, indexOfLastComplaint);
-
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
-  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
-
   const normalizeStatus = (s) => {
     if (!s) return 'Pending';
     const v = String(s).toLowerCase();
@@ -44,6 +35,32 @@ export default function Complaints() {
     if (v === 'pending' || v === 'unknown') return 'Pending';
     return s;
   };
+
+  const statusOptions = React.useMemo(() => {
+    const set = new Set();
+    complaints.forEach((c) => set.add(normalizeStatus(c.status)));
+    return Array.from(set).sort();
+  }, [complaints]);
+
+  const filteredComplaints = React.useMemo(() => {
+    return complaints.filter((c) => {
+      if (statusFilter && normalizeStatus(c.status) !== statusFilter) return false;
+      return true;
+    });
+  }, [complaints, statusFilter]);
+
+  // Reset pagination when filter changes
+  useEffect(() => { setCurrentPage(1); }, [statusFilter]);
+
+  const totalPages = Math.ceil(filteredComplaints.length / complaintsPerPage) || 1;
+  const indexOfLastComplaint = currentPage * complaintsPerPage;
+  const indexOfFirstComplaint = indexOfLastComplaint - complaintsPerPage;
+  const currentComplaints = filteredComplaints.slice(indexOfFirstComplaint, indexOfLastComplaint);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
 
   const statusClasses = (label) => {
     if (label === 'Violation Found') return 'bg-red-100 text-red-800';
@@ -61,6 +78,35 @@ export default function Complaints() {
           </p>
         </div>
   {/* Add complaint button removed */}
+      </div>
+
+      {/* Filters */}
+      <div className="mt-4 bg-white rounded-lg shadow p-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Status</label>
+            <select
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">All</option>
+              {statusOptions.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center justify-between text-sm text-gray-600">
+          <span>Showing {filteredComplaints.length} of {complaints.length}</span>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('')}
+            className="px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50"
+          >
+            Clear filters
+          </button>
+        </div>
       </div>
 
       {/* Responsive Table Container */}

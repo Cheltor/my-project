@@ -96,14 +96,6 @@ export default function Violations() {
             A list of all violations, including their status, type, and associated address.
           </p>
         </div>
-        <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-          <button
-            type="button"
-            className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
-          >
-            Add violation
-          </button>
-        </div>
       </div>
 
       {/* Show "My Violations" button for role 1 */}
@@ -190,7 +182,7 @@ export default function Violations() {
               <tr key={violation.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   <Link to={`/violation/${violation.id}`} className="text-indigo-600 hover:text-indigo-900">
-                    {violation.violation_type}
+                    {violation && violation.violation_type ? capitalize(violation.violation_type) : ''}
                   </Link>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
