@@ -38,6 +38,7 @@ import AddressUnitDetail from './Components/Unit/AddressUnitDetail'; // Import t
 import Helpful from './Components/Helpful'; // Import the HelpfulLinks component
 import NewAddressPage from './Components/Address/NewAddressPage';
 import VacancyStatusList from './Components/VacancyStatusList';
+import Review from './Components/Inspection/Review';
 
 function App() {
   return (
@@ -90,6 +91,7 @@ function MainApp() {
             <Route path="/violation/:id" element={<ViolationDetail />} />
             <Route path="/inspection/:id" element={<InspectionDetail />} />
             <Route path="/inspections/:id/conduct" element={<Conduct />} />
+            <Route path="/inspections/:id/review" element={<Review />} />
             <Route path="/inspections/:id/unit/:unitId" element={<UnitDetail />} />
             <Route path="/inspections/:id/new-unit" element={<NewUnit />} />
             <Route path="/inspections/:id/area/:areaId" element={<AreaDetail />} />

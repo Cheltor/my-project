@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useAuth } from '../../AuthContext';
+import CodeSelect from '../CodeSelect';
 
 export default function AreaDetail() {
   const { id, areaId } = useParams(); // Extract the inspection ID and area ID from the URL parameters
+  const { user } = useAuth();
   const [inspection, setInspection] = useState(null); // State to hold the inspection details
   const [area, setArea] = useState(null); // State to hold the area details
   const [prompts, setPrompts] = useState([]); // State to hold the checklist prompts from the matching room
   const [observations, setObservations] = useState([]); // State to hold the observations
   const [newObservation, setNewObservation] = useState(''); // State to hold new observation content
+  const [markPotential, setMarkPotential] = useState(false); // mark as potential violation
+  const [selectedCodes, setSelectedCodes] = useState([]); // suspected codes for observation
   const [photos, setPhotos] = useState([]); // State to hold the photos
   const [selectedImage, setSelectedImage] = useState(null); // State to hold the selected image
   const [isModalOpen, setIsModalOpen] = useState(false); // State to toggle the modal
@@ -97,9 +102,11 @@ export default function AreaDetail() {
 
     try {
         // Step 1: Create Observation (Without Photos)
-        const observationData = {
+    const observationData = {
             content: newObservation,
-            potentialvio: false,
+            potentialvio: !!markPotential,
+            user_id: user?.id,
+      codes: (selectedCodes || []).map(opt => opt.code.id),
         };
 
         const observationResponse = await fetch(`${process.env.REACT_APP_API_URL}/areas/${areaId}/observations`, {
@@ -115,8 +122,10 @@ export default function AreaDetail() {
         }
 
         const createdObservation = await observationResponse.json();
-        setObservations([...observations, createdObservation]); // Add new observation to the list
+  setObservations([...observations, createdObservation]); // Add new observation to the list
         setNewObservation(''); // Clear the input field
+  setMarkPotential(false);
+  setSelectedCodes([]);
 
         // Step 2: Upload Photos for the Created Observation
         if (photos.length > 0) {
@@ -137,11 +146,14 @@ export default function AreaDetail() {
                 throw new Error('Failed to upload photos');
             }
 
-            // Update the created observation with photos after successful upload
-            const updatedObservation = await observationResponse.json();
-            setObservations((prev) =>
-                prev.map((obs) => (obs.id === createdObservation.id ? updatedObservation : obs))
-            );
+            // Refresh observations to include newly attached photos
+            try {
+              const refreshed = await fetch(`${process.env.REACT_APP_API_URL}/areas/${areaId}/observations`);
+              if (refreshed.ok) {
+                const list = await refreshed.json();
+                setObservations(list);
+              }
+            } catch (_) {}
 
             setPhotos([]); // Clear the selected photos
         }
@@ -231,6 +243,40 @@ export default function AreaDetail() {
         {observations.map((observation) => (
           <div key={observation.id} className="observation-item border p-4 mb-4 rounded-lg shadow-sm">
             <p className="font-semibold">{observation.content}</p>
+            <div className="mt-1 text-sm text-gray-600 flex items-center gap-2">
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={!!observation.potentialvio}
+                  onChange={async (e) => {
+                    const next = e.target.checked;
+                    try {
+                      const resp = await fetch(`${process.env.REACT_APP_API_URL}/observations/${observation.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ potentialvio: next })
+                      });
+                      if (resp.ok) {
+                        const updated = await resp.json();
+                        setObservations(prev => prev.map(o => o.id === updated.id ? updated : o));
+                      }
+                    } catch (_) {}
+                  }}
+                />
+                <span>Potential violation</span>
+              </label>
+            </div>
+            {observation.codes && observation.codes.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                {observation.codes.map((c) => (
+                  <span key={c.id} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-gray-100 text-gray-800 border border-gray-200">
+                    <span className="font-medium">Ch {c.chapter}</span>
+                    <span>Sec {c.section}</span>
+                    <span className="text-gray-500">{c.name}</span>
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="photos flex flex-wrap mt-2">
               {observation.photos && observation.photos.length > 0 ? (
                 observation.photos.map((photo, index) => (
@@ -280,6 +326,19 @@ export default function AreaDetail() {
             className="w-full p-2 border rounded"
             rows="4"
           />
+          <div className="mt-2 flex items-center gap-2">
+            <input id="potential" type="checkbox" checked={markPotential} onChange={(e)=>setMarkPotential(e.target.checked)} />
+            <label htmlFor="potential" className="text-sm text-gray-700">Mark as potential violation</label>
+          </div>
+          {/* Suspected Codes (multi-select) */}
+          <div className="mt-3">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Suspected Codes</label>
+            <CodeSelect
+              onChange={(opts) => setSelectedCodes(opts || [])}
+              value={selectedCodes}
+              isMulti={true}
+            />
+          </div>
           <input
             type="file"
             multiple

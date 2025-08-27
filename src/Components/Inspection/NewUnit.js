@@ -10,18 +10,28 @@ export default function NewUnit({ addressId, inspectionId }) {  // Use props ins
     event.preventDefault();
     
     try {
+      const num = (number || '').trim();
+      if (!num) {
+        setError('Unit number is required');
+        return;
+      }
       const response = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${addressId}/units`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          number: number,
+          number: num,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create unit');
+        let msg = 'Failed to create unit';
+        try {
+          const err = await response.json();
+          if (err?.detail) msg = err.detail;
+        } catch {}
+        throw new Error(msg);
       }
 
       const newUnit = await response.json();

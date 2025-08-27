@@ -3,14 +3,14 @@ import AsyncSelect from "react-select/async";
 import CodeSelect from "../CodeSelect";
 import { useAuth } from "../../AuthContext";
 
-export default function NewViolationForm({ onCreated, initialAddressId, initialAddressLabel, lockAddress = false }) {
+export default function NewViolationForm({ onCreated, initialAddressId, initialAddressLabel, lockAddress = false, inspectionId, selectedCodesValue, onSelectedCodesChange }) {
   const { user } = useAuth();
   const [form, setForm] = useState({
     codes: [], // array of code objects
     address_id: initialAddressId || ""
   });
   const [files, setFiles] = useState([]);
-  const [selectedCodes, setSelectedCodes] = useState([]);
+  const [selectedCodes, setSelectedCodes] = useState([]); // internal when uncontrolled
   const [addressLabel, setAddressLabel] = useState(initialAddressLabel || "");
   React.useEffect(() => {
     // Keep form in sync if initial props change
@@ -40,7 +40,12 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
 
   // Handle code select change (multi)
   const handleCodeChange = (selectedOptions) => {
-    setSelectedCodes(selectedOptions || []);
+    // Update internal state only if uncontrolled
+    if (!selectedCodesValue) {
+      setSelectedCodes(selectedOptions || []);
+    }
+    // Notify parent if controlled
+    if (onSelectedCodesChange) onSelectedCodesChange(selectedOptions || []);
     setForm((prev) => ({
       ...prev,
       codes: (selectedOptions || []).map(opt => ({
@@ -87,12 +92,14 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
 
     try {
       // Submit one violation with all selected codes
+      const effectiveSelectedCodes = selectedCodesValue ?? selectedCodes;
       const violationData = {
         address_id: form.address_id ? parseInt(form.address_id, 10) : undefined,
-        codes: selectedCodes.map(c => c.code.id),
+        codes: (effectiveSelectedCodes || []).map(c => c.code.id),
         user_id: user?.id,
         deadline: safeDeadline, // always valid
         violation_type: violationType, // new field
+        inspection_id: inspectionId, // optionally link violation to inspection
         // Do NOT send status! Backend sets status=0 (current) by default
       };
       const response = await fetch(`${process.env.REACT_APP_API_URL}/violations/`, {
@@ -133,6 +140,7 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
   setSuccess(true);
   setForm({ codes: [], address_id: "" });
   setSelectedCodes([]);
+  if (onSelectedCodesChange) onSelectedCodesChange([]);
   setFiles([]);
   if (onCreated) onCreated(created);
     } catch (err) {
@@ -179,7 +187,7 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
           <label className="block text-sm font-medium text-gray-700 mb-1">Violation Codes</label>
           <CodeSelect
             onChange={handleCodeChange}
-            value={selectedCodes}
+            value={selectedCodesValue ?? selectedCodes}
             isMulti={true}
           />
         </div>

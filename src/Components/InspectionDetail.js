@@ -6,6 +6,18 @@ export default function InspectionDetail() {
   const [inspection, setInspection] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [scheduleInput, setScheduleInput] = useState('');
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [scheduleError, setScheduleError] = useState(null);
+  const formatStatus = (s) => {
+    if (!s) return 'Pending';
+    return s
+      .toString()
+      .split(' ')
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  };
   
   useEffect(() => {
     const fetchInspection = async () => {
@@ -14,8 +26,10 @@ export default function InspectionDetail() {
         if (!response.ok) {
           throw new Error('Failed to fetch inspection');
         }
-        const data = await response.json();
-        setInspection(data);
+  const data = await response.json();
+  setInspection(data);
+  // Prefill the schedule input
+  setScheduleInput(formatForInput(data.scheduled_datetime));
       } catch (error) {
         setError(error.message);
       } finally {
@@ -25,6 +39,48 @@ export default function InspectionDetail() {
 
     fetchInspection();
   }, [id]);
+
+  const pad2 = (n) => String(n).padStart(2, '0');
+  function formatForInput(dtStr) {
+    if (!dtStr) return '';
+    const d = new Date(dtStr);
+    const yyyy = d.getFullYear();
+    const mm = pad2(d.getMonth() + 1);
+    const dd = pad2(d.getDate());
+    const hh = pad2(d.getHours());
+    const mi = pad2(d.getMinutes());
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+  }
+
+  const saveSchedule = async () => {
+    try {
+      setScheduleSaving(true);
+      setScheduleError(null);
+      const fd = new FormData();
+      fd.append('scheduled_datetime', scheduleInput || '');
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/schedule`, {
+        method: 'PATCH',
+        body: fd,
+      });
+      if (!resp.ok) {
+        let msg = 'Failed to update schedule';
+        try { const j = await resp.json(); if (j?.detail) msg = j.detail; } catch {}
+        throw new Error(msg);
+      }
+      const updated = await resp.json();
+      setInspection(updated);
+      setScheduleInput(formatForInput(updated.scheduled_datetime));
+    } catch (e) {
+      setScheduleError(e.message);
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
+
+  const clearSchedule = async () => {
+    setScheduleInput('');
+    await saveSchedule();
+  };
 
   if (loading) {
     return <p>Loading inspection...</p>;
@@ -98,7 +154,7 @@ export default function InspectionDetail() {
           <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
             <dt className="text-sm font-medium leading-6 text-gray-900">Inspection Status</dt>
             <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
-              {inspection.status || "Pending"}
+              {formatStatus(inspection.status)}
             </dd>
           </div>
 
@@ -106,7 +162,36 @@ export default function InspectionDetail() {
           <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
             <dt className="text-sm font-medium leading-6 text-gray-900">Scheduled Date/Time</dt>
             <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
-              {inspection.scheduled_datetime ? new Date(inspection.scheduled_datetime).toLocaleString() : "Not scheduled"}
+              <div className="mb-2">
+                {inspection.scheduled_datetime ? new Date(inspection.scheduled_datetime).toLocaleString() : "Not scheduled"}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="datetime-local"
+                  value={scheduleInput}
+                  onChange={(e) => setScheduleInput(e.target.value)}
+                  className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                />
+                <button
+                  type="button"
+                  onClick={saveSchedule}
+                  disabled={scheduleSaving}
+                  className="px-3 py-1 rounded bg-indigo-600 text-white text-sm disabled:opacity-60"
+                >
+                  {scheduleSaving ? 'Saving…' : 'Save'}
+                </button>
+                {inspection.scheduled_datetime && (
+                  <button
+                    type="button"
+                    onClick={clearSchedule}
+                    disabled={scheduleSaving}
+                    className="px-3 py-1 rounded bg-gray-200 text-gray-800 text-sm disabled:opacity-60"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              {scheduleError && <div className="text-red-600 text-sm mt-1">{scheduleError}</div>}
             </dd>
           </div>
 

@@ -7,6 +7,20 @@ export default function Inspections() {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const inspectionsPerPage = 10;
+  const [sourceFilter, setSourceFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  const formatStatus = (s) => {
+    if (!s) return 'Pending';
+    return s
+      .toString()
+      .split(' ')
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  };
 
   useEffect(() => {
     fetch(`${process.env.REACT_APP_API_URL}/inspections/`)
@@ -26,10 +40,44 @@ export default function Inspections() {
       });
   }, []);
 
-  const totalPages = Math.ceil(inspections.length / inspectionsPerPage);
+  const normalized = (s) => (s ? s.toString().trim().toLowerCase() : 'pending');
+  const sourceOptions = React.useMemo(() => {
+    const set = new Set();
+    inspections.forEach((i) => { if (i.source) set.add(i.source); });
+    return Array.from(set).sort();
+  }, [inspections]);
+  const statusOptions = React.useMemo(() => {
+    const set = new Set();
+    inspections.forEach((i) => set.add(normalized(i.status)));
+    return Array.from(set).sort();
+  }, [inspections]);
+
+  const filteredInspections = React.useMemo(() => {
+    const from = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null;
+    const to = dateTo ? new Date(`${dateTo}T23:59:59`) : null;
+    return inspections.filter((i) => {
+      // source filter
+      if (sourceFilter && i.source !== sourceFilter) return false;
+      // status filter (compare normalized)
+      if (statusFilter && normalized(i.status) !== statusFilter) return false;
+      // date filters (only include scheduled items when filtering)
+      if (from || to) {
+        if (!i.scheduled_datetime) return false;
+        const d = new Date(i.scheduled_datetime);
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+      }
+      return true;
+    });
+  }, [inspections, sourceFilter, statusFilter, dateFrom, dateTo]);
+
+  // Reset to first page when filters change
+  useEffect(() => { setCurrentPage(1); }, [sourceFilter, statusFilter, dateFrom, dateTo]);
+
+  const totalPages = Math.ceil(filteredInspections.length / inspectionsPerPage) || 1;
   const indexOfLastInspection = currentPage * inspectionsPerPage;
   const indexOfFirstInspection = indexOfLastInspection - inspectionsPerPage;
-  const currentInspections = inspections.slice(indexOfFirstInspection, indexOfLastInspection);
+  const currentInspections = filteredInspections.slice(indexOfFirstInspection, indexOfLastInspection);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
@@ -45,12 +93,65 @@ export default function Inspections() {
             A list of all inspections, including their status, source, and associated address.
           </p>
         </div>
-        <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+  {/* Add inspection button removed */}
+      </div>
+
+      {/* Filters */}
+      <div className="mt-4 bg-white rounded-lg shadow p-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Source</label>
+            <select
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              value={sourceFilter}
+              onChange={(e) => setSourceFilter(e.target.value)}
+            >
+              <option value="">All</option>
+              {sourceOptions.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Status</label>
+            <select
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">All</option>
+              {statusOptions.map((s) => (
+                <option key={s} value={s}>{formatStatus(s)}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Scheduled From</label>
+            <input
+              type="date"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Scheduled To</label>
+            <input
+              type="date"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="mt-3 flex items-center justify-between text-sm text-gray-600">
+          <span>Showing {filteredInspections.length} of {inspections.length}</span>
           <button
             type="button"
-            className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+            onClick={() => { setSourceFilter(''); setStatusFilter(''); setDateFrom(''); setDateTo(''); }}
+            className="px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50"
           >
-            Add inspection
+            Clear filters
           </button>
         </div>
       </div>
@@ -85,11 +186,11 @@ export default function Inspections() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <span
                     className={`inline-block px-2 py-1 text-sm font-semibold rounded 
-                      ${inspection.status === 'Satisfactory' ? 'bg-green-100 text-green-800' :
+                      ${inspection.status === 'Satisfactory' || (inspection.status && inspection.status.toLowerCase() === 'completed') ? 'bg-green-100 text-green-800' :
                         inspection.status === 'Unsatisfactory' ? 'bg-red-100 text-red-800' :
                         'bg-yellow-100 text-yellow-800'}`}
                   >
-                    {inspection.status || 'Pending'}
+                    {formatStatus(inspection.status)}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -130,6 +231,8 @@ export default function Inspections() {
           Next
         </button>
       </div>
+
+  {/* Add inspection modal removed */}
     </div>
   );
 }
