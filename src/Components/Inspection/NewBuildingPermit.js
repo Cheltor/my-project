@@ -14,7 +14,6 @@ export default function NewBuildingPermit() {
     address_id: "",
     unit_id: "",
     source: "Building/Dumpster/POD permit",
-    description: "",
     attachments: [],
     scheduled_datetime: "",
     contact_id: "",
@@ -74,12 +73,13 @@ export default function NewBuildingPermit() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const permitData = new FormData();
+  const permitData = new FormData();
 
     Object.keys(formData).forEach((key) => {
       if (key === "attachments") {
+        // FastAPI expects the field name to match the parameter (attachments)
         Array.from(formData.attachments).forEach((file) => {
-          permitData.append("attachments[]", file);
+          permitData.append("attachments", file);
         });
       } else {
         permitData.append(key, formData[key]);
@@ -87,7 +87,8 @@ export default function NewBuildingPermit() {
     });
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/permits/`, {
+      // Use inspections endpoint; source distinguishes this as a Building/Dumpster/POD permit
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${user.token}`,
@@ -222,19 +223,7 @@ export default function NewBuildingPermit() {
           </div>
         )}
 
-        {/* Description Field */}
-        <div className="mb-4">
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-            Description
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            value={formData.description}
-            onChange={handleInputChange}
-            className="mt-1 block w-full shadow-sm border-gray-300 rounded-md"
-          ></textarea>
-        </div>
+  {/* ...existing code... */}
 
         {/* Attachments Field */}
         <div className="mb-4">

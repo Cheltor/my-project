@@ -43,7 +43,8 @@ export default function ActiveViolations() {
     <div className="mt-5 px-4 sm:px-6 lg:px-8">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
-          <h1 className="text-2xl font-semibold text-gray-900 text-center">Active Violations</h1>        </div>
+          <h1 className="text-2xl font-semibold text-gray-900">Active Violations</h1>
+        </div>
       </div>
 
       {violations.length === 0 ? (
@@ -59,13 +60,10 @@ export default function ActiveViolations() {
                     Violation Type
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                    Deadline Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Address
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Deadline
                   </th>
                 </tr>
               </thead>
@@ -78,16 +76,17 @@ export default function ActiveViolations() {
                       </Link>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <span
-                        className={classNames(
-                          violation.status === 0 ? 'bg-yellow-100 text-yellow-800' : '',
-                          violation.status === 1 ? 'bg-green-100 text-green-800' : '',
-                          violation.status === 2 ? 'bg-red-100 text-red-800' : '',
-                          'px-2 py-1 rounded'
-                        )}
-                      >
-                        {violation.status === 0 ? 'Pending' : violation.status === 1 ? 'Resolved' : 'Overdue'}
-                      </span>
+                      {(() => {
+                        if (!violation.deadline_date) return '';
+                        const deadline = new Date(violation.deadline_date);
+                        const now = new Date();
+                        const diffMs = deadline - now;
+                        const diffDays = diffMs / (1000 * 60 * 60 * 24);
+                        if (violation.status === 1) return '';
+                        if (diffDays < 0) return <span className="bg-red-200 text-red-800 px-2 py-0.5 rounded font-semibold">Past Due</span>;
+                        if (diffDays <= 3) return <span className="bg-yellow-200 text-yellow-900 px-2 py-0.5 rounded font-semibold">Approaching</span>;
+                        return <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded font-semibold">Plenty of Time</span>;
+                      })()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {violation.address_id ? (
@@ -97,9 +96,6 @@ export default function ActiveViolations() {
                       ) : (
                         'No address'
                       )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {violation.deadline_date ? new Date(violation.deadline_date).toLocaleDateString() : 'No deadline'}
                     </td>
                   </tr>
                 ))}

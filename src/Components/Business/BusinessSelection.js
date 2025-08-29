@@ -1,20 +1,30 @@
 import React from "react";
 import Select from "react-select";
 
-export default function BusinessSelection({ businesses, formData, handleInputChange }) {
+export default function BusinessSelection({ businesses, formData, handleInputChange, setFormData }) {
   const businessOptions = businesses.map((business) => ({
     value: business.id,
     label: business.trading_as ? `${business.name} (${business.trading_as})` : business.name,
-    addressId: business.address.id, // Include addressId in the option
+    // Prefer nested address.id if present, otherwise fall back to address_id
+    addressId: business.address?.id ?? business.address_id,
   }));
 
   const handleBusinessChange = (selectedOption) => {
-    handleInputChange({
-      target: {
-        name: "business_id",
-        value: selectedOption ? selectedOption.value : "",
-      },
-    });
+    const selectedBusinessId = selectedOption ? Number(selectedOption.value) : null;
+    const selectedAddressId = selectedOption && selectedOption.addressId != null ? Number(selectedOption.addressId) : null;
+    if (typeof setFormData === 'function') {
+      setFormData((prev) => ({
+        ...prev,
+        business_id: selectedBusinessId,
+        address_id: selectedAddressId,
+        unit_id: null,
+      }));
+    } else {
+      // Fallback to individual changes
+      handleInputChange({ target: { name: "business_id", value: selectedBusinessId ?? "" } });
+      handleInputChange({ target: { name: "address_id", value: selectedAddressId ?? "" } });
+      handleInputChange({ target: { name: "unit_id", value: "" } });
+    }
   };
   
 

@@ -2,6 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 export default function Licenses() {
+  const LICENSE_TYPE_LABELS = {
+    1: 'Business License',
+    2: 'Single Family License',
+    3: 'Multifamily License',
+  };
   const [licenses, setLicenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -84,7 +89,7 @@ export default function Licenses() {
                   {license.id}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {license.license_type}
+                  {LICENSE_TYPE_LABELS[license.license_type] || String(license.license_type)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {license.paid ? 'Paid' : 'Not Paid'}

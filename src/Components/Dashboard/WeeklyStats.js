@@ -10,8 +10,8 @@ function classNames(...classes) {
 export default function WeeklyStats() {
   const [stats, setStats] = useState([
     { name: 'Comments', thisWeek: 0, lastWeek: 0, change: 'N/A', changeType: '' },
-    { name: 'Inspections', thisWeek: 0, lastWeek: 0, change: 'N/A', changeType: '' },
-    { name: 'Violations', thisWeek: 0, lastWeek: 0, change: 'N/A', changeType: '' },
+  { name: 'Inspections Completed', thisWeek: 0, lastWeek: 0, change: 'N/A', changeType: '' },
+  { name: 'Violations Found', thisWeek: 0, lastWeek: 0, change: 'N/A', changeType: '' },
   ]);
 
   const { user } = useAuth();
@@ -36,14 +36,14 @@ export default function WeeklyStats() {
             changeType: getChangeType(data.comments_this_workweek_count, data.comments_last_workweek_count),
           },
           {
-            name: 'Inspections',
+            name: 'Inspections Completed',
             thisWeek: data.inspections_this_workweek_count,
             lastWeek: data.inspections_last_workweek_count,
             change: calculateChange(data.inspections_this_workweek_count, data.inspections_last_workweek_count),
             changeType: getChangeType(data.inspections_this_workweek_count, data.inspections_last_workweek_count),
           },
           {
-            name: 'Violations',
+            name: 'Violations Found',
             thisWeek: data.violations_this_workweek_count,
             lastWeek: data.violations_last_workweek_count,
             change: calculateChange(data.violations_this_workweek_count, data.violations_last_workweek_count),

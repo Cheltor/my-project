@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { formatPhoneNumber, formatWebsite } from '../utils';
+import { useAuth } from '../AuthContext';
+import NewBusinessForm from './Business/NewBusinessForm';
 
 const BusinessesList = () => {
+  const { user } = useAuth();
   const [businesses, setBusinesses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showForm, setShowForm] = useState(false);
   const businessesPerPage = 10;
 
-  useEffect(() => {
+  const loadBusinesses = () => {
     fetch(`${process.env.REACT_APP_API_URL}/businesses/`)
       .then((response) => {
         if (!response.ok) {
@@ -26,7 +30,13 @@ const BusinessesList = () => {
         setError(error.message);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    loadBusinesses();
   }, []);
+
+  // Inline form logic removed; handled in NewBusinessForm
 
   const filteredBusinesses = businesses.filter((business) =>
     [business.name, business.email, business.phone, business.address?.combadd]
@@ -59,9 +69,10 @@ const BusinessesList = () => {
         <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
           <button
             type="button"
+            onClick={() => setShowForm((s) => !s)}
             className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
           >
-            Add business
+            {showForm ? 'Cancel' : 'Add business'}
           </button>
         </div>
       </div>
@@ -76,6 +87,14 @@ const BusinessesList = () => {
           className="w-full sm:w-1/2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
         />
       </div>
+
+      {/* Add Business Form */}
+      {showForm && (
+        <NewBusinessForm
+          onCancel={() => setShowForm(false)}
+          onCreated={loadBusinesses}
+        />
+      )}
 
       {/* Business List Table */}
       <div className="mt-8 overflow-x-auto rounded-lg shadow-md">

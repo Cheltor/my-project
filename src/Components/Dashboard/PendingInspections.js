@@ -42,7 +42,7 @@ export default function PendingInspections() {
   return (
     <div className="pt-5 px-4 sm:px-6 lg:px-8">
       <div className="sm:flex sm:items-center">
-        <div className="sm:flex-auto text-center">
+        <div className="sm:flex-auto">
           <h1 className="text-2xl font-semibold text-gray-900">Pending Inspections</h1>
           {inspections.length > 0 ? (
             <div className="mt-8 overflow-x-auto w-full max-w-full">
@@ -51,9 +51,6 @@ export default function PendingInspections() {
                   <tr>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Source
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
                     </th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Address
@@ -70,16 +67,6 @@ export default function PendingInspections() {
                         <Link to={`/inspection/${inspection.id}`} className="text-indigo-600 hover:text-indigo-900">
                           {inspection.source}
                         </Link>
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
-                        <span
-                          className={`inline-block px-2 py-1 text-sm font-semibold rounded 
-                            ${inspection.status === 'Satisfactory' ? 'bg-green-100 text-green-800' :
-                              inspection.status === 'Unsatisfactory' ? 'bg-red-100 text-red-800' :
-                              'bg-yellow-100 text-yellow-800'}`}
-                        >
-                          {inspection.status || 'Pending'}
-                        </span>
                       </td>
                       <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
                         {inspection.address ? (

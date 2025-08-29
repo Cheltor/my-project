@@ -2,21 +2,21 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../../AuthContext";
 import ContactSelection from "../Contact/ContactSelection";
 import BusinessSelection from "../Business/BusinessSelection"; // Import the new component
-import NewUnitForm from "../Unit/NewUnitForm";
+import NewBusinessForm from "../Business/NewBusinessForm";
 import Select from "react-select"; // Import react-select
 
 export default function NewBusinessLicense() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [units, setUnits] = useState([]);
   const [businesses, setBusinesses] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [addresses, setAddresses] = useState([]);
-  const [showNewUnitForm, setShowNewUnitForm] = useState(false); // State to toggle new unit form
+  // Removed New Unit form toggle
+  const [showNewBusinessForm, setShowNewBusinessForm] = useState(false);
   const [formData, setFormData] = useState({
     address_id: null,  // Use `null` instead of ""
     unit_id: null,
     source: "Business License",
-    description: "",
     attachments: [],
     business_id: null,
     contact_id: null,
@@ -31,10 +31,11 @@ export default function NewBusinessLicense() {
     // Fetch initial data for contacts, addresses, and businesses
     const fetchData = async () => {
       try {
+        const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
         const [contactsRes, addressesRes, businessesRes] = await Promise.all([
-          fetch(`${process.env.REACT_APP_API_URL}/contacts/`),
-          fetch(`${process.env.REACT_APP_API_URL}/addresses/`),
-          fetch(`${process.env.REACT_APP_API_URL}/businesses/`),  // Replace with actual endpoint for businesses
+          fetch(`${process.env.REACT_APP_API_URL}/contacts/`, { headers: authHeader }),
+          fetch(`${process.env.REACT_APP_API_URL}/addresses/`, { headers: authHeader }),
+          fetch(`${process.env.REACT_APP_API_URL}/businesses/`, { headers: authHeader }),
         ]);
 
         setContacts(await contactsRes.json());
@@ -47,6 +48,30 @@ export default function NewBusinessLicense() {
 
     fetchData();
   }, []);
+
+  // When address_id changes, fetch units for that address
+  useEffect(() => {
+    const loadUnits = async (addressId) => {
+      if (!addressId) {
+        setUnits([]);
+        return;
+      }
+      try {
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${addressId}/units`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUnits(Array.isArray(data) ? data : []);
+        } else {
+          setUnits([]);
+        }
+      } catch (_) {
+        setUnits([]);
+      }
+    };
+    loadUnits(formData.address_id);
+  }, [formData.address_id]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked, files } = e.target;
@@ -62,6 +87,37 @@ export default function NewBusinessLicense() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Resolve address_id if missing by looking up the selected business
+    let resolvedAddressId = formData.address_id;
+    if (!resolvedAddressId && formData.business_id) {
+      const biz = businesses.find((b) => b.id === formData.business_id);
+      if (biz) {
+        resolvedAddressId = biz.address?.id ?? biz.address_id ?? null;
+      }
+      // Fallback: fetch the business details to resolve address_id
+      if (!resolvedAddressId) {
+        try {
+          const res = await fetch(`${process.env.REACT_APP_API_URL}/businesses/${formData.business_id}` , {
+            headers: user?.token ? { Authorization: `Bearer ${user.token}` } : {},
+          });
+          if (res.ok) {
+            const detailed = await res.json();
+            resolvedAddressId = detailed?.address?.id ?? detailed?.address_id ?? null;
+            if (resolvedAddressId) {
+              // update state so dependent UI (units) can refresh
+              setFormData((prev) => ({ ...prev, address_id: Number(resolvedAddressId) }));
+            }
+          }
+        } catch (_) {
+          // ignore and let guard handle
+        }
+      }
+    }
+    if (!resolvedAddressId) {
+      alert("Please select a business with a valid address before submitting.");
+      return;
+    }
+
     // Log each field of formData individually to easily view everything in the console
     console.log("Form Data before submission:");
     Object.keys(formData).forEach((key) => {
@@ -70,21 +126,29 @@ export default function NewBusinessLicense() {
 
     const inspectionData = new FormData();
 
-    Object.keys(formData).forEach((key) => {
+  Object.entries(formData).forEach(([key, value]) => {
       if (key === "attachments") {
-        Array.from(formData.attachments).forEach((file) => {
-          inspectionData.append("attachments[]", file);
+        Array.from(value || []).forEach((file) => {
+          inspectionData.append("attachments", file);
         });
-      } else {
-        inspectionData.append(key, formData[key]);
+        return;
       }
+      // Skip null/undefined/empty strings so FastAPI doesn't receive 'null' as a string
+      if (value === null || value === undefined || value === "") return;
+      inspectionData.append(key, value);
     });
+  // Ensure address_id is present using the resolved value
+    inspectionData.set('address_id', Number(resolvedAddressId));
+    // ensure inspector_id is sent if available
+    if (user?.id) {
+      inspectionData.set('inspector_id', Number(user.id));
+    }
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/`, {
+    const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${user.token}`,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: inspectionData,
       });
@@ -122,7 +186,29 @@ export default function NewBusinessLicense() {
             businesses={businesses}
             formData={formData}
             handleInputChange={handleInputChange}
+            setFormData={setFormData}
           />
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={() => setShowNewBusinessForm((s) => !s)}
+              className="bg-transparent hover:bg-indigo-500 text-indigo-700 font-semibold hover:text-white py-1 px-2 border border-indigo-500 hover:border-transparent rounded"
+            >
+              {showNewBusinessForm ? 'Hide New Business Form' : 'Add a New Business'}
+            </button>
+          </div>
+          {showNewBusinessForm && (
+            <NewBusinessForm
+              embedded
+              onCancel={() => setShowNewBusinessForm(false)}
+              onCreated={(created) => {
+                // Ensure new business appears in dropdown and is selected
+                setBusinesses((prev) => [created, ...prev]);
+                setFormData((prev) => ({ ...prev, business_id: created.id, address_id: created.address_id }));
+                setShowNewBusinessForm(false);
+              }}
+            />
+          )}
         </div>
 
         {/* Unit Selection */}
@@ -148,44 +234,9 @@ export default function NewBusinessLicense() {
           </div>
         )}
 
-        {/* New Unit Form */}
-        {formData.address_id && (
-          <div className="mb-4">
-            <button
-              type="button"
-              onClick={() => setShowNewUnitForm(!showNewUnitForm)}
-              className="bg-transparent hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-1 px-2 border border-blue-500 hover:border-transparent rounded"
-            >
-              {showNewUnitForm ? "Hide New Unit Form" : "Add a New Unit"}
-            </button>
-            {showNewUnitForm && (
-              <NewUnitForm
-                addressId={formData.address_id}
-                onUnitCreated={(newUnit) => {
-                  setUnits([...units, newUnit]);
-                  setFormData({ ...formData, unit_id: newUnit.id });
-                  setShowNewUnitForm(false);
-                }}
-              />
-            )}
-          </div>
-        )}
+  {/* New Unit Form removed for Business License */}
 
-        {/* Description Field */}
-        <div className="mb-4">
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-            Description
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            value={formData.description}
-            onChange={handleInputChange}
-            className="mt-1 block w-full shadow-sm border-gray-300 rounded-md"
-          ></textarea>
-        </div>
-
-        {/* Attachments Field */}
+  {/* Attachments Field */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700">Application or Photos</label>
           <div className="mt-1 flex items-center">

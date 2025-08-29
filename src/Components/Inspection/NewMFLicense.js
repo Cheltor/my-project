@@ -14,7 +14,6 @@ export default function NewMFLicense() {
     address_id: "",
     unit_id: "",
     source: "Multifamily License",
-    description: "",
     attachments: [],
     scheduled_datetime: "",
     contact_id: "",
@@ -74,33 +73,34 @@ export default function NewMFLicense() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const licenseData = new FormData();
+    const inspectionData = new FormData();
 
     Object.keys(formData).forEach((key) => {
       if (key === "attachments") {
+        // FastAPI expects the field name to match the parameter (attachments)
         Array.from(formData.attachments).forEach((file) => {
-          licenseData.append("attachments[]", file);
+          inspectionData.append("attachments", file);
         });
       } else {
-        licenseData.append(key, formData[key]);
+        inspectionData.append(key, formData[key]);
       }
     });
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/licenses/`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${user.token}`,
         },
-        body: licenseData,
+        body: inspectionData,
       });
 
-      if (!response.ok) throw new Error("Failed to create license");
+      if (!response.ok) throw new Error("Failed to create inspection");
 
-      alert("License created successfully!");
+      alert("Inspection created successfully!");
     } catch (error) {
-      console.error("Error creating license:", error);
-      alert("Error creating license.");
+      console.error("Error creating inspection:", error);
+      alert("Error creating inspection.");
     }
   };
 
@@ -222,19 +222,7 @@ export default function NewMFLicense() {
           </div>
         )}
 
-        {/* Description Field */}
-        <div className="mb-4">
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-            Description
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            value={formData.description}
-            onChange={handleInputChange}
-            className="mt-1 block w-full shadow-sm border-gray-300 rounded-md"
-          ></textarea>
-        </div>
+  {/* ...existing code... */}
 
         {/* Attachments Field */}
         <div className="mb-4">
