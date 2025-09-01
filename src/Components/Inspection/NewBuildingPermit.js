@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../../AuthContext";
 import AsyncSelect from "react-select/async";
 import ContactSelection from "../Contact/ContactSelection";
-import NewUnitForm from "../Unit/NewUnitForm";
+// import NewUnitForm from "../Unit/NewUnitForm"; // Commented out for now; may use in future
 
 export default function NewBuildingPermit() {
   const { user } = useAuth();
@@ -12,7 +12,6 @@ export default function NewBuildingPermit() {
   const [showNewUnitForm, setShowNewUnitForm] = useState(false);
   const [formData, setFormData] = useState({
     address_id: "",
-    unit_id: "",
     source: "Building/Dumpster/POD permit",
     attachments: [],
     scheduled_datetime: "",
@@ -55,20 +54,20 @@ export default function NewBuildingPermit() {
 
   const handleAddressChange = async (selectedOption) => {
     const addressId = selectedOption ? selectedOption.value : "";
-    setFormData({ ...formData, address_id: addressId, unit_id: "" });
-
-    if (addressId) {
-      try {
-        const unitsRes = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${addressId}/units`);
-        const unitsData = await unitsRes.json();
-        setUnits(unitsData);
-      } catch (error) {
-        console.error("Error fetching units:", error);
-        setUnits([]);
-      }
-    } else {
-      setUnits([]);
-    }
+  setFormData({ ...formData, address_id: addressId });
+  // Unit selection is currently disabled for permits; leave fetch commented for future use
+  // if (addressId) {
+  //   try {
+  //     const unitsRes = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${addressId}/units`);
+  //     const unitsData = await unitsRes.json();
+  //     setUnits(unitsData);
+  //   } catch (error) {
+  //     console.error("Error fetching units:", error);
+  //     setUnits([]);
+  //   }
+  // } else {
+  //   setUnits([]);
+  // }
   };
 
   const handleSubmit = async (e) => {
@@ -177,51 +176,54 @@ export default function NewBuildingPermit() {
             />
         </div>
 
-        {/* Unit Selection */}
-        {units.length > 0 && (
-          <div className="mb-4">
-            <label htmlFor="unit_id" className="block text-sm font-medium text-gray-700">
-              Select a Unit (optional)
-            </label>
-            <select
-              id="unit_id"
-              name="unit_id"
-              value={formData.unit_id}
-              onChange={handleInputChange}
-              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm"
-            >
-              <option value="">Leave blank if it's for the whole Building</option>
-              {units.map((unit) => (
-                <option key={unit.id} value={unit.id}>
-                  {unit.number}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* New Unit Form */}
-        {formData.address_id && (
-          <div className="mb-4">
-            <button
-              type="button"
-              onClick={() => setShowNewUnitForm(!showNewUnitForm)}
-              className="bg-transparent hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-1 px-2 border border-blue-500 hover:border-transparent rounded"
-            >
-              {showNewUnitForm ? "Hide New Unit Form" : "Add a New Unit"}
-            </button>
-            {showNewUnitForm && (
-              <NewUnitForm
-                addressId={formData.address_id}
-                onUnitCreated={(newUnit) => {
-                  setUnits([...units, newUnit]);
-                  setFormData({ ...formData, unit_id: newUnit.id });
-                  setShowNewUnitForm(false);
-                }}
-              />
-            )}
-          </div>
-        )}
+  {/**
+   * Unit Selection (commented out)
+   *
+   * {units.length > 0 && (
+   *   <div className="mb-4">
+   *     <label htmlFor="unit_id" className="block text-sm font-medium text-gray-700">
+   *       Select a Unit (optional)
+   *     </label>
+   *     <select
+   *       id="unit_id"
+   *       name="unit_id"
+   *       value={formData.unit_id}
+   *       onChange={handleInputChange}
+   *       className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm"
+   *     >
+   *       <option value="">Leave blank if it's for the whole Building</option>
+   *       {units.map((unit) => (
+   *         <option key={unit.id} value={unit.id}>
+   *           {unit.number}
+   *         </option>
+   *       ))}
+   *     </select>
+   *   </div>
+   * )}
+   *
+   * New Unit Form (commented out)
+   * {formData.address_id && (
+   *   <div className="mb-4">
+   *     <button
+   *       type="button"
+   *       onClick={() => setShowNewUnitForm(!showNewUnitForm)}
+   *       className="bg-transparent hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-1 px-2 border border-blue-500 hover:border-transparent rounded"
+   *     >
+   *       {showNewUnitForm ? "Hide New Unit Form" : "Add a New Unit"}
+   *     </button>
+   *     {showNewUnitForm && (
+   *       <NewUnitForm
+   *         addressId={formData.address_id}
+   *         onUnitCreated={(newUnit) => {
+   *           setUnits([...units, newUnit]);
+   *           setFormData({ ...formData, unit_id: newUnit.id });
+   *           setShowNewUnitForm(false);
+   *         }}
+   *       />
+   *     )}
+   *   </div>
+   * )}
+   */}
 
   {/* ...existing code... */}
 

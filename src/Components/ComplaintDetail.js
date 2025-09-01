@@ -17,6 +17,9 @@ export default function ComplaintDetail() {
 	const [attachments, setAttachments] = useState([]); // [{ filename, content_type, url }]
 	const [selectedPhotoUrl, setSelectedPhotoUrl] = useState(null);
 
+	// Optional unit info (some complaints are tied to a unit under the address)
+	const [unit, setUnit] = useState(null);
+
 	const [uploadFiles, setUploadFiles] = useState([]);
 	const [uploading, setUploading] = useState(false);
 	const [uploadError, setUploadError] = useState(null);
@@ -93,6 +96,25 @@ export default function ComplaintDetail() {
 				setScheduleValue("");
 			}
 		}
+
+		// If this complaint references a unit, fetch it to show the unit number
+		(async () => {
+			try {
+				if (complaint?.unit_id) {
+					const r = await fetch(`${process.env.REACT_APP_API_URL}/units/${complaint.unit_id}`);
+					if (r.ok) {
+						const data = await r.json();
+						setUnit(data);
+					} else {
+						setUnit(null);
+					}
+				} else {
+					setUnit(null);
+				}
+			} catch {
+				setUnit(null);
+			}
+		})();
 	}, [complaint]);
 
 	// Debounced contact search
@@ -282,6 +304,27 @@ export default function ComplaintDetail() {
 								</Link>
 							) : (
 								"No address available"
+							)}
+						</dd>
+					</div>
+
+					{/* Unit (if applicable) */}
+					<div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+						<dt className="text-sm font-medium leading-6 text-gray-900">Unit</dt>
+						<dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
+							{complaint.unit_id ? (
+								complaint.address ? (
+									<Link
+										to={`/address/${complaint.address.id}/unit/${complaint.unit_id}`}
+										className="text-indigo-600 hover:text-indigo-900"
+									>
+										{unit?.number ? `Unit ${unit.number}` : `Unit ${complaint.unit_id}`}
+									</Link>
+								) : (
+									<span>{unit?.number ? `Unit ${unit.number}` : `Unit ${complaint.unit_id}`}</span>
+								)
+							) : (
+								<span className="text-gray-500">—</span>
 							)}
 						</dd>
 					</div>

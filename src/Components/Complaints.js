@@ -8,6 +8,8 @@ export default function Complaints() {
   const [currentPage, setCurrentPage] = useState(1);
   const complaintsPerPage = 10;
   const [statusFilter, setStatusFilter] = useState('');
+  // Cache of unit details keyed by unit_id so we can show Unit numbers
+  const [unitsById, setUnitsById] = useState({}); // { [unit_id]: { id, number, address_id } }
 
   useEffect(() => {
     fetch(`${process.env.REACT_APP_API_URL}/complaints/`)
@@ -58,6 +60,43 @@ export default function Complaints() {
   const currentComplaints = filteredComplaints.slice(indexOfFirstComplaint, indexOfLastComplaint);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  // Fetch unit numbers for visible complaints that reference a unit
+  useEffect(() => {
+    const missingUnitIds = Array.from(
+      new Set(
+        currentComplaints
+          .map((c) => c.unit_id)
+          .filter((id) => id && !unitsById[id])
+      )
+    );
+    if (missingUnitIds.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const results = await Promise.all(
+          missingUnitIds.map(async (id) => {
+            try {
+              const r = await fetch(`${process.env.REACT_APP_API_URL}/units/${id}`);
+              if (!r.ok) return null;
+              return await r.json();
+            } catch {
+              return null;
+            }
+          })
+        );
+        if (cancelled) return;
+        const next = { ...unitsById };
+        results.forEach((u) => {
+          if (u && u.id) next[u.id] = u;
+        });
+        setUnitsById(next);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentComplaints, unitsById]);
 
   if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
   if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
@@ -144,13 +183,33 @@ export default function Complaints() {
                   })()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {complaint.address ? (
-                    <Link to={`/address/${complaint.address.id}`} className="text-indigo-600 hover:text-indigo-900">
-                      {complaint.address.combadd}
-                    </Link>
-                  ) : (
-                    'No address'
-                  )}
+                  <div className="flex flex-col">
+                    {complaint.address ? (
+                      <Link to={`/address/${complaint.address.id}`} className="text-indigo-600 hover:text-indigo-900">
+                        {complaint.address.combadd}
+                      </Link>
+                    ) : (
+                      'No address'
+                    )}
+                    {complaint.unit_id && (
+                      complaint.address ? (
+                        <Link
+                          to={`/address/${complaint.address.id}/unit/${complaint.unit_id}`}
+                          className="text-xs text-indigo-600 hover:text-indigo-900 mt-1"
+                        >
+                          {unitsById[complaint.unit_id]?.number
+                            ? `Unit ${unitsById[complaint.unit_id].number}`
+                            : `Unit ${complaint.unit_id}`}
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-gray-500 mt-1">
+                          {unitsById[complaint.unit_id]?.number
+                            ? `Unit ${unitsById[complaint.unit_id].number}`
+                            : `Unit ${complaint.unit_id}`}
+                        </span>
+                      )
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
