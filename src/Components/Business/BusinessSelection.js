@@ -7,23 +7,26 @@ export default function BusinessSelection({ businesses, formData, handleInputCha
     label: business.trading_as ? `${business.name} (${business.trading_as})` : business.name,
     // Prefer nested address.id if present, otherwise fall back to address_id
     addressId: business.address?.id ?? business.address_id,
+    // If the business is tied to a specific unit, carry it through so we can auto-fill
+    unitId: business.unit_id ?? null,
   }));
 
   const handleBusinessChange = (selectedOption) => {
     const selectedBusinessId = selectedOption ? Number(selectedOption.value) : null;
     const selectedAddressId = selectedOption && selectedOption.addressId != null ? Number(selectedOption.addressId) : null;
+    const selectedUnitId = selectedOption && selectedOption.unitId != null ? Number(selectedOption.unitId) : null;
     if (typeof setFormData === 'function') {
       setFormData((prev) => ({
         ...prev,
         business_id: selectedBusinessId,
         address_id: selectedAddressId,
-        unit_id: null,
+        unit_id: selectedUnitId,
       }));
     } else {
       // Fallback to individual changes
       handleInputChange({ target: { name: "business_id", value: selectedBusinessId ?? "" } });
       handleInputChange({ target: { name: "address_id", value: selectedAddressId ?? "" } });
-      handleInputChange({ target: { name: "unit_id", value: "" } });
+      handleInputChange({ target: { name: "unit_id", value: selectedUnitId ?? "" } });
     }
   };
   

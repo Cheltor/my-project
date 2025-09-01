@@ -7,15 +7,14 @@ import Select from "react-select"; // Import react-select
 
 export default function NewBusinessLicense() {
   const { user, token } = useAuth();
-  const [units, setUnits] = useState([]);
   const [businesses, setBusinesses] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [addresses, setAddresses] = useState([]);
   // Removed New Unit form toggle
   const [showNewBusinessForm, setShowNewBusinessForm] = useState(false);
   const [formData, setFormData] = useState({
-    address_id: null,  // Use `null` instead of ""
-    unit_id: null,
+  address_id: null,  // Populated from selected business
+  unit_id: null,     // Populated from selected business if it has a unit
     source: "Business License",
     attachments: [],
     business_id: null,
@@ -49,29 +48,7 @@ export default function NewBusinessLicense() {
     fetchData();
   }, []);
 
-  // When address_id changes, fetch units for that address
-  useEffect(() => {
-    const loadUnits = async (addressId) => {
-      if (!addressId) {
-        setUnits([]);
-        return;
-      }
-      try {
-        const res = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${addressId}/units`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUnits(Array.isArray(data) ? data : []);
-        } else {
-          setUnits([]);
-        }
-      } catch (_) {
-        setUnits([]);
-      }
-    };
-    loadUnits(formData.address_id);
-  }, [formData.address_id]);
+  // No unit fetching: unit_id will come directly from the selected business (if any)
 
   const handleInputChange = (e) => {
     const { name, value, type, checked, files } = e.target;
@@ -204,35 +181,19 @@ export default function NewBusinessLicense() {
               onCreated={(created) => {
                 // Ensure new business appears in dropdown and is selected
                 setBusinesses((prev) => [created, ...prev]);
-                setFormData((prev) => ({ ...prev, business_id: created.id, address_id: created.address_id }));
+                setFormData((prev) => ({
+                  ...prev,
+                  business_id: created.id,
+                  address_id: created.address_id ?? created.address?.id ?? null,
+                  unit_id: created.unit_id ?? null,
+                }));
                 setShowNewBusinessForm(false);
               }}
             />
           )}
         </div>
 
-        {/* Unit Selection */}
-        {units.length > 0 && (
-          <div className="mb-4">
-            <label htmlFor="unit_id" className="block text-sm font-medium text-gray-700">
-              Select a Unit (optional)
-            </label>
-            <select
-              id="unit_id"
-              name="unit_id"
-              value={formData.unit_id}
-              onChange={handleInputChange}
-              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm"
-            >
-              <option value="">Leave blank if it's for the whole Building</option>
-              {units.map((unit) => (
-                <option key={unit.id} value={unit.id}>
-                  {unit.number}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+  {/* No Unit Selection: this form uses the business's address and unit (if any) automatically */}
 
   {/* New Unit Form removed for Business License */}
 

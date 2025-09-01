@@ -9,6 +9,8 @@ export default function InspectionDetail() {
   const [scheduleInput, setScheduleInput] = useState('');
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [scheduleError, setScheduleError] = useState(null);
+  const [attachments, setAttachments] = useState([]);
+  const [attachmentsError, setAttachmentsError] = useState(null);
   const formatStatus = (s) => {
     if (!s) return 'Pending';
     return s
@@ -30,6 +32,19 @@ export default function InspectionDetail() {
   setInspection(data);
   // Prefill the schedule input
   setScheduleInput(formatForInput(data.scheduled_datetime));
+  // Fetch attachments for this inspection
+  try {
+    const photosRes = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/photos`);
+    if (photosRes.ok) {
+      const photos = await photosRes.json();
+      setAttachments(Array.isArray(photos) ? photos : []);
+    } else {
+      setAttachments([]);
+    }
+  } catch (e) {
+    setAttachments([]);
+    setAttachmentsError('Failed to load attachments');
+  }
       } catch (error) {
         setError(error.message);
       } finally {
@@ -192,6 +207,40 @@ export default function InspectionDetail() {
                 )}
               </div>
               {scheduleError && <div className="text-red-600 text-sm mt-1">{scheduleError}</div>}
+            </dd>
+          </div>
+
+          {/* Attachments */}
+          <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+            <dt className="text-sm font-medium leading-6 text-gray-900">Attachments</dt>
+            <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
+              {attachmentsError && (
+                <div className="text-red-600">{attachmentsError}</div>
+              )}
+              {attachments.length === 0 && !attachmentsError && (
+                <div className="text-gray-500">No attachments</div>
+              )}
+              {attachments.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {attachments.map((file, idx) => {
+                    const isImage = (file.content_type || '').startsWith('image/');
+                    return (
+                      <div key={idx} className="border rounded p-2 flex flex-col items-start gap-2">
+                        {isImage ? (
+                          <a href={file.url} target="_blank" rel="noopener noreferrer" className="block w-full">
+                            <img src={file.url} alt={file.filename} className="w-full h-32 object-cover rounded" />
+                          </a>
+                        ) : (
+                          <div className="text-gray-600 text-xs">{file.content_type || 'file'}</div>
+                        )}
+                        <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 break-all text-xs">
+                          {file.filename}
+                        </a>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </dd>
           </div>
 
