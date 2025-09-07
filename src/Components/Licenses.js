@@ -86,10 +86,14 @@ export default function Licenses() {
             {currentLicenses.map((license, idx) => (
               <tr key={license.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {license.id}
+                  <Link to={`/license/${license.id}`} className="text-indigo-600 hover:text-indigo-800">
+                    {license.id}
+                  </Link>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {LICENSE_TYPE_LABELS[license.license_type] || String(license.license_type)}
+                  <Link to={`/license/${license.id}`} className="text-indigo-600 hover:text-indigo-800">
+                    {LICENSE_TYPE_LABELS[license.license_type] || String(license.license_type)}
+                  </Link>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {license.paid ? 'Paid' : 'Not Paid'}

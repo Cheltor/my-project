@@ -28,7 +28,7 @@ const navigation = [
   { name: 'Citations', href: '/citations', icon: CalendarIcon, current: false },
   { name: 'Complaints', href: '/complaints', icon: DocumentDuplicateIcon, current: false },
   { name: 'Inspections', href: '/inspections', icon: ChartPieIcon, current: false },
-  { name: 'Permits', href: '#', icon: BuildingOffice2Icon, current: false },
+  { name: 'Permits', href: '/permits', icon: BuildingOffice2Icon, current: false },
   { name: 'Licenses', href: '/licenses', icon: BuildingOffice2Icon, current: false },
   { name: 'Codes', href: '/codes', icon: BuildingOffice2Icon, current: false },
   { name: 'Businesses', href: '/businesses', icon: BuildingOffice2Icon, current: false },
