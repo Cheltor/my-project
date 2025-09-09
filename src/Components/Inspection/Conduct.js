@@ -20,6 +20,7 @@ export default function Conduct() {
   const [savingStatus, setSavingStatus] = useState(false);
   const [statusError, setStatusError] = useState(null);
   const [statusSavedAt, setStatusSavedAt] = useState(null);
+  const [statusMessage, setStatusMessage] = useState('');
   const [showNewAreaForm, setShowNewAreaForm] = useState(false);
 
   const canonicalStatus = (s) => {
@@ -121,6 +122,7 @@ export default function Conduct() {
       setInspection(updated);
       setStatusValue(updated.status || '');
       setStatusSavedAt(new Date());
+  if (updated.status_message) setStatusMessage(updated.status_message); else setStatusMessage('');
     } catch (e) {
       setStatusError(e.message);
     } finally {
@@ -253,6 +255,9 @@ export default function Conduct() {
         )}
         {statusSavedAt && !statusError && (
           <div className="mt-1 text-center text-xs text-green-700">Status updated {statusSavedAt.toLocaleTimeString()}</div>
+        )}
+        {statusMessage && !statusError && (
+          <div className="mt-2 text-center text-sm text-indigo-700">{statusMessage}</div>
         )}
       </div>
 

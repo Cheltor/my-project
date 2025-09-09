@@ -52,6 +52,15 @@ export default function LicenseDetail() {
           <div className="text-sm font-medium text-gray-500">Sent</div>
           <div className="sm:col-span-2">{license.sent ? 'Sent' : 'Not Sent'}</div>
 
+          <div className="text-sm font-medium text-gray-500">Date Issued</div>
+          <div className="sm:col-span-2">{license.date_issued ? new Date(license.date_issued).toLocaleDateString() : '—'}</div>
+
+          <div className="text-sm font-medium text-gray-500">Expiration Date</div>
+          <div className="sm:col-span-2">{license.expiration_date ? new Date(license.expiration_date).toLocaleDateString() : '—'}</div>
+
+          <div className="text-sm font-medium text-gray-500">Fiscal Year</div>
+          <div className="sm:col-span-2">{license.fiscal_year || '—'}</div>
+
           <div className="text-sm font-medium text-gray-500">Created</div>
           <div className="sm:col-span-2">{new Date(license.created_at).toLocaleString()}</div>
 

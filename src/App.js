@@ -20,6 +20,7 @@ import CodeDetail from './Components/CodeDetail';
 import Licenses from './Components/Licenses';
 import LicenseDetail from './Components/LicenseDetail';
 import Permits from './Components/Permits';
+import PermitDetail from './Components/PermitDetail';
 import Complaints from './Components/Complaints';
 import ComplaintDetail from './Components/ComplaintDetail';
 import Citations from './Components/Citations';
@@ -88,6 +89,7 @@ function MainApp() {
             <Route path="/licenses" element={<Licenses />} />
             <Route path="/license/:id" element={<LicenseDetail />} />
             <Route path="/permits" element={<Permits />} />
+            <Route path="/permit/:id" element={<PermitDetail />} />
             <Route path="/complaints" element={<Complaints />} />
             <Route path="/complaint/:id" element={<ComplaintDetail />} />
             <Route path="/citations" element={<Citations />} />

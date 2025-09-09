@@ -72,17 +72,25 @@ export default function NewBuildingPermit() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  const permitData = new FormData();
+    // Basic required field validation
+    if (!formData.address_id) {
+      alert("Please select an address before creating the permit.");
+      return;
+    }
+
+    const permitData = new FormData();
 
     Object.keys(formData).forEach((key) => {
       if (key === "attachments") {
-        // FastAPI expects the field name to match the parameter (attachments)
         Array.from(formData.attachments).forEach((file) => {
           permitData.append("attachments", file);
         });
-      } else {
-        permitData.append(key, formData[key]);
+        return;
       }
+      const value = formData[key];
+      // Skip sending empty optional fields (prevents 422 on server expecting int)
+      if (value === "" || value === null || value === undefined) return;
+      permitData.append(key, value);
     });
 
     try {
@@ -98,6 +106,15 @@ export default function NewBuildingPermit() {
       if (!response.ok) throw new Error("Failed to create permit");
 
       alert("Permit created successfully!");
+      // Optionally reset form
+      setFormData((prev) => ({
+        ...prev,
+        address_id: "",
+        contact_id: "",
+        attachments: [],
+        scheduled_datetime: "",
+        paid: false,
+      }));
     } catch (error) {
       console.error("Error creating permit:", error);
       alert("Error creating permit.");

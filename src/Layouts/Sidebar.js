@@ -15,6 +15,7 @@ import {
   HomeIcon,
   UsersIcon,
   XMarkIcon,
+  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
 import { Link, useNavigate } from 'react-router-dom'; // Import Link and useNavigate
@@ -323,6 +324,15 @@ export default function Sidebar({ children }) {
               )}
             </div>
             <div className="flex items-center gap-x-4 lg:gap-x-6">
+              {/* Back Button moved to right side */}
+              <button
+                type="button"
+                onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
+                className="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+              >
+                <ArrowLeftIcon className="h-5 w-5 mr-1" aria-hidden="true" />
+                Back
+              </button>
               {/* Additional elements like notifications and user menu */}
             </div>
           </div>
