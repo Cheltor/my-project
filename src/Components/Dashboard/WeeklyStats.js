@@ -22,7 +22,8 @@ export default function WeeklyStats() {
     const fetchData = async () => {
       try {
         const userId = user.id; 
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/counts/${userId}`);
+  // Use Sunday as the start of the work week; change to 'sat' to start on Saturday
+  const response = await fetch(`${process.env.REACT_APP_API_URL}/counts/${userId}?start_day=sun`);
         if (!response.ok) throw new Error("Failed to fetch weekly stats");
 
         const data = await response.json();

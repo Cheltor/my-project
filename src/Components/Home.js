@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Welcome from './Dashboard/Welcome';
 import WeeklyStats from './Dashboard/WeeklyStats';
+import RecentComments from './Dashboard/RecentComments';
 import PendingInspections from './Dashboard/PendingInspections';
 import ActiveViolations from './Dashboard/ActiveViolations';
 import NewComplaint from './Inspection/NewComplaint';
@@ -146,6 +147,9 @@ export default function Example() {
       {user.role === 1 && (
         <>
           <WeeklyStats />
+          <div className="mt-6">
+            <RecentComments limit={8} />
+          </div>
           <div className="flex flex-wrap -mx-2">
             <div className="w-full xl:w-1/2 px-2 mb-6">
               <PendingInspections />
