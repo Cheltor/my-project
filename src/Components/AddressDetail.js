@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
 import AddressPhotos from './Address/AddressPhotos'; // Update the import statement
 import Citations from './Address/AddressCitations';
 import Violations from './Address/AddressViolations';
@@ -18,11 +19,18 @@ function titlize(str) {
 const AddressDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();  // Initialize useNavigate
+  const { user } = useAuth();
   const [address, setAddress] = useState(null);
   const [units, setUnits] = useState([]);  // State to store units
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('comments');
+  // Quick comment (mobile) state
+  const [quickContent, setQuickContent] = useState('');
+  const [quickFiles, setQuickFiles] = useState([]);
+  const [submittingQuick, setSubmittingQuick] = useState(false);
+  const fileInputRef = useRef(null);
+  const [commentsRefreshKey, setCommentsRefreshKey] = useState(0);
   // Contacts state
   const [contacts, setContacts] = useState([]);
   const [showAddContact, setShowAddContact] = useState(false);
@@ -174,7 +182,7 @@ const AddressDetails = () => {
   console.log('Address units:', units);  // Debug log
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg mt-10 space-y-8">
+    <div className="max-w-4xl mx-auto px-5 pt-4 pb-36 sm:pb-6 bg-white shadow-md rounded-lg mt-6 space-y-8">
       {/* Address Information */}
 
       <div className="mb-4">
@@ -559,13 +567,115 @@ const AddressDetails = () => {
         )}
         {activeTab === 'photos' && <AddressPhotos addressId={id} />}
         {activeTab === 'citations' && <Citations addressId={id} />}
-        {activeTab === 'comments' && <Comments addressId={id} />}
+        {activeTab === 'comments' && <Comments key={`comments-${commentsRefreshKey}`} addressId={id} />}
         {activeTab === 'violations' && <Violations addressId={id} />}
         {activeTab === 'inspections' && <Inspections addressId={id} />}
         {activeTab === 'complaints' && <Complaints addressId={id} />}
       </div>
 
+      {/* Sticky Quick Comment Bar (mobile only) */}
+      <div className="fixed inset-x-0 bottom-0 sm:hidden z-40">
+        <div className="mx-auto max-w-4xl px-4 py-4 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!user?.id) return;
+              if (!quickContent.trim() && quickFiles.length === 0) return;
+              setSubmittingQuick(true);
+              try {
+                const formData = new FormData();
+                formData.append('content', quickContent.trim() || '');
+                formData.append('user_id', String(user.id));
+                for (const f of quickFiles) formData.append('files', f);
+                const res = await fetch(`${process.env.REACT_APP_API_URL}/comments/${id}/address`, {
+                  method: 'POST',
+                  body: formData,
+                });
+                if (!res.ok) throw new Error('Failed to post comment');
+                setQuickContent('');
+                setQuickFiles([]);
+                setCommentsRefreshKey((k) => k + 1);
+                setActiveTab('comments');
+              } catch (err) {
+                console.error(err);
+              } finally {
+                setSubmittingQuick(false);
+              }
+            }}
+            className="flex flex-col gap-3"
+          >
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="shrink-0 inline-flex items-center justify-center h-14 w-14 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                title="Add photo"
+                aria-label="Add photo"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8">
+                  <path d="M4 7h3l2-3h6l2 3h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" />
+                  <circle cx="12" cy="13" r="3" />
+                </svg>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  if (files.length === 0) return;
+                  setQuickFiles((prev) => {
+                    const merged = [...prev];
+                    for (const f of files) {
+                      const dup = merged.find(
+                        (m) => m.name === f.name && m.size === f.size && m.lastModified === f.lastModified
+                      );
+                      if (!dup) merged.push(f);
+                    }
+                    return merged;
+                  });
+                  e.target.value = null;
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Add a comment..."
+                value={quickContent}
+                onChange={(e) => setQuickContent(e.target.value)}
+                className="flex-1 h-14 rounded-lg border border-gray-300 px-4 text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
 
+            {quickFiles.length > 0 && (
+              <div className="flex items-center justify-start gap-3">
+                <span className="text-base text-gray-700 whitespace-nowrap px-3 py-2 bg-gray-100 rounded-md">
+                  {quickFiles.length} photo{quickFiles.length > 1 ? 's' : ''}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setQuickFiles([])}
+                  className="text-sm text-gray-700 hover:text-gray-900 underline"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+
+            <div className="flex justify-center">
+              <button
+                type="submit"
+                disabled={submittingQuick || (!quickContent.trim() && quickFiles.length === 0) || !user?.id}
+                className="inline-flex items-center justify-center h-14 px-8 rounded-lg bg-indigo-600 text-white text-lg font-semibold hover:bg-indigo-500 disabled:bg-gray-300 min-w-[10rem]"
+              >
+                {submittingQuick ? 'Posting...' : 'Post'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 };

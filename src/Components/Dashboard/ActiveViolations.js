@@ -2,6 +2,16 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../../AuthContext";
 import { Link } from "react-router-dom";
 
+// Format helper: convert strings like "overgrown_yard" to "Overgrown Yard"
+function formatViolationType(str) {
+  if (!str) return '';
+  return String(str)
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export default function ActiveViolations() {
   const { user } = useAuth();
   const [violations, setViolations] = useState([]);
@@ -80,7 +90,7 @@ export default function ActiveViolations() {
                   <tr key={violation.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       <Link to={`/violation/${violation.id}`} className="text-indigo-600 hover:text-indigo-900">
-                        {violation.violation_type || 'N/A'}
+                        {formatViolationType(violation.violation_type) || 'N/A'}
                       </Link>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

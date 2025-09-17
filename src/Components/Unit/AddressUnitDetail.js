@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';  // Import Link from react-router-dom
 import UnitComments from './UnitComments';  // Import UnitComments component
+import { useAuth } from '../../AuthContext';
 
 const AddressUnitDetail = () => {
   const { unitId } = useParams();  // Ensure this matches the route parameter name
+  const { user } = useAuth();
   const [unit, setUnit] = useState(null);
   const [editing, setEditing] = useState(false);
   const [newUnitNumber, setNewUnitNumber] = useState("");
@@ -11,6 +13,12 @@ const AddressUnitDetail = () => {
   const [address, setAddress] = useState(null);  // State to store address details
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Quick comment (mobile) state
+  const [quickContent, setQuickContent] = useState('');
+  const [quickFiles, setQuickFiles] = useState([]);
+  const [submittingQuick, setSubmittingQuick] = useState(false);
+  const fileInputRef = useRef(null);
+  const [commentsRefreshKey, setCommentsRefreshKey] = useState(0);
 
   useEffect(() => {
     setLoading(true);
@@ -42,7 +50,7 @@ const AddressUnitDetail = () => {
   if (!unit || !address) return <div className="text-center mt-10">No unit or address details available.</div>;
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg mt-10 space-y-8">
+    <div className="max-w-4xl mx-auto px-5 pt-4 pb-36 sm:pb-6 bg-white shadow-md rounded-lg mt-10 space-y-8">
       {/* Unit Information */}
       <div className="mb-4">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 flex flex-wrap items-center">
@@ -161,7 +169,127 @@ const AddressUnitDetail = () => {
       </div>
 
       {/* Unit Comments */}
-      <UnitComments unitId={unitId} addressId={address.id} />
+      <UnitComments key={`unit-comments-${commentsRefreshKey}`} unitId={unitId} addressId={address.id} />
+
+      {/* Sticky Quick Unit Comment Bar (mobile only) */}
+      <div className="fixed inset-x-0 bottom-0 sm:hidden z-40">
+        <div className="mx-auto max-w-4xl px-4 py-4 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!user?.id || !address?.id) return;
+              if (!quickContent.trim() && quickFiles.length === 0) return;
+              setSubmittingQuick(true);
+              try {
+                if (quickFiles.length > 0) {
+                  const formData = new FormData();
+                  formData.append('content', quickContent.trim() || '');
+                  formData.append('user_id', String(user.id));
+                  formData.append('address_id', String(address.id));
+                  for (const f of quickFiles) formData.append('files', f);
+                  const res = await fetch(`${process.env.REACT_APP_API_URL}/comments/unit/${unitId}/`, {
+                    method: 'POST',
+                    body: formData,
+                  });
+                  if (!res.ok) throw new Error('Failed to post unit comment with file');
+                } else {
+                  const res = await fetch(`${process.env.REACT_APP_API_URL}/comments/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      content: quickContent.trim(),
+                      user_id: user.id,
+                      address_id: address.id,
+                      unit_id: Number(unitId),
+                    }),
+                  });
+                  if (!res.ok) throw new Error('Failed to post unit comment');
+                }
+                // Reset and refresh
+                setQuickContent('');
+                setQuickFiles([]);
+                setCommentsRefreshKey((k) => k + 1);
+              } catch (err) {
+                console.error(err);
+              } finally {
+                setSubmittingQuick(false);
+              }
+            }}
+            className="flex flex-col gap-3"
+          >
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="shrink-0 inline-flex items-center justify-center h-14 w-14 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                title="Add photo"
+                aria-label="Add photo"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8">
+                  <path d="M4 7h3l2-3h6l2 3h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" />
+                  <circle cx="12" cy="13" r="3" />
+                </svg>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,application/pdf"
+                capture="environment"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  if (files.length === 0) return;
+                  setQuickFiles((prev) => {
+                    const merged = [...prev];
+                    for (const f of files) {
+                      const dup = merged.find(
+                        (m) => m.name === f.name && m.size === f.size && m.lastModified === f.lastModified
+                      );
+                      if (!dup) merged.push(f);
+                    }
+                    return merged;
+                  });
+                  e.target.value = null;
+                }}
+              />
+
+              <input
+                type="text"
+                placeholder="Add a comment..."
+                value={quickContent}
+                onChange={(e) => setQuickContent(e.target.value)}
+                className="flex-1 h-14 rounded-lg border border-gray-300 px-4 text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+
+            {quickFiles.length > 0 && (
+              <div className="flex items-center justify-start gap-3">
+                <span className="text-base text-gray-700 whitespace-nowrap px-3 py-2 bg-gray-100 rounded-md">
+                  {quickFiles.length} file{quickFiles.length > 1 ? 's' : ''}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setQuickFiles([])}
+                  className="text-sm text-gray-700 hover:text-gray-900 underline"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+
+            <div className="flex justify-center">
+              <button
+                type="submit"
+                disabled={submittingQuick || (!quickContent.trim() && quickFiles.length === 0) || !user?.id}
+                className="inline-flex items-center justify-center h-14 px-8 rounded-lg bg-indigo-600 text-white text-lg font-semibold hover:bg-indigo-500 disabled:bg-gray-300 min-w-[10rem]"
+              >
+                {submittingQuick ? 'Posting...' : 'Post'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 };
