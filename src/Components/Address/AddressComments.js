@@ -12,11 +12,12 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString(undefined, options);
 };
 
-const AddressComments = ({ addressId }) => {
+const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState(null);
+  const [page, setPage] = useState(initialPage);
 
   const downloadAttachments = async (commentId) => {
     if (!commentId) return;
@@ -78,6 +79,7 @@ const AddressComments = ({ addressId }) => {
         Promise.all(fetchPhotosPromises)
           .then((commentsWithPhotos) => {
             setComments(commentsWithPhotos);
+            setPage(initialPage);
             setLoading(false);
           })
           .catch((error) => {
@@ -89,12 +91,20 @@ const AddressComments = ({ addressId }) => {
         setError(error.message);
         setLoading(false);
       });
-  }, [addressId]);
+  }, [addressId, initialPage]);
+
+  // Adjust page if comments or pageSize change
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil((comments?.length || 0) / pageSize));
+    if (page > totalPages) setPage(totalPages);
+    if (page < 1) setPage(1);
+  }, [comments, page, pageSize]);
 
   const handleCommentAdded = (newComment) => {
     if (!newComment || typeof newComment.id === 'undefined' || newComment.id === null) {
       // Just prepend the comment without photos
       setComments([newComment, ...comments]);
+      setPage(1);
       return;
     }
     // Optionally fetch photos for the new comment
@@ -108,14 +118,22 @@ const AddressComments = ({ addressId }) => {
       })
       .then((photos) => {
         // Attach the photos to the new comment
-        const newCommentWithPhotos = { ...newComment, photos };
-        setComments([newCommentWithPhotos, ...comments]);
+    const newCommentWithPhotos = { ...newComment, photos };
+    setComments([newCommentWithPhotos, ...comments]);
+    setPage(1);
       })
       .catch((error) => {
         console.error(`Error fetching photos for new comment ${newComment.id}:`, error);
-        setComments([newComment, ...comments]);
+    setComments([newComment, ...comments]);
+    setPage(1);
       });
   };
+
+  const total = comments.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const startIdx = (page - 1) * pageSize;
+  const endIdx = Math.min(total, startIdx + pageSize);
+  const currentSlice = comments.slice(startIdx, endIdx);
 
   if (loading) {
     return <p>Loading comments...</p>;
@@ -135,9 +153,43 @@ const AddressComments = ({ addressId }) => {
           onClose={() => setSelectedPhotoUrl(null)}
         />
       )}
-      <ul className="space-y-4 mt-4">
-        {comments.length > 0 ? (
-          comments.map((comment) => (
+      {/* Pagination header */}
+      <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
+        <div>
+          {total > 0 ? (
+            <span>
+              Showing <span className="font-medium">{startIdx + 1}-{endIdx}</span> of <span className="font-medium">{total}</span>
+            </span>
+          ) : (
+            <span>0 results</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="px-2 py-1 rounded border border-gray-300 bg-white disabled:opacity-50"
+          >
+            Prev
+          </button>
+          <span>
+            Page <span className="font-medium">{page}</span> of <span className="font-medium">{totalPages}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className="px-2 py-1 rounded border border-gray-300 bg-white disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
+      <ul className="space-y-4 mt-2">
+        {currentSlice.length > 0 ? (
+          currentSlice.map((comment) => (
             <li key={comment.id} className="bg-gray-100 p-4 rounded-lg shadow">
               <p className="text-gray-700 whitespace-pre-line">{comment.content}</p>
               <p className="text-sm text-gray-500 mt-2">Posted on {formatDate(comment.created_at)}</p>
@@ -216,6 +268,38 @@ const AddressComments = ({ addressId }) => {
           <p>No comments available.</p>
         )}
       </ul>
+
+      {/* Pagination footer (duplicate controls for convenience) */}
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
+          <div>
+            <span>
+              Showing <span className="font-medium">{startIdx + 1}-{endIdx}</span> of <span className="font-medium">{total}</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="px-2 py-1 rounded border border-gray-300 bg-white disabled:opacity-50"
+            >
+              Prev
+            </button>
+            <span>
+              Page <span className="font-medium">{page}</span> of <span className="font-medium">{totalPages}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="px-2 py-1 rounded border border-gray-300 bg-white disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

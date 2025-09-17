@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import AddressPhotos from './Address/AddressPhotos'; // Update the import statement
@@ -31,6 +31,7 @@ const AddressDetails = () => {
   const [submittingQuick, setSubmittingQuick] = useState(false);
   const fileInputRef = useRef(null);
   const [commentsRefreshKey, setCommentsRefreshKey] = useState(0);
+  const [selectedUnitId, setSelectedUnitId] = useState('');
   // Contacts state
   const [contacts, setContacts] = useState([]);
   const [showAddContact, setShowAddContact] = useState(false);
@@ -115,6 +116,23 @@ const AddressDetails = () => {
   const { searchTerm, showDropdown, filteredUnits, handleSearchChange, handleDropdownSelect } = useUnitSearch(id);
   const [showNewUnitForm, setShowNewUnitForm] = useState(false);  // State to toggle NewUnit form
   const [isEditing, setIsEditing] = useState(false); // State to toggle edit mode
+  
+  // Units sorted numerically for the sticky comment select
+  const sortedUnitsForSelect = useMemo(() => {
+    if (!Array.isArray(units)) return [];
+    const arr = [...units];
+    arr.sort((a, b) => {
+      const aNum = parseFloat(a?.number);
+      const bNum = parseFloat(b?.number);
+      const aIsNum = !Number.isNaN(aNum);
+      const bIsNum = !Number.isNaN(bNum);
+      if (aIsNum && bIsNum) return aNum - bNum;
+      if (aIsNum) return -1;
+      if (bIsNum) return 1;
+      return String(a?.number ?? '').localeCompare(String(b?.number ?? ''));
+    });
+    return arr;
+  }, [units]);
 
   useEffect(() => {
     setLoading(true);
@@ -567,7 +585,14 @@ const AddressDetails = () => {
         )}
         {activeTab === 'photos' && <AddressPhotos addressId={id} />}
         {activeTab === 'citations' && <Citations addressId={id} />}
-        {activeTab === 'comments' && <Comments key={`comments-${commentsRefreshKey}`} addressId={id} />}
+        {activeTab === 'comments' && (
+          <Comments
+            key={`comments-${commentsRefreshKey}`}
+            addressId={id}
+            pageSize={10}
+            initialPage={1}
+          />
+        )}
         {activeTab === 'violations' && <Violations addressId={id} />}
         {activeTab === 'inspections' && <Inspections addressId={id} />}
         {activeTab === 'complaints' && <Complaints addressId={id} />}
@@ -586,6 +611,7 @@ const AddressDetails = () => {
                 const formData = new FormData();
                 formData.append('content', quickContent.trim() || '');
                 formData.append('user_id', String(user.id));
+                if (selectedUnitId) formData.append('unit_id', String(selectedUnitId));
                 for (const f of quickFiles) formData.append('files', f);
                 const res = await fetch(`${process.env.REACT_APP_API_URL}/comments/${id}/address`, {
                   method: 'POST',
@@ -594,6 +620,7 @@ const AddressDetails = () => {
                 if (!res.ok) throw new Error('Failed to post comment');
                 setQuickContent('');
                 setQuickFiles([]);
+                setSelectedUnitId('');
                 setCommentsRefreshKey((k) => k + 1);
                 setActiveTab('comments');
               } catch (err) {
@@ -664,7 +691,23 @@ const AddressDetails = () => {
               </div>
             )}
 
-            <div className="flex justify-center">
+            <div className="flex items-center justify-center gap-3 flex-wrap">
+        {sortedUnitsForSelect && sortedUnitsForSelect.length > 0 && (
+                <select
+                  aria-label="Attach to unit"
+                  value={selectedUnitId}
+                  onChange={(e) => setSelectedUnitId(e.target.value)}
+                  className="h-14 rounded-lg border border-gray-300 bg-white text-gray-800 text-base px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-w-[9rem]"
+                >
+                  <option value="">No unit</option>
+          {sortedUnitsForSelect.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.number ? `Unit ${u.number}` : `Unit ${u.id}`}
+                    </option>
+                  ))}
+                </select>
+              )}
+
               <button
                 type="submit"
                 disabled={submittingQuick || (!quickContent.trim() && quickFiles.length === 0) || !user?.id}

@@ -91,7 +91,22 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
           accept="image/*,application/pdf"
           className="hidden"
           disabled={submitting}
-          onChange={(e) => setFiles(Array.from(e.target.files || []))}
+          onChange={(e) => {
+            const picked = Array.from(e.target.files || []);
+            if (picked.length === 0) return;
+            setFiles((prev) => {
+              const merged = [...prev];
+              for (const f of picked) {
+                const dup = merged.find(
+                  (m) => m.name === f.name && m.size === f.size && m.lastModified === f.lastModified
+                );
+                if (!dup) merged.push(f);
+              }
+              return merged;
+            });
+            // allow selecting the same file again in mobile/desktop flows
+            e.target.value = null;
+          }}
         />
         <label
           htmlFor="address-attachments"
@@ -111,8 +126,23 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
           >
             <path d="M21.44 11.05L12 20.5a6 6 0 1 1-8.49-8.49l9.9-9.9a4.5 4.5 0 1 1 6.36 6.36L9.88 19.36a3 3 0 1 1-4.24-4.24l8.49-8.49" />
           </svg>
-          {files.length > 0 ? 'Change files' : 'Choose files'}
+          {files.length > 0 ? 'Add files' : 'Choose files'}
         </label>
+        {files.length > 0 && (
+          <>
+            <span className="text-sm text-gray-700 whitespace-nowrap px-3 py-1.5 bg-gray-100 rounded-md">
+              {files.length} file{files.length > 1 ? 's' : ''}
+            </span>
+            <button
+              type="button"
+              className="text-xs text-gray-600 hover:text-gray-900 underline"
+              onClick={() => setFiles([])}
+              disabled={submitting}
+            >
+              Clear
+            </button>
+          </>
+        )}
 
         <button
           type="submit"
