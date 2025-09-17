@@ -18,7 +18,34 @@ export default function PendingInspections() {
           throw new Error("Failed to fetch pending inspections");
         }
         const data = await response.json();
-        setInspections(data);
+        const isToday = (iso) => {
+          if (!iso) return false;
+          const d = new Date(iso);
+          const now = new Date();
+          return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+        };
+        const toDate = (iso) => (iso ? new Date(iso) : null);
+        const sorted = [...data].sort((a, b) => {
+          const aToday = isToday(a.scheduled_datetime);
+          const bToday = isToday(b.scheduled_datetime);
+          if (aToday && !bToday) return -1; // today first
+          if (!aToday && bToday) return 1;
+
+          const aDate = toDate(a.scheduled_datetime);
+          const bDate = toDate(b.scheduled_datetime);
+
+          const aHas = !!aDate;
+          const bHas = !!bDate;
+
+          if (!aHas && bHas) return -1; // unscheduled next
+          if (aHas && !bHas) return 1;
+
+          if (aHas && bHas) {
+            return aDate - bDate; // remaining scheduled by soonest
+          }
+          return 0; // both unscheduled, keep order
+        });
+        setInspections(sorted);
         setLoading(false);
       } catch (error) {
         setError(error.message);

@@ -18,7 +18,15 @@ export default function ActiveViolations() {
           throw new Error("Failed to fetch active violations");
         }
         const data = await response.json();
-        setViolations(data);
+        const sorted = [...data].sort((a, b) => {
+          const da = a?.deadline_date ? new Date(a.deadline_date) : null;
+          const db = b?.deadline_date ? new Date(b.deadline_date) : null;
+          if (da && db) return da - db; // earliest first
+          if (da && !db) return -1;     // items with deadlines before those without
+          if (!da && db) return 1;
+          return 0;                     // keep relative order if both missing
+        });
+        setViolations(sorted);
         setLoading(false);
       } catch (error) {
         setError(error.message);

@@ -178,117 +178,154 @@ const AddressDetails = () => {
       {/* Address Information */}
 
       <div className="mb-4">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 flex flex-wrap items-center">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 flex flex-wrap items-center gap-x-2">
           {address.property_name && (
             <>
               <span className="break-words">{address.property_name}</span>
-              <span className="mx-2 hidden sm:inline">-</span>
+              <span className="hidden sm:inline">-</span>
             </>
           )}
           <span className="break-words">{address.combadd}</span>
         </h1>
 
-        {isEditing ? (
-          <>
-            <label htmlFor="property-name" className="block text-lg font-semibold text-gray-700">
-              Property Name:
-            </label>
-            <input
-              id="property-name"
-              type="text"
-              className="text-lg text-gray-600 border border-gray-300 rounded-md p-2 w-full"
-              value={address.property_name || ''}
-              onChange={(e) => setAddress({ ...address, property_name: e.target.value })}
-            />
+        <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+          {/* Actions */}
+          <div className="flex items-center justify-end mb-2">
+            {isEditing ? (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveAddress}
+                  className="px-3 py-1 rounded-md bg-green-600 text-white text-sm"
+                >
+                  Save
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="px-3 py-1 rounded-md bg-blue-600 text-white text-sm"
+              >
+                Edit
+              </button>
+            )}
+          </div>
 
-            <label htmlFor="owner-name" className="block text-lg font-semibold text-gray-700 mt-4">
-              Owner Name:
-            </label>
-            <input
-              id="owner-name"
-              type="text"
-              className="text-lg text-gray-600 border border-gray-300 rounded-md p-2 w-full"
-              value={address.ownername || ''}
-              onChange={(e) => setAddress({ ...address, ownername: e.target.value })}
-            />
+          {isEditing ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+              <div>
+                <label htmlFor="property-name" className="block text-xs font-medium text-gray-600">Property Name</label>
+                <input
+                  id="property-name"
+                  type="text"
+                  className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                  value={address.property_name || ''}
+                  onChange={(e) => setAddress({ ...address, property_name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label htmlFor="owner-name" className="block text-xs font-medium text-gray-600">Owner Name</label>
+                <input
+                  id="owner-name"
+                  type="text"
+                  className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                  value={address.ownername || ''}
+                  onChange={(e) => setAddress({ ...address, ownername: e.target.value })}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="owner-address" className="block text-xs font-medium text-gray-600">Owner Address</label>
+                <input
+                  id="owner-address"
+                  type="text"
+                  className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                  value={address.owneraddress || ''}
+                  onChange={(e) => setAddress({ ...address, owneraddress: e.target.value })}
+                />
+              </div>
+              <div>
+                <label htmlFor="owner-zip" className="block text-xs font-medium text-gray-600">Owner ZIP Code</label>
+                <input
+                  id="owner-zip"
+                  type="text"
+                  className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                  value={address.ownerzip || ''}
+                  onChange={(e) => setAddress({ ...address, ownerzip: e.target.value })}
+                />
+              </div>
+              <div>
+                <label htmlFor="vacancy-status" className="block text-xs font-medium text-gray-600">Vacancy Status</label>
+                <select
+                  id="vacancy-status"
+                  className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                  value={address.vacancy_status || ''}
+                  onChange={(e) => setAddress({ ...address, vacancy_status: e.target.value })}
+                >
+                  <option value="">Select status</option>
+                  <option value="occupied">Occupied</option>
+                  <option value="potentially vacant">Potentially Vacant</option>
+                  <option value="vacant">Vacant</option>
+                  <option value="registered">Registered</option>
+                </select>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <div>
+                <div className="text-xs text-gray-500">Owner</div>
+                <div className="text-gray-800">{address.ownername || 'N/A'}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500">Owner ZIP</div>
+                <div className="text-gray-800">{address.ownerzip || 'N/A'}</div>
+              </div>
+              <div className="sm:col-span-2">
+                <div className="text-xs text-gray-500">Owner Address</div>
+                <div className="text-gray-800">{address.owneraddress || 'N/A'}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500">Vacancy Status</div>
+                <div className="text-gray-800">{address.vacancy_status ? titlize(address.vacancy_status) : 'N/A'}</div>
+              </div>
+            </div>
+          )}
 
-            <label htmlFor="owner-address" className="block text-lg font-semibold text-gray-700 mt-4">
-              Owner Address:
-            </label>
-            <input
-              id="owner-address"
-              type="text"
-              className="text-lg text-gray-600 border border-gray-300 rounded-md p-2 w-full"
-              value={address.owneraddress || ''}
-              onChange={(e) => setAddress({ ...address, owneraddress: e.target.value })}
-            />
-
-            <label htmlFor="owner-zip" className="block text-lg font-semibold text-gray-700 mt-4">
-              Owner ZIP Code:
-            </label>
-            <input
-              id="owner-zip"
-              type="text"
-              className="text-lg text-gray-600 border border-gray-300 rounded-md p-2 w-full"
-              value={address.ownerzip || ''}
-              onChange={(e) => setAddress({ ...address, ownerzip: e.target.value })}
-            />
-
-            <label htmlFor="vacancy-status" className="block text-lg font-semibold text-gray-700 mt-4">
-              Vacancy Status:
-            </label>
-            <select
-              id="vacancy-status"
-              className="text-lg text-gray-600 border border-gray-300 rounded-md p-2 w-full"
-              value={address.vacancy_status || ''}
-              onChange={(e) => setAddress({ ...address, vacancy_status: e.target.value })}
-            >
-              <option value="">Select status</option>
-              <option value="occupied">Occupied</option>
-              <option value="potentially vacant">Potentially Vacant</option>
-              <option value="vacant">Vacant</option>
-              <option value="registered">Registered</option>
-            </select>
-
-            <button
-              onClick={saveAddress}
-              className="mt-4 px-4 py-2 bg-green-500 text-white rounded-md"
-            >
-              Save
-            </button>
-          </>
-        ) : (
-          <>
-            <p className="text-lg text-gray-600">{address.ownername || 'N/A'}</p>
-            <p className="text-lg text-gray-600 mt-2">{address.owneraddress || 'N/A'}</p>
-            <p className="text-lg text-gray-600 mt-2">{address.ownerzip || 'N/A'}</p>
-            <p className="text-lg text-gray-600 mt-2">Vacancy Status: {address.vacancy_status ? titlize(address.vacancy_status) : 'N/A'}</p>
-            <button
-              onClick={() => setIsEditing(true)}
-              className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md"
-            >
-              Edit
-            </button>
-          </>
-        )}
-
-        {address.aka && (
-          <>
-            <h2 className="text-2xl font-semibold text-gray-700">AKA:</h2>
-            <p className="text-lg text-gray-600">{address.aka}</p>
-          </>
-        )}
+          {address.aka && (
+            <p className="mt-2 text-xs text-gray-500 italic">AKA: {address.aka}</p>
+          )}
+        </div>
       </div>
 
-            {/* Google Maps Button */}
-            <button
+      {/* Google Maps Button */}
+      <button
+        type="button"
+        aria-label="Open address in Google Maps"
         onClick={() => {
-          const query = encodeURIComponent(`${address.streetnumb} ${address.streetname} ${address.ownerstate} ${address.ownerzip}`);
-          window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
-        }}
-        className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md"
+          const parts = [address.streetnumb, address.streetname, address.ownerstate, address.ownerzip].filter(Boolean).join(' ');
+            const query = encodeURIComponent(parts || address.combadd || '');
+            window.open(`https://www.google.com/maps/search/?api=1&query=${query}`,'_blank','noopener');
+          }}
+        className="group mt-2 inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-indigo-500 to-blue-600 px-4 py-2 text-sm font-medium text-white shadow transition-all hover:from-indigo-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 active:scale-[.97]"
       >
-        Open in Google Maps
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-5 w-5 text-white drop-shadow-sm"
+        >
+          <path d="M12 21s6-5.686 6-11a6 6 0 1 0-12 0c0 5.314 6 11 6 11z" />
+          <circle cx="12" cy="10" r="2.6" />
+        </svg>
+        <span className="whitespace-nowrap">Open in Google Maps</span>
       </button>
 
       {/* Units Tab Content */}
