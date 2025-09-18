@@ -255,6 +255,16 @@ const AddressDetails = () => {
                 />
               </div>
               <div>
+                <label htmlFor="aka" className="block text-xs font-medium text-gray-600">AKA</label>
+                <input
+                  id="aka"
+                  type="text"
+                  className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                  value={address.aka || ''}
+                  onChange={(e) => setAddress({ ...address, aka: e.target.value })}
+                />
+              </div>
+              <div>
                 <label htmlFor="owner-name" className="block text-xs font-medium text-gray-600">Owner Name</label>
                 <input
                   id="owner-name"
@@ -327,32 +337,65 @@ const AddressDetails = () => {
         </div>
       </div>
 
-      {/* Google Maps Button */}
-      <button
-        type="button"
-        aria-label="Open address in Google Maps"
-        onClick={() => {
-          const parts = [address.streetnumb, address.streetname, address.ownerstate, address.ownerzip].filter(Boolean).join(' ');
+      {/* External Links: Google Maps + SDAT (if available) */}
+      <div className="flex flex-wrap items-center gap-2 mt-2">
+        <button
+          type="button"
+          aria-label="Open address in Google Maps"
+          onClick={() => {
+            const parts = [address.streetnumb, address.streetname, address.ownerstate, address.ownerzip].filter(Boolean).join(' ');
             const query = encodeURIComponent(parts || address.combadd || '');
             window.open(`https://www.google.com/maps/search/?api=1&query=${query}`,'_blank','noopener');
           }}
-        className="group mt-2 inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-indigo-500 to-blue-600 px-4 py-2 text-sm font-medium text-white shadow transition-all hover:from-indigo-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 active:scale-[.97]"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-5 w-5 text-white drop-shadow-sm"
-        >
-          <path d="M12 21s6-5.686 6-11a6 6 0 1 0-12 0c0 5.314 6 11 6 11z" />
-          <circle cx="12" cy="10" r="2.6" />
-        </svg>
-        <span className="whitespace-nowrap">Open in Google Maps</span>
-      </button>
+          className="group inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-indigo-500 to-blue-600 px-4 py-2 text-sm font-medium text-white shadow transition-all hover:from-indigo-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 active:scale-[.97]"
+       >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-5 w-5 text-white drop-shadow-sm"
+          >
+            <path d="M12 21s6-5.686 6-11a6 6 0 1 0-12 0c0 5.314 6 11 6 11z" />
+            <circle cx="12" cy="10" r="2.6" />
+          </svg>
+          <span className="whitespace-nowrap">Open in Google Maps</span>
+        </button>
+
+        {(() => {
+          const district = (address.district || '').trim();
+          const propertyId = (address.property_id || '').trim();
+          if (!district || !propertyId) return null;
+          const sdatUrl = `https://sdat.dat.maryland.gov/RealProperty/Pages/viewdetails.aspx?County=17&SearchType=ACCT&District=${encodeURIComponent(district)}&AccountNumber=${encodeURIComponent(propertyId)}`;
+          return (
+            <a
+              href={sdatUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-emerald-500 to-green-600 px-4 py-2 text-sm font-medium text-white shadow transition-all hover:from-emerald-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 active:scale-[.97]"
+              title={`Open SDAT for District ${district}, Account ${propertyId}`}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-5 w-5 text-white drop-shadow-sm"
+              >
+                <path d="M3 7a2 2 0 0 1 2-2h6l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+                <path d="M14 12h6" />
+              </svg>
+              <span className="whitespace-nowrap">Open SDAT</span>
+            </a>
+          );
+        })()}
+      </div>
 
       {/* Units Tab Content */}
       {activeTab === 'units' && (

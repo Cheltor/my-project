@@ -161,7 +161,7 @@ export default function NewComplaint() {
     const data = await response.json();
   
     return data.map((address) => ({
-      label: `${address.property_name ? address.property_name + " - " : ""}${address.combadd}`,
+      label: `${address.property_name ? address.property_name + " - " : ""}${address.combadd}${address.aka ? ` (AKA: ${address.aka})` : ""}`,
       value: address.id,
     }));
   };

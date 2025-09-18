@@ -23,7 +23,7 @@ export default function NewBusinessForm({ onCancel, onCreated, embedded = false 
     const data = await res.json();
     return data.map((addr) => ({
       value: addr.id,
-      label: `${addr.property_name ? addr.property_name + ' - ' : ''}${addr.combadd}`,
+      label: `${addr.property_name ? addr.property_name + ' - ' : ''}${addr.combadd}${addr.aka ? ` (AKA: ${addr.aka})` : ''}`,
     }));
   };
 

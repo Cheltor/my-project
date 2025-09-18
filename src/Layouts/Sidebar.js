@@ -48,7 +48,6 @@ function classNames(...classes) {
 export default function Sidebar({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(''); // State for search input
-  const [addresses, setAddresses] = useState([]); // State to hold all addresses
   const [filteredAddresses, setFilteredAddresses] = useState([]); // State for filtered addresses
   const [loading, setLoading] = useState(false); // Loading state for API call
   const [error, setError] = useState(null); // Error state for API call
@@ -58,45 +57,50 @@ export default function Sidebar({ children }) {
   const navigate = useNavigate(); // To navigate programmatically
   const { user } = useAuth(); // Get user data from context
 
-  // Fetch addresses on component mount
+  // Search addresses via API when query changes (debounced)
   useEffect(() => {
-    setLoading(true);
-    fetch(`${process.env.REACT_APP_API_URL}/addresses/`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch addresses');
-        }
-        return response.json();
-      })
-      .then((data) => {
-        setAddresses(data);
-        setLoading(false);
-      })
-      .catch((error) => {
-        setError(error.message);
-        setLoading(false);
-      });
-  }, []); // Runs once after the initial render
-
-  // Handle search query change
-  const handleSearchChange = (event) => {
-    const query = event.target.value.toLowerCase();
-    setSearchQuery(query);
-
-    if (query.length >= 4) {
-      const filtered = addresses.filter(
-        (address) =>
-          (address.combadd && address.combadd.toLowerCase().includes(query)) ||
-          (address.ownername && address.ownername.toLowerCase().includes(query)) ||
-          (address.property_name && address.property_name.toLowerCase().includes(query))
-      );
-      setFilteredAddresses(filtered);
-      setShowDropdown(filtered.length > 0); // Show dropdown if there are matches
-      setActiveIndex(-1); // Reset activeIndex when new search is done
-    } else {
-      setShowDropdown(false); // Hide dropdown if less than 4 characters
-      setFilteredAddresses([]); // Clear filtered results
+    const q = (searchQuery || '').trim();
+    if (q.length < 2) {
+      setFilteredAddresses([]);
+      setShowDropdown(false);
+      setLoading(false);
+      return;
     }
+
+    setLoading(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `${process.env.REACT_APP_API_URL}/addresses/search?query=${encodeURIComponent(q)}&limit=10`,
+          { signal: controller.signal }
+        );
+        if (!res.ok) throw new Error('Failed to search addresses');
+        const data = await res.json();
+        setFilteredAddresses(Array.isArray(data) ? data : []);
+        setShowDropdown((data || []).length > 0);
+      } catch (e) {
+        if (e.name !== 'AbortError') {
+          setError(e.message || 'Search failed');
+          setFilteredAddresses([]);
+          setShowDropdown(false);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeout);
+    };
+  }, [searchQuery]);
+
+  // Handle search query change (debounced effect will fetch)
+  const handleSearchChange = (event) => {
+    const query = event.target.value;
+    setSearchQuery(query);
+    setActiveIndex(-1);
   };
 
   // Handle dropdown selection
@@ -307,7 +311,7 @@ export default function Sidebar({ children }) {
               {showDropdown && (
                 <div className="absolute w-full bg-white shadow-md rounded-md z-50 mt-1">
                   <ul className="dropdown-list max-h-60 overflow-auto">
-                    {filteredAddresses.map((address, index) => (
+          {filteredAddresses.map((address, index) => (
                       <li
                         key={address.id}
                         onMouseDown={() => handleDropdownSelect(address)}
@@ -315,8 +319,10 @@ export default function Sidebar({ children }) {
                           index === activeIndex ? 'bg-gray-200' : ''
                         }`}
                       >
-                        {address.property_name ? address.property_name + ' - ' : ''}
-                        {address.combadd} - {address.ownername}
+            {address.property_name ? address.property_name + ' - ' : ''}
+            {address.combadd}
+            {address.aka ? ` (AKA: ${address.aka})` : ''}
+            {address.ownername ? ` - ${address.ownername}` : ''}
                       </li>
                     ))}
                   </ul>
