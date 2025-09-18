@@ -8,6 +8,21 @@ const BusinessDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('details');
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFields, setEditFields] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    website: '',
+    trading_as: '',
+    unit_id: null,
+    is_closed: false,
+    opened_on: '',
+    employee_count: ''
+  });
+  const [units, setUnits] = useState([]);
 
   // Contacts state (copied/adapted from AddressDetail.js)
   const [contacts, setContacts] = useState([]);
@@ -26,6 +41,26 @@ const BusinessDetails = () => {
       })
       .then((data) => {
         setBusiness(data);
+        setEditFields({
+          name: data.name || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          website: data.website || '',
+          trading_as: data.trading_as || '',
+          unit_id: data.unit_id || null,
+          is_closed: !!data.is_closed,
+          opened_on: data.opened_on || '',
+          employee_count: typeof data.employee_count === 'number' ? String(data.employee_count) : '',
+        });
+        // Load units for the current address
+        if (data.address?.id) {
+          fetch(`${process.env.REACT_APP_API_URL}/addresses/${data.address.id}/units`)
+            .then((res) => (res.ok ? res.json() : []))
+            .then((list) => setUnits(Array.isArray(list) ? list : []))
+            .catch(() => setUnits([]));
+        } else {
+          setUnits([]);
+        }
         setLoading(false);
       })
       .catch((error) => {
@@ -116,7 +151,38 @@ const BusinessDetails = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg mt-10">
-      <h1 className="text-2xl font-semibold text-gray-800 mb-4">Business Details</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold text-gray-800">Business Details</h1>
+        <div className="flex items-center gap-3">
+          {isEditing ? (
+            <button
+              className="px-3 py-1 bg-gray-200 text-gray-800 rounded"
+              onClick={() => {
+                // Reset edits to current business values
+                if (business) {
+                  setEditFields({
+                    name: business.name || '',
+                    email: business.email || '',
+                    phone: business.phone || '',
+                    website: business.website || '',
+                    trading_as: business.trading_as || '',
+                    unit_id: business.unit_id || null,
+                    is_closed: !!business.is_closed,
+                    opened_on: business.opened_on || '',
+                    employee_count: typeof business.employee_count === 'number' ? String(business.employee_count) : '',
+                  });
+                }
+                setIsEditing(false);
+                setSaveMsg('');
+              }}
+            >Cancel</button>
+          ) : null}
+          <button
+            className={`px-3 py-1 rounded ${isEditing ? 'bg-blue-600 text-white' : 'bg-indigo-600 text-white'}`}
+            onClick={() => setIsEditing((v) => !v)}
+          >{isEditing ? 'Editing…' : 'Edit'}</button>
+        </div>
+      </div>
 
       {/* Pill-style Tab Navigation */}
       <div className="flex flex-col sm:flex-row gap-2 py-2 mb-4">
@@ -140,10 +206,167 @@ const BusinessDetails = () => {
           <div className="space-y-4">
             <div className="border-b pb-4">
               <h2 className="text-xl font-medium text-gray-700">Basic Information</h2>
-              <p className="text-sm text-gray-600"><strong>Business Name:</strong> {business.name}</p>
-              <p className="text-sm text-gray-600"><strong>Email:</strong> <a href={`mailto:${business.email}`} className="text-indigo-600 hover:text-indigo-800">{business.email}</a></p>
-              <p className="text-sm text-gray-600"><strong>Phone:</strong> {business.phone || 'N/A'}</p>
-              <p className="text-sm text-gray-600"><strong>Website:</strong> {business.website ? <a href={business.website} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800">{business.website}</a> : 'N/A'}</p>
+              {isEditing ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Business Name</label>
+                    <input
+                      type="text"
+                      value={editFields.name}
+                      onChange={(e) => setEditFields((p) => ({ ...p, name: e.target.value }))}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Email</label>
+                    <input
+                      type="email"
+                      value={editFields.email}
+                      onChange={(e) => setEditFields((p) => ({ ...p, email: e.target.value }))}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Phone</label>
+                    <input
+                      type="tel"
+                      value={editFields.phone}
+                      onChange={(e) => setEditFields((p) => ({ ...p, phone: e.target.value }))}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Website</label>
+                    <input
+                      type="url"
+                      value={editFields.website}
+                      onChange={(e) => setEditFields((p) => ({ ...p, website: e.target.value }))}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Trading As</label>
+                    <input
+                      type="text"
+                      value={editFields.trading_as}
+                      onChange={(e) => setEditFields((p) => ({ ...p, trading_as: e.target.value }))}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                    />
+                  </div>
+                  {units.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Unit</label>
+                      <select
+                        value={editFields.unit_id || ''}
+                        onChange={(e) => setEditFields((p) => ({ ...p, unit_id: e.target.value ? Number(e.target.value) : null }))}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                      >
+                        <option value="">Whole Building</option>
+                        {units.map((u) => (
+                          <option key={u.id} value={u.id}>{u.number}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-600"><strong>Business Name:</strong> {business.name || 'N/A'}</p>
+                  <p className="text-sm text-gray-600"><strong>Email:</strong> {business.email ? (<a href={`mailto:${business.email}`} className="text-indigo-600 hover:text-indigo-800">{business.email}</a>) : 'N/A'}</p>
+                  <p className="text-sm text-gray-600"><strong>Phone:</strong> {business.phone || 'N/A'}</p>
+                  <p className="text-sm text-gray-600"><strong>Website:</strong> {business.website ? (<a href={business.website} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800">{business.website}</a>) : 'N/A'}</p>
+                  <p className="text-sm text-gray-600"><strong>Trading As:</strong> {business.trading_as || 'N/A'}</p>
+                  {business.unit_id && units.length > 0 ? (
+                    <p className="text-sm text-gray-600"><strong>Unit:</strong> {(() => {
+                      const u = units.find((x) => x.id === business.unit_id);
+                      return u ? u.number : business.unit_id;
+                    })()}</p>
+                  ) : (
+                    <p className="text-sm text-gray-600"><strong>Unit:</strong> Whole Building</p>
+                  )}
+                </div>
+              )}
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                {isEditing ? (
+                  <>
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={!!editFields.is_closed}
+                        onChange={(e) => setEditFields((p) => ({ ...p, is_closed: e.target.checked }))}
+                        className="h-4 w-4"
+                      />
+                      <span className="text-sm text-gray-700">Closed</span>
+                    </label>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Opened On</label>
+                      <input
+                        type="date"
+                        value={editFields.opened_on || ''}
+                        onChange={(e) => setEditFields((p) => ({ ...p, opened_on: e.target.value }))}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Employee Count</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editFields.employee_count}
+                        onChange={(e) => setEditFields((p) => ({ ...p, employee_count: e.target.value }))}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-600"><strong>Closed:</strong> {business.is_closed ? 'Yes' : 'No'}</p>
+                    <p className="text-sm text-gray-600"><strong>Opened On:</strong> {business.opened_on ? new Date(business.opened_on).toLocaleDateString() : 'N/A'}</p>
+                    <p className="text-sm text-gray-600"><strong>Employee Count:</strong> {business.employee_count ?? 'N/A'}</p>
+                  </>
+                )}
+              </div>
+              {isEditing && (
+                <div className="mt-3 flex items-center gap-3">
+                  <button
+                    className="px-3 py-1 bg-indigo-600 text-white rounded disabled:opacity-60"
+                    disabled={saving}
+                    onClick={async () => {
+                      setSaving(true);
+                      setSaveMsg('');
+                      try {
+                        const payload = {
+                          name: editFields.name,
+                          email: editFields.email,
+                          phone: editFields.phone,
+                          website: editFields.website,
+                          trading_as: editFields.trading_as,
+                          unit_id: editFields.unit_id === '' ? null : editFields.unit_id,
+                          is_closed: !!editFields.is_closed,
+                          opened_on: editFields.opened_on || null,
+                          employee_count: editFields.employee_count === '' ? null : Number(editFields.employee_count),
+                        };
+                        const res = await fetch(`${process.env.REACT_APP_API_URL}/businesses/${id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(payload),
+                        });
+                        if (!res.ok) throw new Error('Save failed');
+                        const updated = await res.json();
+                        setBusiness(updated);
+                        setIsEditing(false);
+                        setSaveMsg('Saved');
+                        setTimeout(() => setSaveMsg(''), 1500);
+                      } catch (_) {
+                        setSaveMsg('Error saving');
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                  >{saving ? 'Saving…' : 'Save Changes'}</button>
+                  {saveMsg && <span className="text-sm text-gray-500">{saveMsg}</span>}
+                </div>
+              )}
             </div>
             <div className="border-b pb-4">
               <h2 className="text-xl font-medium text-gray-700">Address Information</h2>

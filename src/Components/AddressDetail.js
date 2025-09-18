@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import AddressPhotos from './Address/AddressPhotos'; // Update the import statement
 import Citations from './Address/AddressCitations';
@@ -25,6 +25,7 @@ const AddressDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('comments');
+  const [businesses, setBusinesses] = useState([]);
   // Quick comment (mobile) state
   const [quickContent, setQuickContent] = useState('');
   const [quickFiles, setQuickFiles] = useState([]);
@@ -165,6 +166,23 @@ const AddressDetails = () => {
       .catch((error) => {
         setError(error.message);
       });
+  }, [id]);
+
+  // Fetch businesses for this address (client-side filter)
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/businesses/`);
+        if (!res.ok) throw new Error('Failed to fetch businesses');
+        const data = await res.json();
+        const addrId = Number(id);
+        const list = Array.isArray(data) ? data.filter((b) => Number(b.address_id) === addrId) : [];
+        setBusinesses(list);
+      } catch (e) {
+        setBusinesses([]);
+      }
+    };
+    load();
   }, [id]);
 
   const handleUnitSelect = (unitId) => {
@@ -337,8 +355,8 @@ const AddressDetails = () => {
         </div>
       </div>
 
-      {/* External Links: Google Maps + SDAT (if available) */}
-      <div className="flex flex-wrap items-center gap-2 mt-2">
+  {/* External Links: Google Maps + SDAT (if available) + Quick tabs */}
+  <div className="flex flex-wrap items-center gap-2 mt-2">
         <button
           type="button"
           aria-label="Open address in Google Maps"
@@ -395,6 +413,34 @@ const AddressDetails = () => {
             </a>
           );
         })()}
+
+        {/* Quick access: Contacts */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('contacts')}
+          className="group inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+          title="View Contacts"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="3" />
+          </svg>
+          <span>Contacts</span>
+        </button>
+
+        {/* Quick access: Businesses */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('businesses')}
+          className="group inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+          title="View Businesses"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M3 21V7a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2v14" />
+            <path d="M3 10h18" />
+          </svg>
+          <span>Businesses</span>
+        </button>
       </div>
 
       {/* Units Tab Content */}
@@ -473,15 +519,7 @@ const AddressDetails = () => {
       )}
 
       {/* Pill-style Tab Navigation with Icons */}
-      <div className="flex flex-col sm:flex-row gap-2 py-2">
-        <button
-          className={`px-4 py-2 rounded-full ${
-            activeTab === 'contacts' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
-          }`}
-          onClick={() => setActiveTab('contacts')}
-        >
-          <i className="fas fa-user mr-1"></i> Contacts
-        </button>
+  <div className="flex flex-col sm:flex-row gap-2 py-2">
         <button
           className={`px-4 py-2 rounded-full ${
             activeTab === 'units' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
@@ -623,6 +661,33 @@ const AddressDetails = () => {
                   {addContactError && <div className="text-red-500 mt-2">{addContactError}</div>}
                 </div>
               </div>
+            )}
+          </div>
+        )}
+        {activeTab === 'businesses' && (
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-gray-700 mb-3">Businesses</h2>
+            {businesses.length === 0 ? (
+              <p className="text-gray-500">No businesses associated with this address.</p>
+            ) : (
+              <ul className="divide-y divide-gray-200 border border-gray-200 rounded-md">
+                {businesses.map((b) => (
+                  <li key={b.id} className="p-3 flex items-center justify-between">
+                    <div>
+                      <Link to={`/businesses/${b.id}`} className="font-semibold text-blue-700 hover:underline hover:text-blue-900">
+                        {b.name || 'Untitled Business'}
+                      </Link>
+                      {b.trading_as && (
+                        <div className="text-xs text-gray-500">Trading as: {b.trading_as}</div>
+                      )}
+                      <div className="text-xs text-gray-500">{b.phone || b.email || b.website || ''}</div>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded ${b.is_closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                      {b.is_closed ? 'Closed' : 'Open'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         )}

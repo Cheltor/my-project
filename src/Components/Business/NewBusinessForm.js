@@ -14,7 +14,11 @@ export default function NewBusinessForm({ onCancel, onCreated, embedded = false 
     phone: '',
     email: '',
     website: '',
-    trading_as: '',
+  trading_as: '',
+  // New fields
+  is_closed: false,
+  opened_on: '', // yyyy-mm-dd
+  employee_count: '',
   });
 
   const loadAddressOptions = async (inputValue) => {
@@ -57,19 +61,26 @@ export default function NewBusinessForm({ onCancel, onCreated, embedded = false 
     }
     setSubmitting(true);
     try {
+      // Prepare payload with proper types
+      const payload = {
+        ...formData,
+        opened_on: formData.opened_on ? formData.opened_on : null,
+        employee_count: formData.employee_count === '' ? null : Number(formData.employee_count),
+        is_closed: !!formData.is_closed,
+      };
       const res = await fetch(`${process.env.REACT_APP_API_URL}/businesses/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(user?.token ? { Authorization: `Bearer ${user.token}` } : {}),
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error('Failed to create business');
       const created = await res.json();
       if (typeof onCreated === 'function') onCreated(created);
       if (typeof onCancel === 'function') onCancel();
-      setFormData({ name: '', address_id: null, unit_id: null, phone: '', email: '', website: '', trading_as: '' });
+      setFormData({ name: '', address_id: null, unit_id: null, phone: '', email: '', website: '', trading_as: '', is_closed: false, opened_on: '', employee_count: '' });
       setUnits([]);
     } catch (err) {
       setFormError(err.message);
@@ -162,6 +173,37 @@ export default function NewBusinessForm({ onCancel, onCreated, embedded = false 
               type="text"
               name="trading_as"
               value={formData.trading_as}
+              onChange={handleInputChange}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              id="is_closed_embedded"
+              type="checkbox"
+              checked={!!formData.is_closed}
+              onChange={(e) => setFormData((p) => ({ ...p, is_closed: e.target.checked }))}
+              className="h-4 w-4"
+            />
+            <label htmlFor="is_closed_embedded" className="text-sm font-medium text-gray-700">Closed</label>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Opened On</label>
+            <input
+              type="date"
+              name="opened_on"
+              value={formData.opened_on}
+              onChange={handleInputChange}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Employee Count</label>
+            <input
+              type="number"
+              min="0"
+              name="employee_count"
+              value={formData.employee_count}
               onChange={handleInputChange}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
             />
@@ -263,6 +305,37 @@ export default function NewBusinessForm({ onCancel, onCreated, embedded = false 
             type="text"
             name="trading_as"
             value={formData.trading_as}
+            onChange={handleInputChange}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            id="is_closed"
+            type="checkbox"
+            checked={!!formData.is_closed}
+            onChange={(e) => setFormData((p) => ({ ...p, is_closed: e.target.checked }))}
+            className="h-4 w-4"
+          />
+          <label htmlFor="is_closed" className="text-sm font-medium text-gray-700">Closed</label>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Opened On</label>
+          <input
+            type="date"
+            name="opened_on"
+            value={formData.opened_on}
+            onChange={handleInputChange}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Employee Count</label>
+          <input
+            type="number"
+            min="0"
+            name="employee_count"
+            value={formData.employee_count}
             onChange={handleInputChange}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
           />
