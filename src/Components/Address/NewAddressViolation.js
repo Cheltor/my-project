@@ -25,6 +25,7 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -70,6 +71,8 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
       setViolationType(VIOLATION_TYPE_OPTIONS[0].value);
       setDeadline(DEADLINE_OPTIONS[0]);
       if (onViolationAdded) onViolationAdded(newViolation);
+      // Close the form after successful submission
+      setShowForm(false);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -78,11 +81,22 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mt-4 space-y-4 bg-white border border-indigo-200 shadow-lg rounded-xl p-6 mb-6"
-      style={{ zIndex: 10 }}
-    >
+    <div className="mt-4 mb-6">
+      <button
+        type="button"
+        onClick={() => setShowForm((v) => !v)}
+        aria-expanded={showForm}
+        className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
+      >
+        {showForm ? 'Hide New Violation' : 'New Violation'}
+      </button>
+
+      {!showForm ? null : (
+        <form
+          onSubmit={handleSubmit}
+          className="mt-4 space-y-4 bg-white border border-indigo-200 shadow-lg rounded-xl p-6"
+          style={{ zIndex: 10 }}
+        >
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Violation Type</label>
         <select
@@ -130,16 +144,28 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
           ))}
         </select>
       </div>
-      <button
-        type="submit"
-        className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
-        disabled={submitting}
-      >
-        {submitting ? 'Submitting...' : 'Add Violation'}
-      </button>
+      <div className="flex gap-3">
+        <button
+          type="submit"
+          className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
+          disabled={submitting}
+        >
+          {submitting ? 'Submitting...' : 'Add Violation'}
+        </button>
+        <button
+          type="button"
+          className="mt-2 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+          onClick={() => setShowForm(false)}
+          disabled={submitting}
+        >
+          Cancel
+        </button>
+      </div>
       {error && <div className="text-red-500">{error}</div>}
       {success && <div className="text-green-600">Violation created!</div>}
     </form>
+      )}
+    </div>
   );
 };
 

@@ -64,8 +64,15 @@ const AddressViolations = ({ addressId }) => {
     }, new Map()).values()
   );
 
+  // Sort violations: most recent first (prefer updated_at, fallback to created_at)
+  const sortedViolations = [...violations].sort((a, b) => {
+    const aDate = new Date(a.updated_at || a.created_at || 0);
+    const bDate = new Date(b.updated_at || b.created_at || 0);
+    return bDate - aDate;
+  });
+
   // Filtering logic
-  const filteredViolations = violations.filter(v => {
+  const filteredViolations = sortedViolations.filter(v => {
     const statusMatch = statusFilter === 'all' || v.status === parseInt(statusFilter, 10);
     const codeMatch = codeFilter === 'all' || (v.codes && v.codes.some(c => String(c.id) === codeFilter));
     return statusMatch && codeMatch;

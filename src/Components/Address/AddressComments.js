@@ -54,31 +54,39 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
         return response.json();
       })
       .then((data) => {
-        // Once comments are fetched, fetch photos for each comment
-        const fetchPhotosPromises = data.map((comment) => {
-          return fetch(`${process.env.REACT_APP_API_URL}/comments/${comment.id}/photos`)
-            .then((response) => {
-              if (!response.ok) {
-                // If no photos are found, return an empty array
-                return [];
+        // For each comment, fetch photos and unit details (if unit not provided)
+        const fetchExtrasPromises = data.map(async (comment) => {
+          // Photos
+          let photos = [];
+          try {
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/${comment.id}/photos`);
+            if (response.ok) {
+              photos = await response.json();
+            }
+          } catch (error) {
+            console.error(`Error fetching photos for comment ${comment.id}:`, error);
+          }
+
+          // Unit details (if missing but unit_id present)
+          let unit = comment.unit;
+          if (!unit && comment.unit_id) {
+            try {
+              const uResp = await fetch(`${process.env.REACT_APP_API_URL}/units/${comment.unit_id}`);
+              if (uResp.ok) {
+                unit = await uResp.json();
               }
-              return response.json();
-            })
-            .then((photos) => {
-              // Attach the photos to the comment
-              return { ...comment, photos };
-            })
-            .catch((error) => {
-              console.error(`Error fetching photos for comment ${comment.id}:`, error);
-              // Return the comment without photos in case of error
-              return { ...comment, photos: [] };
-            });
+            } catch (e) {
+              console.error(`Error fetching unit for comment ${comment.id}:`, e);
+            }
+          }
+
+          return { ...comment, photos, unit };
         });
 
-        // Wait for all comments with their photos to be fetched
-        Promise.all(fetchPhotosPromises)
-          .then((commentsWithPhotos) => {
-            setComments(commentsWithPhotos);
+        // Wait for all comments with their extras to be fetched
+        Promise.all(fetchExtrasPromises)
+          .then((commentsWithExtras) => {
+            setComments(commentsWithExtras);
             setPage(initialPage);
             setLoading(false);
           })
@@ -107,26 +115,40 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
       setPage(1);
       return;
     }
-    // Optionally fetch photos for the new comment
-    fetch(`${process.env.REACT_APP_API_URL}/comments/${newComment.id}/photos`)
-      .then((response) => {
-        if (!response.ok) {
-          // If no photos are found, return an empty array
-          return [];
+    // Fetch photos (and unit if needed) for the new comment
+    (async () => {
+      try {
+        let photos = [];
+        try {
+          const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/${newComment.id}/photos`);
+          if (response.ok) {
+            photos = await response.json();
+          }
+        } catch (e) {
+          console.error(`Error fetching photos for new comment ${newComment.id}:`, e);
         }
-        return response.json();
-      })
-      .then((photos) => {
-        // Attach the photos to the new comment
-    const newCommentWithPhotos = { ...newComment, photos };
-    setComments([newCommentWithPhotos, ...comments]);
-    setPage(1);
-      })
-      .catch((error) => {
-        console.error(`Error fetching photos for new comment ${newComment.id}:`, error);
-    setComments([newComment, ...comments]);
-    setPage(1);
-      });
+
+        let unit = newComment.unit;
+        if (!unit && newComment.unit_id) {
+          try {
+            const uResp = await fetch(`${process.env.REACT_APP_API_URL}/units/${newComment.unit_id}`);
+            if (uResp.ok) {
+              unit = await uResp.json();
+            }
+          } catch (e) {
+            console.error(`Error fetching unit for new comment ${newComment.id}:`, e);
+          }
+        }
+
+        const newCommentWithExtras = { ...newComment, photos, unit };
+        setComments([newCommentWithExtras, ...comments]);
+        setPage(1);
+      } catch (error) {
+        console.error(`Error enriching new comment ${newComment.id}:`, error);
+        setComments([newComment, ...comments]);
+        setPage(1);
+      }
+    })();
   };
 
   const total = comments.length;
@@ -197,7 +219,15 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
                 <p className="text-sm text-gray-500">
                   By {comment.user.name ? comment.user.name : comment.user.email}
                   {comment.unit_id && (
-                    <span> &middot; <Link to={`/address/${comment.address_id}/unit/${comment.unit_id}`} className="text-blue-500 hover:underline">Unit {comment.unit && comment.unit.number ? comment.unit.number : comment.unit_id}</Link></span>
+                    <span>
+                      {' '}&middot;{' '}
+                      <Link
+                        to={`/address/${comment.address_id}/unit/${comment.unit_id}`}
+                        className="text-blue-500 hover:underline"
+                      >
+                        {`Unit${comment.unit && comment.unit.number ? ` ${comment.unit.number}` : ''}`}
+                      </Link>
+                    </span>
                   )}
                 </p>
               )}
