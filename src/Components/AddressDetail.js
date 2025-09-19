@@ -8,6 +8,8 @@ import Comments from './Address/AddressComments';
 import Complaints from './Address/AddressComplaints';
 import Inspections from './Address/AddressInspections';
 import useUnitSearch from './Address/useUnitSearch';
+import AddressLicenses from './Address/AddressLicenses';
+import AddressPermits from './Address/AddressPermits';
 import NewUnit from './Inspection/NewUnit';  // Import NewUnit component
 
 // Utility function to titlize a string
@@ -26,6 +28,7 @@ const AddressDetails = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('comments');
   const [businesses, setBusinesses] = useState([]);
+  const [addrLicenses, setAddrLicenses] = useState([]);
   // Quick comment (mobile) state
   const [quickContent, setQuickContent] = useState('');
   const [quickFiles, setQuickFiles] = useState([]);
@@ -185,6 +188,46 @@ const AddressDetails = () => {
     load();
   }, [id]);
 
+  // Fetch licenses for this address (for quick status under Owner ZIP)
+  useEffect(() => {
+    const load = async () => {
+      if (!id) return;
+      try {
+        const base = process.env.REACT_APP_API_URL;
+        let res = await fetch(`${base}/licenses/address/${id}`);
+        if (!res.ok) {
+          res = await fetch(`${base}/licenses/?address_id=${encodeURIComponent(id)}`);
+        }
+        if (!res.ok) {
+          res = await fetch(`${base}/licenses/`);
+        }
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data) ? data.filter((l) => String(l.address_id) === String(id)) : [];
+          setAddrLicenses(list);
+        } else {
+          setAddrLicenses([]);
+        }
+      } catch {
+        setAddrLicenses([]);
+      }
+    };
+    load();
+  }, [id]);
+
+  const mostRecentExpiredLicense = useMemo(() => {
+    if (!Array.isArray(addrLicenses) || addrLicenses.length === 0) return null;
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const expired = addrLicenses.filter((l) => {
+      const d = l?.expiration_date ? new Date(l.expiration_date).getTime() : null;
+      return typeof d === 'number' && d < startOfToday;
+    });
+    if (expired.length === 0) return null;
+    expired.sort((a, b) => new Date(b.expiration_date).getTime() - new Date(a.expiration_date).getTime());
+    return expired[0];
+  }, [addrLicenses]);
+
   const handleUnitSelect = (unitId) => {
     navigate(`/address/${id}/unit/${unitId}`);
   };
@@ -216,6 +259,18 @@ const AddressDetails = () => {
   if (!address) return <div className="text-center mt-10">No address details available.</div>;
 
   console.log('Address units:', units);  // Debug log
+
+  // Tab button styles (active vs inactive)
+  const tabBtnBase = "group inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2";
+  const tabBtnInactive = "bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-300";
+  const tabBtnActive = "bg-indigo-600 text-white hover:bg-indigo-500 focus:ring-indigo-500";
+
+  // License type labels for quick badges
+  const LICENSE_TYPE_LABELS = {
+    1: 'Business License',
+    2: 'Single Family License',
+    3: 'Multifamily License',
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-5 pt-4 pb-36 sm:pb-6 bg-white shadow-md rounded-lg mt-6 space-y-8">
@@ -338,6 +393,33 @@ const AddressDetails = () => {
                 <div className="text-xs text-gray-500">Owner ZIP</div>
                 <div className="text-gray-800">{address.ownerzip || 'N/A'}</div>
               </div>
+              {mostRecentExpiredLicense && (
+                <div>
+                  <div className="text-xs text-gray-500">License</div>
+                  <div className="text-sm">
+                    <Link
+                      to={`/license/${mostRecentExpiredLicense.id}`}
+                      className="inline-flex items-center gap-2 px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200"
+                      title="View expired license"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="15" y1="9" x2="9" y2="15" />
+                        <line x1="9" y1="9" x2="15" y2="15" />
+                      </svg>
+                      <span>
+                        Expired {mostRecentExpiredLicense.expiration_date ? new Date(mostRecentExpiredLicense.expiration_date).toLocaleDateString() : ''}
+                        {(() => {
+                          const t = mostRecentExpiredLicense?.license_type;
+                          const label = LICENSE_TYPE_LABELS?.[t] || (t != null ? String(t) : '');
+                          return label ? ` • ${label}` : '';
+                        })()}
+                        {mostRecentExpiredLicense.license_number ? ` • #${mostRecentExpiredLicense.license_number}` : ''}
+                      </span>
+                    </Link>
+                  </div>
+                </div>
+              )}
               <div className="sm:col-span-2">
                 <div className="text-xs text-gray-500">Owner Address</div>
                 <div className="text-gray-800">{address.owneraddress || 'N/A'}</div>
@@ -365,7 +447,7 @@ const AddressDetails = () => {
             const query = encodeURIComponent(parts || address.combadd || '');
             window.open(`https://www.google.com/maps/search/?api=1&query=${query}`,'_blank','noopener');
           }}
-          className="group inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-indigo-500 to-blue-600 px-4 py-2 text-sm font-medium text-white shadow transition-all hover:from-indigo-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 active:scale-[.97]"
+          className="group inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-emerald-500 to-green-600 px-4 py-2 text-sm font-medium text-white shadow transition-all hover:from-emerald-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 active:scale-[.97]"
        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -393,7 +475,7 @@ const AddressDetails = () => {
               href={sdatUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="group inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-emerald-500 to-green-600 px-4 py-2 text-sm font-medium text-white shadow transition-all hover:from-emerald-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 active:scale-[.97]"
+              className="group inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2 text-sm font-medium text-white shadow transition-all hover:from-amber-600 hover:to-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 active:scale-[.97]"
               title={`Open SDAT for District ${district}, Account ${propertyId}`}
             >
               <svg
@@ -418,7 +500,8 @@ const AddressDetails = () => {
         <button
           type="button"
           onClick={() => setActiveTab('contacts')}
-          className="group inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+          aria-pressed={activeTab === 'contacts'}
+          className={`${tabBtnBase} ${activeTab === 'contacts' ? tabBtnActive : tabBtnInactive}`}
           title="View Contacts"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
@@ -432,7 +515,8 @@ const AddressDetails = () => {
         <button
           type="button"
           onClick={() => setActiveTab('businesses')}
-          className="group inline-flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+          aria-pressed={activeTab === 'businesses'}
+          className={`${tabBtnBase} ${activeTab === 'businesses' ? tabBtnActive : tabBtnInactive}`}
           title="View Businesses"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
@@ -440,6 +524,122 @@ const AddressDetails = () => {
             <path d="M3 10h18" />
           </svg>
           <span>Businesses</span>
+        </button>
+
+        {/* Main tabs: Units → Permits (same row styling) */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('units')}
+          aria-pressed={activeTab === 'units'}
+          className={`${tabBtnBase} ${activeTab === 'units' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M3 21V7a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2v14" />
+            <path d="M3 10h18" />
+            <path d="M7 14h2M11 14h2M15 14h2M7 18h2M11 18h2M15 18h2" />
+          </svg>
+          <span>Units</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('comments')}
+          aria-pressed={activeTab === 'comments'}
+          className={`${tabBtnBase} ${activeTab === 'comments' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M21 15a4 4 0 0 1-4 4H8l-4 3V7a4 4 0 0 1 4-4h9a4 4 0 0 1 4 4z" />
+            <path d="M8 9h8M8 12h5" />
+          </svg>
+          <span>Comments</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('violations')}
+          aria-pressed={activeTab === 'violations'}
+          className={`${tabBtnBase} ${activeTab === 'violations' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M12 9v4" />
+            <path d="M12 17h.01" />
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          </svg>
+          <span>Violations</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('photos')}
+          aria-pressed={activeTab === 'photos'}
+          className={`${tabBtnBase} ${activeTab === 'photos' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M4 7h3l2-3h6l2 3h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" />
+            <circle cx="12" cy="13" r="3" />
+          </svg>
+          <span>Photos</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('citations')}
+          aria-pressed={activeTab === 'citations'}
+          className={`${tabBtnBase} ${activeTab === 'citations' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <path d="M14 2v6h6" />
+            <path d="M16 13H8M16 17H8M10 9H8" />
+          </svg>
+          <span>Citations</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('inspections')}
+          aria-pressed={activeTab === 'inspections'}
+          className={`${tabBtnBase} ${activeTab === 'inspections' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M21 21l-3.5-3.5" />
+          </svg>
+          <span>Inspections</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('complaints')}
+          aria-pressed={activeTab === 'complaints'}
+          className={`${tabBtnBase} ${activeTab === 'complaints' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+          </svg>
+          <span>Complaints</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('licenses')}
+          aria-pressed={activeTab === 'licenses'}
+          className={`${tabBtnBase} ${activeTab === 'licenses' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <circle cx="8" cy="12" r="2" />
+            <path d="M12 12h6M12 16h6" />
+          </svg>
+          <span>Licenses</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('permits')}
+          aria-pressed={activeTab === 'permits'}
+          className={`${tabBtnBase} ${activeTab === 'permits' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M9 3h6a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1V5a2 2 0 0 1 2-2z" />
+            <path d="M9 5h6" />
+            <path d="M9 14l2 2 4-4" />
+          </svg>
+          <span>Permits</span>
         </button>
       </div>
 
@@ -518,65 +718,7 @@ const AddressDetails = () => {
         </div>
       )}
 
-      {/* Pill-style Tab Navigation with Icons */}
-  <div className="flex flex-col sm:flex-row gap-2 py-2">
-        <button
-          className={`px-4 py-2 rounded-full ${
-            activeTab === 'units' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
-          }`}
-          onClick={() => setActiveTab('units')}
-        >
-          <i className="fas fa-building mr-1"></i> Units
-        </button>
-        <button
-          className={`px-4 py-2 rounded-full ${
-            activeTab === 'comments' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
-          }`}
-          onClick={() => setActiveTab('comments')}
-        >
-          <i className="fas fa-comments mr-1"></i> Comments
-        </button>
-        <button
-          className={`px-4 py-2 rounded-full ${
-            activeTab === 'violations' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
-          }`}
-          onClick={() => setActiveTab('violations')}
-        >
-          <i className="fas fa-exclamation-circle mr-1"></i> Violations
-        </button>
-        <button
-          className={`px-4 py-2 rounded-full ${
-            activeTab === 'photos' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
-          }`}
-          onClick={() => setActiveTab('photos')}
-        >
-          <i className="fas fa-camera mr-1"></i> Photos
-        </button>
-        <button
-          className={`px-4 py-2 rounded-full ${
-            activeTab === 'citations' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
-          }`}
-          onClick={() => setActiveTab('citations')}
-        >
-          <i className="fas fa-file-alt mr-1"></i> Citations
-        </button>
-        <button
-          className={`px-4 py-2 rounded-full ${
-            activeTab === 'inspections' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
-          }`}
-          onClick={() => setActiveTab('inspections')}
-        >
-          <i className="fas fa-search mr-1"></i> Inspections
-        </button>
-        <button
-          className={`px-4 py-2 rounded-full ${
-            activeTab === 'complaints' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
-          }`}
-          onClick={() => setActiveTab('complaints')}
-        >
-          <i className="fas fa-bullhorn mr-1"></i> Complaints
-        </button>
-      </div>
+  {/* Tabs moved above into the quick row */}
 
       {/* Tab Content */}
       <div className="mt-6">
@@ -703,7 +845,9 @@ const AddressDetails = () => {
         )}
         {activeTab === 'violations' && <Violations addressId={id} />}
         {activeTab === 'inspections' && <Inspections addressId={id} />}
-        {activeTab === 'complaints' && <Complaints addressId={id} />}
+  {activeTab === 'complaints' && <Complaints addressId={id} />}
+  {activeTab === 'licenses' && <AddressLicenses addressId={id} />}
+  {activeTab === 'permits' && <AddressPermits addressId={id} />}
       </div>
 
       {/* Sticky Quick Comment Bar (mobile only) */}

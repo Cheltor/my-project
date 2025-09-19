@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 
-// Utility function to format the date
-const formatDate = (dateString) => {
-  const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-  return new Date(dateString).toLocaleDateString(undefined, options);
+// Match Inspections.js status formatting
+const formatStatus = (s) => {
+  if (!s) return 'Pending';
+  return s
+    .toString()
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
 };
 
 const AddressInspections = ({ addressId }) => {
   const [inspections, setInspections] = useState([]);
-  const [loading, setLoading] = useState(true);  // For loading state
-  const [error, setError] = useState(null);      // For error state
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     // Fetch inspections for the specific address
@@ -21,46 +27,64 @@ const AddressInspections = ({ addressId }) => {
         return response.json();
       })
       .then((data) => {
-        setInspections(data);  // Set the fetched inspections
-        setLoading(false);   // Set loading to false once data is fetched
+        setInspections(data || []);
+        setLoading(false);
       })
       .catch((error) => {
-        setError(error.message);  // Handle any errors
+        setError(error.message);
         setLoading(false);
       });
   }, [addressId]);
 
-  if (loading) {
-    return <p>Loading inspections...</p>;
-  }
+  if (loading) return <p>Loading inspections...</p>;
+  if (error) return <p className="text-red-500">Error: {error}</p>;
+  if (!inspections || inspections.length === 0) return <p>No inspections available.</p>;
 
-  if (error) {
-    return <p className="text-red-500">Error: {error}</p>;
-  }
-
-  if (inspections.length === 0) {
-    return <p>No inspections available.</p>;
-  }
+  // Newest first: prefer scheduled_datetime, fallback to created_at
+  const sorted = [...inspections].sort((a, b) => {
+    const da = new Date(a.scheduled_datetime || a.created_at || 0);
+    const db = new Date(b.scheduled_datetime || b.created_at || 0);
+    return db - da;
+  });
 
   return (
-    <div className="border-b pb-4">
-      <h2 className="text-2xl font-semibold text-gray-700">Inspections</h2>
-      <ul className="space-y-4 mt-4">
-        {inspections.map((inspection) => (
-          <li key={inspection.id} className="bg-gray-100 p-4 rounded-lg shadow">
-            <p className="text-gray-700"><strong>Status:</strong> {inspection.status || 'Pending'}</p>
-            <p className="text-gray-700"><strong>Inspection Type:</strong> {inspection.inspection_type || 'N/A'}</p>
-            {inspection.comment && (
-              <p className="text-gray-700"><strong>Comment:</strong> {inspection.comment}</p>
-            )}
-            <p className="text-sm text-gray-500 mt-2">Created on {formatDate(inspection.created_at)}</p>
-            {inspection.updated_at && (
-              <p className="text-sm text-gray-500">Updated on {formatDate(inspection.updated_at)}</p>
-            )}
-            <a href={`/inspection/${inspection.id}`} className="text-blue-500 hover:underline mt-2 block">View Inspection</a>
-          </li>
-        ))}
-      </ul>
+    <div className="mt-6">
+      <h2 className="text-lg font-semibold text-gray-900">Inspections</h2>
+      <div className="mt-4 overflow-x-auto rounded-lg shadow-md">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scheduled Date</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {sorted.map((inspection) => (
+              <tr key={inspection.id}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <Link to={`/inspection/${inspection.id}`} className="text-indigo-600 hover:text-indigo-900">
+                    {inspection.source || '—'}
+                  </Link>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <span
+                    className={`inline-block px-2 py-1 text-sm font-semibold rounded 
+                      ${inspection.status === 'Satisfactory' || (inspection.status && inspection.status.toLowerCase() === 'completed') ? 'bg-green-100 text-green-800' :
+                        inspection.status === 'Unsatisfactory' ? 'bg-red-100 text-red-800' :
+                        'bg-yellow-100 text-yellow-800'}`}
+                  >
+                    {formatStatus(inspection.status)}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {inspection.scheduled_datetime ? new Date(inspection.scheduled_datetime).toLocaleString() : 'Unscheduled'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

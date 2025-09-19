@@ -11,6 +11,7 @@ export default function Inspections() {
   const [statusFilter, setStatusFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
 
   const formatStatus = (s) => {
     if (!s) return 'Pending';
@@ -93,10 +94,20 @@ export default function Inspections() {
             A list of all inspections, including their status, source, and associated address.
           </p>
         </div>
+        <div className="mt-4 sm:mt-0 sm:ml-auto">
+          <button
+            type="button"
+            onClick={() => setShowFilters((v) => !v)}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-700 hover:bg-gray-600"
+          >
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
+          </button>
+        </div>
   {/* Add inspection button removed */}
       </div>
 
       {/* Filters */}
+      {showFilters && (
       <div className="mt-4 bg-white rounded-lg shadow p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
@@ -155,6 +166,7 @@ export default function Inspections() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Responsive Table Container */}
       <div className="mt-8 overflow-x-auto rounded-lg shadow-md">

@@ -13,6 +13,7 @@ export default function Conduct() {
   const [unitAreaCounts, setUnitAreaCounts] = useState({});
   const [searchQuery, setSearchQuery] = useState(''); // For searching units
   const [showNewUnitForm, setShowNewUnitForm] = useState(false);
+  const [showUnitsCard, setShowUnitsCard] = useState(false); // Toggle for entire Units card
   const [newAreaName, setNewAreaName] = useState(''); // State for new area name
   const [rooms, setRooms] = useState([]); // State for rooms
   const [selectedRoomId, setSelectedRoomId] = useState(''); // State for selected room
@@ -22,6 +23,7 @@ export default function Conduct() {
   const [statusSavedAt, setStatusSavedAt] = useState(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [showNewAreaForm, setShowNewAreaForm] = useState(false);
+  const [potentialCount, setPotentialCount] = useState(null); // count of potential violations
 
   const canonicalStatus = (s) => {
     if (!s) return 'Pending';
@@ -82,6 +84,23 @@ export default function Conduct() {
     fetchInspection();
     fetchAreas();
     fetchRooms();
+  }, [id]);
+
+  useEffect(() => {
+    // Fetch potential observations count for badge on Review button
+    let cancelled = false;
+    async function loadCount() {
+      try {
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/potential-observations`);
+        if (!res.ok) throw new Error('Failed to fetch potential observations');
+        const list = await res.json();
+        if (!cancelled) setPotentialCount(Array.isArray(list) ? list.length : 0);
+      } catch {
+        if (!cancelled) setPotentialCount(0);
+      }
+    }
+    if (id) loadCount();
+    return () => { cancelled = true; };
   }, [id]);
 
   useEffect(() => {
@@ -265,9 +284,12 @@ export default function Conduct() {
       <div className="mt-4 flex items-center justify-center">
         <Link
           to={`/inspections/${id}/review`}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-500"
+          className="inline-flex items-center px-6 py-3 border border-transparent text-base leading-6 font-semibold rounded-lg text-white bg-emerald-600 hover:bg-emerald-500 shadow-sm"
         >
-          Review Potential Violations
+          <span>Review Potential Violations</span>
+          <span className="ml-3 inline-flex items-center justify-center rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold min-w-[1.5rem]">
+            {potentialCount === null ? '…' : potentialCount}
+          </span>
         </Link>
       </div>
 
@@ -275,8 +297,18 @@ export default function Conduct() {
       <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* Left: Units */}
         <div className="p-4 sm:p-6 rounded-md bg-white shadow">
-          <h4 className="text-sm font-semibold leading-5 text-gray-900">Units</h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold leading-5 text-gray-900">Units</h4>
+            <button
+              type="button"
+              onClick={() => setShowUnitsCard(!showUnitsCard)}
+              className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-gray-700 hover:bg-gray-600"
+            >
+              {showUnitsCard ? 'Hide' : 'Show'}
+            </button>
+          </div>
           {/* Search input for filtering units */}
+          {showUnitsCard && (
           <div className="mt-3">
             <label htmlFor="search" className="block text-sm font-medium text-gray-700">Search Existing Units</label>
             <input
@@ -288,8 +320,10 @@ export default function Conduct() {
               placeholder="Search for a unit number"
             />
           </div>
+          )}
 
           {/* Units list */}
+          {showUnitsCard && (
           <div className="mt-4">
             {filteredUnits.length > 0 ? (
               <ul>
@@ -308,20 +342,25 @@ export default function Conduct() {
               <p>No units found matching your search.</p>
             )}
           </div>
+          )}
 
           {/* New Unit form toggle and form */}
-          <div className="mt-4">
-            <button
-              onClick={() => setShowNewUnitForm(!showNewUnitForm)}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500"
-            >
-              {showNewUnitForm ? 'Hide New Unit Form' : 'Add New Unit'}
-            </button>
-          </div>
-          {showNewUnitForm && (
-            <div className="mt-4">
-              <NewUnit addressId={inspection.address.id} inspectionId={id} />
-            </div>
+          {showUnitsCard && (
+            <>
+              <div className="mt-4">
+                <button
+                  onClick={() => setShowNewUnitForm(!showNewUnitForm)}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500"
+                >
+                  {showNewUnitForm ? 'Hide New Unit Form' : 'Add New Unit'}
+                </button>
+              </div>
+              {showNewUnitForm && (
+                <div className="mt-4">
+                  <NewUnit addressId={inspection.address.id} inspectionId={id} />
+                </div>
+              )}
+            </>
           )}
         </div>
 

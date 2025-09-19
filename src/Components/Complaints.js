@@ -54,10 +54,22 @@ export default function Complaints() {
   // Reset pagination when filter changes
   useEffect(() => { setCurrentPage(1); }, [statusFilter]);
 
-  const totalPages = Math.ceil(filteredComplaints.length / complaintsPerPage) || 1;
+  // Newest first: sort by created_at desc (fallback updated_at)
+  const sortedComplaints = React.useMemo(() => {
+    const toMillis = (c) => {
+      const d = c?.created_at ? new Date(c.created_at) : null;
+      if (d && !isNaN(d)) return d.getTime();
+      const u = c?.updated_at ? new Date(c.updated_at) : null;
+      if (u && !isNaN(u)) return u.getTime();
+      return 0;
+    };
+    return [...filteredComplaints].sort((a, b) => toMillis(b) - toMillis(a));
+  }, [filteredComplaints]);
+
+  const totalPages = Math.ceil(sortedComplaints.length / complaintsPerPage) || 1;
   const indexOfLastComplaint = currentPage * complaintsPerPage;
   const indexOfFirstComplaint = indexOfLastComplaint - complaintsPerPage;
-  const currentComplaints = filteredComplaints.slice(indexOfFirstComplaint, indexOfLastComplaint);
+  const currentComplaints = sortedComplaints.slice(indexOfFirstComplaint, indexOfLastComplaint);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
