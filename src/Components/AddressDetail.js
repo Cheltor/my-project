@@ -215,18 +215,37 @@ const AddressDetails = () => {
     load();
   }, [id]);
 
-  const mostRecentExpiredLicense = useMemo(() => {
+  const mostRecentLicense = useMemo(() => {
     if (!Array.isArray(addrLicenses) || addrLicenses.length === 0) return null;
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const expired = addrLicenses.filter((l) => {
-      const d = l?.expiration_date ? new Date(l.expiration_date).getTime() : null;
-      return typeof d === 'number' && d < startOfToday;
-    });
-    if (expired.length === 0) return null;
-    expired.sort((a, b) => new Date(b.expiration_date).getTime() - new Date(a.expiration_date).getTime());
-    return expired[0];
+    const getTime = (l) => {
+      if (l?.created_at) {
+        const t = new Date(l.created_at).getTime();
+        if (!Number.isNaN(t)) return t;
+      }
+      if (l?.date_issued) {
+        const t = new Date(l.date_issued).getTime();
+        if (!Number.isNaN(t)) return t;
+      }
+      if (l?.expiration_date) {
+        const t = new Date(l.expiration_date).getTime();
+        if (!Number.isNaN(t)) return t;
+      }
+      return 0;
+    };
+    const arr = [...addrLicenses];
+    arr.sort((a, b) => getTime(b) - getTime(a));
+    return arr[0];
   }, [addrLicenses]);
+
+  const mostRecentLicenseStatus = useMemo(() => {
+    if (!mostRecentLicense) return null;
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const exp = mostRecentLicense?.expiration_date ? new Date(mostRecentLicense.expiration_date) : null;
+    if (exp && exp.getTime() < startOfToday.getTime()) return { state: 'expired', date: exp };
+    if (exp) return { state: 'active', date: exp };
+    return { state: 'active', date: null }; // treat missing expiration as active/no-exp
+  }, [mostRecentLicense]);
 
   const handleUnitSelect = (unitId) => {
     navigate(`/address/${id}/unit/${unitId}`);
@@ -393,37 +412,52 @@ const AddressDetails = () => {
                 <div className="text-xs text-gray-500">Owner ZIP</div>
                 <div className="text-gray-800">{address.ownerzip || 'N/A'}</div>
               </div>
-              {mostRecentExpiredLicense && (
+              <div>
+                <div className="text-xs text-gray-500">Owner Address</div>
+                <div className="text-gray-800">{address.owneraddress || 'N/A'}</div>
+              </div>
+              {mostRecentLicense && (
                 <div>
                   <div className="text-xs text-gray-500">License</div>
                   <div className="text-sm">
                     <Link
-                      to={`/license/${mostRecentExpiredLicense.id}`}
-                      className="inline-flex items-center gap-2 px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200"
-                      title="View expired license"
+                      to={`/license/${mostRecentLicense.id}`}
+                      className={`inline-flex items-center gap-2 px-2 py-1 rounded ${
+                        mostRecentLicenseStatus?.state === 'expired'
+                          ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                          : 'bg-green-100 text-green-700 hover:bg-green-200'
+                      }`}
+                      title="View license details"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="15" y1="9" x2="9" y2="15" />
-                        <line x1="9" y1="9" x2="15" y2="15" />
+                        {mostRecentLicenseStatus?.state === 'expired' ? (
+                          <>
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="15" y1="9" x2="9" y2="15" />
+                            <line x1="9" y1="9" x2="15" y2="15" />
+                          </>
+                        ) : (
+                          <>
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M8 12l2 2 4-4" />
+                          </>
+                        )}
                       </svg>
                       <span>
-                        Expired {mostRecentExpiredLicense.expiration_date ? new Date(mostRecentExpiredLicense.expiration_date).toLocaleDateString() : ''}
+                        {mostRecentLicenseStatus?.state === 'expired'
+                          ? `Expired ${mostRecentLicenseStatus?.date ? mostRecentLicenseStatus.date.toLocaleDateString() : ''}`
+                          : `Active${mostRecentLicenseStatus?.date ? ` until ${mostRecentLicenseStatus.date.toLocaleDateString()}` : ''}`}
                         {(() => {
-                          const t = mostRecentExpiredLicense?.license_type;
+                          const t = mostRecentLicense?.license_type;
                           const label = LICENSE_TYPE_LABELS?.[t] || (t != null ? String(t) : '');
                           return label ? ` • ${label}` : '';
                         })()}
-                        {mostRecentExpiredLicense.license_number ? ` • #${mostRecentExpiredLicense.license_number}` : ''}
+                        {mostRecentLicense.license_number ? ` • #${mostRecentLicense.license_number}` : ''}
                       </span>
                     </Link>
                   </div>
                 </div>
               )}
-              <div className="sm:col-span-2">
-                <div className="text-xs text-gray-500">Owner Address</div>
-                <div className="text-gray-800">{address.owneraddress || 'N/A'}</div>
-              </div>
               <div>
                 <div className="text-xs text-gray-500">Vacancy Status</div>
                 <div className="text-gray-800">{address.vacancy_status ? titlize(address.vacancy_status) : 'N/A'}</div>

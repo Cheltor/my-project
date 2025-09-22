@@ -144,6 +144,20 @@ export default function InspectionDetail() {
               ) : "No address available"}
             </dd>
           </div>
+
+          {/* Business (if associated) */}
+          <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+            <dt className="text-sm font-medium leading-6 text-gray-900">Business</dt>
+            <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
+              {inspection.business_id ? (
+                <Link to={`/businesses/${inspection.business_id}`} className="text-indigo-600 hover:text-indigo-900">
+                  Business #{inspection.business_id}
+                </Link>
+              ) : (
+                'No business associated'
+              )}
+            </dd>
+          </div>
           
           {/* Inspector Information */}
           <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
