@@ -4,6 +4,7 @@ import WeeklyStats from './Dashboard/WeeklyStats';
 import RecentComments from './Dashboard/RecentComments';
 import PendingInspections from './Dashboard/PendingInspections';
 import ActiveViolations from './Dashboard/ActiveViolations';
+import AdminRecentActivity from './Dashboard/AdminRecentActivity';
 import NewComplaint from './Inspection/NewComplaint';
 import NewViolationForm from './Inspection/NewViolationForm';
 import NewMFLicense from './Inspection/NewMFLicense';
@@ -20,6 +21,7 @@ export default function Example() {
   const [showNewBuildingPermit, setShowNewBuildingPermit] = useState(false); // State to toggle NewBuildingPermit form
   const [showNewBusinessLicense, setShowNewBusinessLicense] = useState(false); // State to toggle NewBusinessLicense form
   const [showNewViolationForm, setShowNewViolationForm] = useState(false); // State to toggle NewViolationForm
+  const [showAdminWidgets, setShowAdminWidgets] = useState(false); // Admin widgets toggle
 
   const toggleNewComplaint = () => {
     setShowNewComplaint(!showNewComplaint);
@@ -73,6 +75,10 @@ export default function Example() {
     if (showNewSFLicense) setShowNewSFLicense(false);
     if (showNewBuildingPermit) setShowNewBuildingPermit(false);
     if (showNewBusinessLicense) setShowNewBusinessLicense(false);
+  };
+
+  const toggleAdminWidgets = () => {
+    setShowAdminWidgets((prev) => !prev);
   };
 
   const buttons = [
@@ -159,6 +165,26 @@ export default function Example() {
             </div>
           </div>
         </>
+      )}
+
+      {user.role === 3 && (
+        <div className="mt-6">
+          <WeeklyStats />
+          <div className="mt-6">
+            <RecentComments limit={8} startExpanded />
+          </div>
+          <button
+            type="button"
+            onClick={toggleAdminWidgets}
+            className="mt-4 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          >
+            {showAdminWidgets ? 'Hide Admin Activity' : 'Show Admin Activity'}
+          </button>
+
+          {showAdminWidgets && (
+            <AdminRecentActivity className="mt-6" limit={5} />
+          )}
+        </div>
       )}
     </div>
   );

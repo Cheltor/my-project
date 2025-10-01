@@ -10,24 +10,32 @@ function classNames(...classes) {
 export default function WeeklyStats() {
   const [stats, setStats] = useState([
     { name: 'Comments', thisWeek: 0, lastWeek: 0, change: 'N/A', changeType: '' },
-  { name: 'Inspections Completed', thisWeek: 0, lastWeek: 0, change: 'N/A', changeType: '' },
-  { name: 'Violations Found', thisWeek: 0, lastWeek: 0, change: 'N/A', changeType: '' },
+    { name: 'Inspections Completed', thisWeek: 0, lastWeek: 0, change: 'N/A', changeType: '' },
+    { name: 'Violations Found', thisWeek: 0, lastWeek: 0, change: 'N/A', changeType: '' },
   ]);
 
   const { user } = useAuth();
+  const isAdmin = user?.role === 3;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!user) return;
+
     const fetchData = async () => {
+      setLoading(true);
       try {
-        const userId = user.id; 
-  // Use Sunday as the start of the work week; change to 'sat' to start on Saturday
-  const response = await fetch(`${process.env.REACT_APP_API_URL}/counts/${userId}?start_day=sun`);
+        // Use Sunday as the start of the work week; change to 'sat' to start on Saturday
+        const baseUrl = process.env.REACT_APP_API_URL || '';
+        const endpoint = isAdmin
+          ? baseUrl + '/counts?role=1&start_day=sun'
+          : baseUrl + '/counts/' + user.id + '?start_day=sun';
+
+        const response = await fetch(endpoint);
         if (!response.ok) throw new Error("Failed to fetch weekly stats");
 
         const data = await response.json();
-        
+
         const updatedStats = [
           {
             name: 'Comments',
@@ -53,19 +61,20 @@ export default function WeeklyStats() {
         ];
 
         setStats(updatedStats);
-        setLoading(false);
+        setError(null);
       } catch (err) {
         setError(err.message);
+      } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [user, isAdmin]);
 
   const calculateChange = (thisWeek, lastWeek) => {
     if (lastWeek === 0) return 'N/A';
-    return `${Math.abs(((thisWeek - lastWeek) / lastWeek) * 100).toFixed(2)}%`;
+    return Math.abs(((thisWeek - lastWeek) / lastWeek) * 100).toFixed(2) + '%';
   };
 
   const getChangeType = (thisWeek, lastWeek) => {
@@ -76,9 +85,12 @@ export default function WeeklyStats() {
   if (loading) return <div>Loading...</div>;
   if (error) return <div className="text-red-500">{error}</div>;
 
+  const headingLabel = isAdmin ? 'This Week (ONS team totals)' : 'This Week';
+  const comparisonLabel = isAdmin ? 'team last week' : 'last week';
+
   return (
     <div>
-      <h3 className="text-base font-semibold text-gray-900 mt-3">This Week</h3>
+      <h3 className="text-base font-semibold text-gray-900 mt-3">{headingLabel}</h3>
       <dl className="grid grid-cols-1 divide-y divide-gray-200 overflow-hidden rounded-lg bg-white shadow md:grid-cols-3 md:divide-x md:divide-y-0">
         {stats.map((stat) => (
           <div key={stat.name} className="px-4 py-5 sm:p-6">
@@ -86,7 +98,7 @@ export default function WeeklyStats() {
             <dd className="mt-1 flex items-baseline justify-between md:block lg:flex">
               <div className="flex items-baseline text-2xl font-semibold text-indigo-600">
                 {stat.thisWeek}
-                <span className="ml-2 text-sm font-medium text-gray-500">from {stat.lastWeek} last week</span>
+                <span className="ml-2 text-sm font-medium text-gray-500">from {stat.lastWeek} {comparisonLabel}</span>
               </div>
 
               {stat.changeType && (
