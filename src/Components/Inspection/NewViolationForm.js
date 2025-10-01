@@ -12,11 +12,30 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
   const [files, setFiles] = useState([]);
   const [selectedCodes, setSelectedCodes] = useState([]); // internal when uncontrolled
   const [addressLabel, setAddressLabel] = useState(initialAddressLabel || "");
+  // Admin assignment state
+  const [onsUsers, setOnsUsers] = useState([]);
+  const [assigneeId, setAssigneeId] = useState("");
   React.useEffect(() => {
     // Keep form in sync if initial props change
     setForm((prev) => ({ ...prev, address_id: initialAddressId || "" }));
     setAddressLabel(initialAddressLabel || "");
   }, [initialAddressId, initialAddressLabel]);
+  React.useEffect(() => {
+    // Load ONS users only for admins (role 3 assumed admin)
+    const loadOns = async () => {
+      try {
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/users/ons/`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        setOnsUsers(Array.isArray(data) ? data : []);
+      } catch {
+        // best-effort; ignore errors
+      }
+    };
+    if (user?.role === 3) {
+      loadOns();
+    }
+  }, [user?.role]);
   // Function to load address options asynchronously
   const loadAddressOptions = async (inputValue) => {
     const response = await fetch(
@@ -93,10 +112,14 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
     try {
       // Submit one violation with all selected codes
       const effectiveSelectedCodes = selectedCodesValue ?? selectedCodes;
+      // If admin selected an assignee, use that; else default to current user
+  const assignedUserId = user?.role === 3 && assigneeId
+        ? parseInt(assigneeId, 10)
+        : user?.id;
       const violationData = {
         address_id: form.address_id ? parseInt(form.address_id, 10) : undefined,
         codes: (effectiveSelectedCodes || []).map(c => c.code.id),
-        user_id: user?.id,
+        user_id: assignedUserId,
         deadline: safeDeadline, // always valid
         violation_type: violationType, // new field
         inspection_id: inspectionId, // optionally link violation to inspection
@@ -169,6 +192,24 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
             className="mb-2"
           />
         </div>
+        {/* Assignee (Admin only) */}
+  {user?.role === 3 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Assign to ONS member</label>
+            <select
+              className="w-full border border-gray-300 rounded px-2 py-1"
+              value={assigneeId}
+              onChange={e => setAssigneeId(e.target.value)}
+            >
+              <option value="">Unassigned (defaults to me)</option>
+              {onsUsers.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name || u.email}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         {/* Violation Type Selection */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Violation Type</label>

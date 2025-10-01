@@ -25,6 +25,9 @@ export default function NewBusinessLicense() {
     // inspector_id: user.id,
     paid: false,
   });
+  // Admin assignment state
+  const [onsUsers, setOnsUsers] = useState([]);
+  const [assigneeId, setAssigneeId] = useState("");
 
   useEffect(() => {
     // Fetch initial data for contacts, addresses, and businesses
@@ -47,6 +50,21 @@ export default function NewBusinessLicense() {
 
     fetchData();
   }, []);
+
+  useEffect(() => {
+    // Load ONS users for admins (role 3)
+    const loadOns = async () => {
+      try {
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/users/ons/`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        setOnsUsers(Array.isArray(data) ? data : []);
+      } catch {
+        setOnsUsers([]);
+      }
+    };
+    if (user?.role === 3) loadOns();
+  }, [user?.role]);
 
   // No unit fetching: unit_id will come directly from the selected business (if any)
 
@@ -101,7 +119,7 @@ export default function NewBusinessLicense() {
         console.log(`${key}:`, formData[key]);
     });
 
-    const inspectionData = new FormData();
+  const inspectionData = new FormData();
 
   Object.entries(formData).forEach(([key, value]) => {
       if (key === "attachments") {
@@ -116,10 +134,9 @@ export default function NewBusinessLicense() {
     });
   // Ensure address_id is present using the resolved value
     inspectionData.set('address_id', Number(resolvedAddressId));
-    // ensure inspector_id is sent if available
-    if (user?.id) {
-      inspectionData.set('inspector_id', Number(user.id));
-    }
+  // inspector assignment
+  const effectiveInspectorId = user?.role === 3 && assigneeId ? assigneeId : user?.id;
+  if (effectiveInspectorId) inspectionData.set('inspector_id', String(effectiveInspectorId));
 
     try {
     const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/`, {
@@ -165,6 +182,23 @@ export default function NewBusinessLicense() {
             handleInputChange={handleInputChange}
             setFormData={setFormData}
           />
+          {/* Assignee (Admin only) */}
+          {user?.role === 3 && (
+            <div className="mt-4">
+              <label htmlFor="assignee_id" className="block text-sm font-medium text-gray-700">Assign to ONS member</label>
+              <select
+                id="assignee_id"
+                value={assigneeId}
+                onChange={(e) => setAssigneeId(e.target.value)}
+                className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm"
+              >
+                <option value="">Unassigned (defaults to me)</option>
+                {onsUsers.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name || u.email}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="mt-2">
             <button
               type="button"

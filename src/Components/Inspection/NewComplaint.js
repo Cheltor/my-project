@@ -6,7 +6,7 @@ import BusinessSelection from "../Business/BusinessSelection"; // Import the new
 import NewUnit from "../Inspection/NewUnit"; // Import NewUnit instead of NewUnitForm
 
 export default function NewComplaint() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [units, setUnits] = useState([]);
   const [businesses, setBusinesses] = useState([]);
   const [contacts, setContacts] = useState([]);
@@ -23,6 +23,9 @@ export default function NewComplaint() {
     contact_id: null,
     paid: false,
   });
+  // Admin assignment state
+  const [onsUsers, setOnsUsers] = useState([]);
+  const [assigneeId, setAssigneeId] = useState("");
   const [photos, setPhotos] = useState([]); // State to hold the photos
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -50,6 +53,21 @@ export default function NewComplaint() {
 
     fetchData();
   }, []);
+
+  useEffect(() => {
+    // Load ONS users for admin (role 3)
+    const loadOns = async () => {
+      try {
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/users/ons/`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        setOnsUsers(Array.isArray(data) ? data : []);
+      } catch {
+        setOnsUsers([]);
+      }
+    };
+    if (user?.role === 3) loadOns();
+  }, [user?.role]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked, files } = e.target;
@@ -101,11 +119,15 @@ export default function NewComplaint() {
       createForm.append('description', formData.description || '');
       if (formData.contact_id) createForm.append('contact_id', String(formData.contact_id));
       createForm.append('paid', formData.paid ? 'true' : 'false');
+      // Admin-selected assignee -> inspector_id
+      if (user?.role === 3 && assigneeId) {
+        createForm.append('inspector_id', String(assigneeId));
+      }
 
       const complaintResponse = await fetch(`${process.env.REACT_APP_API_URL}/inspections/`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${user.token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: createForm,
       });
@@ -129,7 +151,7 @@ export default function NewComplaint() {
           {
             method: 'POST',
             headers: {
-              Authorization: `Bearer ${user.token}`,
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
             body: formData,
           }
@@ -230,6 +252,28 @@ export default function NewComplaint() {
               defaultOptions // Show default options initially
             />
         </div>
+
+        {/* Assignee (Admin only) */}
+        {user?.role === 3 && (
+          <div className="mb-4">
+            <label htmlFor="assignee_id" className="block text-sm font-medium text-gray-700">
+              Assign to ONS member
+            </label>
+            <select
+              id="assignee_id"
+              value={assigneeId}
+              onChange={(e) => setAssigneeId(e.target.value)}
+              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm"
+            >
+              <option value="">Unassigned</option>
+              {onsUsers.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name || u.email}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Unit Selection */}
         {units.length > 0 && (
