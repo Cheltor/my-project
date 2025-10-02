@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import Welcome from './Dashboard/Welcome';
 import WeeklyStats from './Dashboard/WeeklyStats';
 import RecentComments from './Dashboard/RecentComments';
 import PendingInspections from './Dashboard/PendingInspections';
 import ActiveViolations from './Dashboard/ActiveViolations';
 import AdminRecentActivity from './Dashboard/AdminRecentActivity';
+import OasOverview from './Dashboard/OasOverview';
 import NewComplaint from './Inspection/NewComplaint';
 import NewViolationForm from './Inspection/NewViolationForm';
 import NewMFLicense from './Inspection/NewMFLicense';
@@ -150,6 +151,12 @@ export default function Example() {
         </>
       )}
       
+      {user.role === 2 && (
+        <div className="mt-6">
+          <OasOverview />
+        </div>
+      )}
+
       {user.role === 1 && (
         <>
           <WeeklyStats />
