@@ -1,57 +1,187 @@
 import React, { useEffect, useState } from 'react';
 
+const LICENSE_TYPES = [
+  { value: '1', label: 'Business License' },
+  { value: '2', label: 'Single Family License' },
+  { value: '3', label: 'Multifamily License' },
+];
+
+const MIN_SEARCH_LENGTH = 2;
+const SEARCH_DELAY_MS = 300;
+
 export default function AddLicenseModal({ open, onClose, onCreated }) {
-  const [inspectionId, setInspectionId] = useState('');
   const [licenseType, setLicenseType] = useState('1');
+  const [licenseNumber, setLicenseNumber] = useState('');
   const [dateIssued, setDateIssued] = useState('');
   const [paid, setPaid] = useState(false);
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  const [businessQuery, setBusinessQuery] = useState('');
+  const [businessResults, setBusinessResults] = useState([]);
+  const [businessLoading, setBusinessLoading] = useState(false);
+  const [businessError, setBusinessError] = useState(null);
+  const [selectedBusiness, setSelectedBusiness] = useState(null);
+
+  const [addressQuery, setAddressQuery] = useState('');
+  const [addressResults, setAddressResults] = useState([]);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [addressError, setAddressError] = useState(null);
+  const [selectedAddress, setSelectedAddress] = useState(null);
+
   useEffect(() => {
     if (!open) {
-      setInspectionId('');
       setLicenseType('1');
+      setLicenseNumber('');
       setDateIssued('');
       setPaid(false);
       setSent(false);
       setSubmitting(false);
       setError(null);
+
+      setBusinessQuery('');
+      setBusinessResults([]);
+      setBusinessLoading(false);
+      setBusinessError(null);
+      setSelectedBusiness(null);
+
+      setAddressQuery('');
+      setAddressResults([]);
+      setAddressLoading(false);
+      setAddressError(null);
+      setSelectedAddress(null);
     }
   }, [open]);
+
+  useEffect(() => {
+    setBusinessQuery('');
+    setBusinessResults([]);
+    setSelectedBusiness(null);
+    setBusinessError(null);
+    setAddressQuery('');
+    setAddressResults([]);
+    setSelectedAddress(null);
+    setAddressError(null);
+  }, [licenseType]);
+
+  useEffect(() => {
+    if (licenseType !== '1') return;
+    const query = businessQuery.trim();
+    if (query.length < MIN_SEARCH_LENGTH) {
+      setBusinessResults([]);
+      setBusinessLoading(false);
+      setBusinessError(null);
+      return;
+    }
+    setBusinessLoading(true);
+    setBusinessError(null);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      fetch(`${process.env.REACT_APP_API_URL}/businesses/search?query=${encodeURIComponent(query)}&limit=10`, { signal: controller.signal })
+        .then(async (res) => {
+          if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(txt || 'Failed to search businesses');
+          }
+          return res.json();
+        })
+        .then((data) => {
+          setBusinessResults(Array.isArray(data) ? data : []);
+          setBusinessLoading(false);
+        })
+        .catch((err) => {
+          if (controller.signal.aborted) return;
+          setBusinessError(err.message || 'Failed to search businesses');
+          setBusinessLoading(false);
+        });
+    }, SEARCH_DELAY_MS);
+    return () => {
+      controller.abort();
+      clearTimeout(timeout);
+    };
+  }, [businessQuery, licenseType]);
+
+  useEffect(() => {
+    if (licenseType === '1') return;
+    const query = addressQuery.trim();
+    if (query.length < MIN_SEARCH_LENGTH) {
+      setAddressResults([]);
+      setAddressLoading(false);
+      setAddressError(null);
+      return;
+    }
+    setAddressLoading(true);
+    setAddressError(null);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      fetch(`${process.env.REACT_APP_API_URL}/addresses/search?query=${encodeURIComponent(query)}&limit=10`, { signal: controller.signal })
+        .then(async (res) => {
+          if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(txt || 'Failed to search addresses');
+          }
+          return res.json();
+        })
+        .then((data) => {
+          setAddressResults(Array.isArray(data) ? data : []);
+          setAddressLoading(false);
+        })
+        .catch((err) => {
+          if (controller.signal.aborted) return;
+          setAddressError(err.message || 'Failed to search addresses');
+          setAddressLoading(false);
+        });
+    }, SEARCH_DELAY_MS);
+    return () => {
+      controller.abort();
+      clearTimeout(timeout);
+    };
+  }, [addressQuery, licenseType]);
 
   if (!open) return null;
 
   const today = new Date();
   const baseDate = dateIssued ? new Date(dateIssued) : today;
-  const month = baseDate.getMonth() + 1; // 1-12
+  const month = baseDate.getMonth() + 1;
   const year = baseDate.getFullYear();
-  const fyEndYear = month < 7 ? year : year + 1; // July pivot
+  const fyEndYear = month < 7 ? year : year + 1;
   const fiscalYear = `${fyEndYear - 1}-${fyEndYear}`;
-  const expirationDate = new Date(fyEndYear, 5, 30) // June is 5
-    .toISOString()
-    .split('T')[0];
+  const expirationDate = new Date(fyEndYear, 5, 30).toISOString().split('T')[0];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-    if (!inspectionId) {
-      setError('Inspection ID is required.');
+
+    const type = Number(licenseType);
+    if (type === 1 && !selectedBusiness) {
+      setError('Please select a business for this license.');
       return;
     }
+    if ((type === 2 || type === 3) && !selectedAddress) {
+      setError('Please select an address for this license.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const payload = {
-        inspection_id: Number(inspectionId),
-        license_type: Number(licenseType),
+        license_type: type,
+        license_number: licenseNumber.trim() || undefined,
         paid,
         sent,
-        // Optional fields; backend can compute if omitted, but we send for preview consistency
         date_issued: dateIssued || undefined,
         fiscal_year: fiscalYear,
         expiration_date: expirationDate,
       };
+
+      if (type === 1 && selectedBusiness) {
+        payload.business_id = selectedBusiness.id;
+      }
+      if (type !== 1 && selectedAddress) {
+        payload.address_id = selectedAddress.id;
+      }
+
       const res = await fetch(`${process.env.REACT_APP_API_URL}/licenses/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -65,7 +195,7 @@ export default function AddLicenseModal({ open, onClose, onCreated }) {
       onCreated && onCreated(created);
       onClose();
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to create license');
     } finally {
       setSubmitting(false);
     }
@@ -73,7 +203,7 @@ export default function AddLicenseModal({ open, onClose, onCreated }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/40">
-      <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
+      <div className="w-full max-w-xl rounded-lg bg-white shadow-xl">
         <div className="flex items-center justify-between border-b px-5 py-3">
           <h2 className="text-base font-semibold text-gray-800">Add License</h2>
           <button
@@ -81,7 +211,7 @@ export default function AddLicenseModal({ open, onClose, onCreated }) {
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
           >
-            ×
+            &times;
           </button>
         </div>
         <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
@@ -90,18 +220,7 @@ export default function AddLicenseModal({ open, onClose, onCreated }) {
               {error}
             </div>
           )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Inspection ID</label>
-            <input
-              type="number"
-              min="1"
-              value={inspectionId}
-              onChange={(e) => setInspectionId(e.target.value)}
-              className="mt-1 w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-              placeholder="e.g. 123"
-              required
-            />
-          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700">License Type</label>
             <select
@@ -109,11 +228,93 @@ export default function AddLicenseModal({ open, onClose, onCreated }) {
               onChange={(e) => setLicenseType(e.target.value)}
               className="mt-1 w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
             >
-              <option value="1">Business License</option>
-              <option value="2">Single Family License</option>
-              <option value="3">Multifamily License</option>
+              {LICENSE_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>{type.label}</option>
+              ))}
             </select>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">License Number (optional)</label>
+            <input
+              type="text"
+              value={licenseNumber}
+              onChange={(e) => setLicenseNumber(e.target.value)}
+              className="mt-1 w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+              placeholder="e.g. BL-2025-001"
+            />
+          </div>
+
+          {licenseType === '1' ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Business</label>
+              <input
+                type="text"
+                value={businessQuery}
+                onChange={(e) => setBusinessQuery(e.target.value)}
+                className="mt-1 w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                placeholder="Search business name..."
+              />
+              <p className="mt-1 text-xs text-gray-500">Enter at least {MIN_SEARCH_LENGTH} characters to search</p>
+              {businessLoading && <p className="mt-1 text-xs text-gray-500">Searching...</p>}
+              {businessError && <p className="mt-1 text-xs text-red-600">{businessError}</p>}
+              {businessResults.length > 0 && (
+                <select
+                  value={selectedBusiness ? selectedBusiness.id : ''}
+                  onChange={(e) => {
+                    const chosen = businessResults.find((b) => String(b.id) === e.target.value);
+                    setSelectedBusiness(chosen || null);
+                  }}
+                  className="mt-2 w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                >
+                  <option value="">Select a business</option>
+                  {businessResults.map((business) => (
+                    <option key={business.id} value={business.id}>
+                      {(business.name?.trim() || business.trading_as?.trim() || `Business #${business.id}`)}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {selectedBusiness && (
+                <p className="mt-2 text-xs text-gray-600">Selected business: {(selectedBusiness.name?.trim() || selectedBusiness.trading_as?.trim() || `Business #${selectedBusiness.id}`)}</p>
+              )}
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Address</label>
+              <input
+                type="text"
+                value={addressQuery}
+                onChange={(e) => setAddressQuery(e.target.value)}
+                className="mt-1 w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                placeholder="Search address..."
+              />
+              <p className="mt-1 text-xs text-gray-500">Enter at least {MIN_SEARCH_LENGTH} characters to search</p>
+              {addressLoading && <p className="mt-1 text-xs text-gray-500">Searching...</p>}
+              {addressError && <p className="mt-1 text-xs text-red-600">{addressError}</p>}
+              {addressResults.length > 0 && (
+                <select
+                  value={selectedAddress ? selectedAddress.id : ''}
+                  onChange={(e) => {
+                    const chosen = addressResults.find((a) => String(a.id) === e.target.value);
+                    setSelectedAddress(chosen || null);
+                  }}
+                  className="mt-2 w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                >
+                  <option value="">Select an address</option>
+                  {addressResults.map((address) => (
+                    <option key={address.id} value={address.id}>
+                      {address.combadd || `Address #${address.id}`}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {selectedAddress && (
+                <p className="mt-2 text-xs text-gray-600">Selected address: {selectedAddress.combadd || `Address #${selectedAddress.id}`}</p>
+              )}
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700">Date Issued (optional)</label>
             <input
@@ -123,6 +324,7 @@ export default function AddLicenseModal({ open, onClose, onCreated }) {
               className="mt-1 w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
             />
           </div>
+
           <div className="flex gap-6">
             <label className="flex items-center gap-2 text-sm text-gray-700">
               <input
@@ -143,11 +345,13 @@ export default function AddLicenseModal({ open, onClose, onCreated }) {
               Sent
             </label>
           </div>
+
           <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
             <p>Fiscal Year (preview): <span className="font-medium">{fiscalYear}</span></p>
             <p>Expiration (preview): <span className="font-medium">{expirationDate}</span></p>
             <p className="mt-1">(Derived July 1 - June 30. Backend finalizes values.)</p>
           </div>
+
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
@@ -162,7 +366,7 @@ export default function AddLicenseModal({ open, onClose, onCreated }) {
               disabled={submitting}
               className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500 disabled:opacity-60"
             >
-              {submitting ? 'Saving…' : 'Create'}
+              {submitting ? 'Saving...' : 'Create'}
             </button>
           </div>
         </form>

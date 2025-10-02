@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AddPermitModal from './AddPermitModal';
 
+// Feature flag: hide Add Permit for now
+const ENABLE_ADD_PERMIT = false;
+
 // Permit listing modeled after Licenses table for consistency
 export default function Permits() {
   const [permits, setPermits] = useState([]);
@@ -51,24 +54,28 @@ export default function Permits() {
             A list of permits auto-created from inspections with payment and expiration details.
           </p>
         </div>
-        <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-          <button
-            type="button"
-            onClick={() => setShowAdd(true)}
-            className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
-          >
-            Add permit
-          </button>
-        </div>
+        {ENABLE_ADD_PERMIT && (
+          <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+            <button
+              type="button"
+              onClick={() => setShowAdd(true)}
+              className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+            >
+              Add permit
+            </button>
+          </div>
+        )}
       </div>
-      <AddPermitModal
-        open={showAdd}
-        onClose={() => setShowAdd(false)}
-        onCreated={(created) => {
-          setPermits(prev => [created, ...prev]);
-          setCurrentPage(1);
-        }}
-      />
+      {ENABLE_ADD_PERMIT && (
+        <AddPermitModal
+          open={showAdd}
+          onClose={() => setShowAdd(false)}
+          onCreated={(created) => {
+            setPermits(prev => [created, ...prev]);
+            setCurrentPage(1);
+          }}
+        />
+      )}
 
       <div className="mt-8 overflow-x-auto rounded-lg shadow-md">
         <table className="min-w-full divide-y divide-gray-200">

@@ -128,7 +128,7 @@ export default function NewBuildingPermit() {
 
       if (!response.ok) throw new Error("Failed to create permit");
 
-      alert("Permit created successfully!");
+      alert("Permit inspection created successfully!");
       // Optionally reset form
       setFormData((prev) => ({
         ...prev,

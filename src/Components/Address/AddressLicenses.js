@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 // Address-scoped Licenses list, styled like the main list but filtered to one address
 export default function AddressLicenses({ addressId }) {
   const LICENSE_TYPE_LABELS = {
+    0: 'Business License',
     1: 'Business License',
     2: 'Single Family License',
     3: 'Multifamily License',

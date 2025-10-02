@@ -1,7 +1,8 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const LICENSE_TYPE_LABELS = {
+  0: 'Business License',
   1: 'Business License',
   2: 'Single Family License',
   3: 'Multifamily License',
@@ -232,7 +233,6 @@ const OasOverview = () => {
         viewAll: '/complaints',
         empty: 'There are no pending complaints.',
         rows: pendingComplaints,
-        footnote: `Showing up to the most recent ${PAGE_LIMIT} pending complaints. Select "View all" for the complete list.`,
         columns: [
           {
             header: 'Complaint',
@@ -274,7 +274,6 @@ const OasOverview = () => {
         viewAll: '/violations',
         empty: 'There are no active violations.',
         rows: violationRows,
-        footnote: `Showing up to the most recent ${PAGE_LIMIT} active violations. Select "View all" for the complete list.`,
         columns: [
           {
             header: 'Violation',
@@ -312,7 +311,6 @@ const OasOverview = () => {
         viewAll: '/licenses',
         empty: 'No licenses require follow-up.',
         rows: licenseRows,
-        footnote: `Showing up to the most recent ${PAGE_LIMIT} licenses that need attention. Select "View all" for the complete list.`,
         columns: [
           {
             header: 'License',

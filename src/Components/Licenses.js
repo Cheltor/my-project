@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AddLicenseModal from './AddLicenseModal';
 
 export default function Licenses() {
   const LICENSE_TYPE_LABELS = {
+    0: 'Business License',
     1: 'Business License',
     2: 'Single Family License',
     3: 'Multifamily License',
@@ -14,6 +15,9 @@ export default function Licenses() {
   const [currentPage, setCurrentPage] = useState(1);
   const licensesPerPage = 10;
   const [showAdd, setShowAdd] = useState(false);
+  const [paidFilter, setPaidFilter] = useState('all');
+  const [sentFilter, setSentFilter] = useState('all');
+  const [addressFilter, setAddressFilter] = useState('');
 
   useEffect(() => {
     fetch(`${process.env.REACT_APP_API_URL}/licenses/`)
@@ -38,10 +42,44 @@ export default function Licenses() {
       });
   }, []);
 
-  const totalPages = Math.ceil(licenses.length / licensesPerPage);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [paidFilter, sentFilter, addressFilter]);
+
+  const filteredLicenses = useMemo(() => {
+    const filtered = licenses.filter((license) => {
+      if (paidFilter === 'paid' && !license.paid) return false;
+      if (paidFilter === 'not_paid' && license.paid) return false;
+      if (sentFilter === 'sent' && !license.sent) return false;
+      if (sentFilter === 'not_sent' && license.sent) return false;
+      if (addressFilter) {
+        const haystack = `${license.combadd || ''} ${license.address_id || ''}`.toLowerCase();
+        if (!haystack.includes(addressFilter.trim().toLowerCase())) return false;
+      }
+      return true;
+    });
+
+    // Newest first: prefer created_at, fall back to date_issued, then id
+    const toTime = (v) => {
+      if (!v) return 0;
+      const t = new Date(v).getTime();
+      return Number.isNaN(t) ? 0 : t;
+    };
+
+    return filtered
+      .slice()
+      .sort((a, b) => {
+        const aTime = toTime(a.created_at) || toTime(a.date_issued);
+        const bTime = toTime(b.created_at) || toTime(b.date_issued);
+        if (bTime !== aTime) return bTime - aTime;
+        return (b.id ?? 0) - (a.id ?? 0);
+      });
+  }, [licenses, paidFilter, sentFilter, addressFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredLicenses.length / licensesPerPage));
   const indexOfLastLicense = currentPage * licensesPerPage;
   const indexOfFirstLicense = indexOfLastLicense - licensesPerPage;
-  const currentLicenses = licenses.slice(indexOfFirstLicense, indexOfLastLicense);
+  const currentLicenses = filteredLicenses.slice(indexOfFirstLicense, indexOfLastLicense);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
@@ -76,6 +114,61 @@ export default function Licenses() {
         </div>
       </div>
 
+      <div className="mt-4 bg-white rounded-lg shadow p-4">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Paid Status</label>
+            <select
+              value={paidFilter}
+              onChange={(e) => setPaidFilter(e.target.value)}
+              className="mt-1 w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+            >
+              <option value="all">All</option>
+              <option value="paid">Paid</option>
+              <option value="not_paid">Not Paid</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Sent Status</label>
+            <select
+              value={sentFilter}
+              onChange={(e) => setSentFilter(e.target.value)}
+              className="mt-1 w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+            >
+              <option value="all">All</option>
+              <option value="sent">Sent</option>
+              <option value="not_sent">Not Sent</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Address Search</label>
+            <input
+              type="text"
+              value={addressFilter}
+              onChange={(e) => setAddressFilter(e.target.value)}
+              placeholder="Search address or ID"
+              className="mt-1 w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+            />
+          </div>
+        </div>
+        <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+          <span>{filteredLicenses.length} of {licenses.length} licenses</span>
+          {(paidFilter !== 'all' || sentFilter !== 'all' || addressFilter) && (
+            <button
+              type="button"
+              onClick={() => {
+                setPaidFilter('all');
+                setSentFilter('all');
+                setAddressFilter('');
+              }}
+              className="text-indigo-600 hover:text-indigo-500"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Responsive Table Container */}
       <div className="mt-8 overflow-x-auto rounded-lg shadow-md">
         <table className="min-w-full divide-y divide-gray-200">
@@ -105,11 +198,16 @@ export default function Licenses() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {currentLicenses.map((license) => (
-              <tr key={license.id}>
+            {currentLicenses.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-6 text-center text-sm text-gray-500">No licenses match the current filters.</td>
+              </tr>
+            ) : (
+              currentLicenses.map((license) => (
+                <tr key={license.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   <Link to={`/license/${license.id}`} className="text-indigo-600 hover:text-indigo-800">
-                    {license.license_number || '—'}
+                    {license.license_number || 'N/A'}
                   </Link>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -138,10 +236,11 @@ export default function Licenses() {
                   {license.sent ? 'Sent' : 'Not Sent'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {license.expiration_date ? new Date(license.expiration_date).toLocaleDateString() : '—'}
+                  {license.expiration_date ? new Date(license.expiration_date).toLocaleDateString() : 'N/A'}
                 </td>
               </tr>
-            ))}
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -173,3 +272,4 @@ export default function Licenses() {
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
 }
+

@@ -29,6 +29,17 @@ const AddressDetails = () => {
   const [activeTab, setActiveTab] = useState('comments');
   const [businesses, setBusinesses] = useState([]);
   const [addrLicenses, setAddrLicenses] = useState([]);
+  const [counts, setCounts] = useState({
+    comments: 0,
+    violations: 0,
+    citations: 0,
+    inspections: 0,
+    complaints: 0,
+    permits: 0,
+    photos: 0,
+    contacts: 0,
+    licenses: 0,
+  });
   // Quick comment (mobile) state
   const [quickContent, setQuickContent] = useState('');
   const [quickFiles, setQuickFiles] = useState([]);
@@ -215,6 +226,100 @@ const AddressDetails = () => {
     load();
   }, [id]);
 
+  // Keep simple derived counts in sync
+  useEffect(() => {
+    setCounts((prev) => ({ ...prev, contacts: Array.isArray(contacts) ? contacts.length : 0 }));
+  }, [contacts]);
+  useEffect(() => {
+    setCounts((prev) => ({ ...prev, licenses: Array.isArray(addrLicenses) ? addrLicenses.length : 0 }));
+  }, [addrLicenses]);
+  useEffect(() => {
+    setCounts((prev) => ({ ...prev, permits: prev.permits }));
+  }, []);
+  useEffect(() => {
+    setCounts((prev) => ({ ...prev, photos: prev.photos }));
+  }, []);
+  useEffect(() => {
+    setCounts((prev) => ({ ...prev, citations: prev.citations }));
+  }, []);
+  useEffect(() => {
+    setCounts((prev) => ({ ...prev, violations: prev.violations }));
+  }, []);
+  useEffect(() => {
+    setCounts((prev) => ({ ...prev, inspections: prev.inspections }));
+  }, []);
+  useEffect(() => {
+    setCounts((prev) => ({ ...prev, complaints: prev.complaints }));
+  }, []);
+
+  // Fetch counts for other resources once per address
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    const loadCounts = async () => {
+      try {
+        const base = process.env.REACT_APP_API_URL;
+        const endpoints = {
+          comments: `/addresses/${id}/comments`,
+          violations: `/addresses/${id}/violations`,
+          inspections: `/addresses/${id}/inspections`,
+          complaints: `/complaints/address/${id}`,
+          citations: `/citations/address/${id}`,
+          photos: `/addresses/${id}/photos`,
+        };
+        const entries = Object.entries(endpoints);
+        const results = await Promise.allSettled(
+          entries.map(([key, path]) =>
+            fetch(`${base}${path}`)
+              .then((r) => (r.ok ? r.json() : []))
+              .then((data) => ({ key, len: Array.isArray(data) ? data.length : 0 }))
+              .catch(() => ({ key, len: 0 }))
+          )
+        );
+        const next = {};
+        results.forEach((res) => {
+          if (res.status === 'fulfilled') {
+            next[res.value.key] = res.value.len;
+          }
+        });
+
+        // Permits count with graceful fallback similar to licenses
+        let permitsLen = 0;
+        try {
+          let r = await fetch(`${base}/permits/address/${id}`);
+          if (!r.ok) {
+            r = await fetch(`${base}/permits/?address_id=${encodeURIComponent(id)}`);
+          }
+          if (!r.ok) {
+            r = await fetch(`${base}/permits/`);
+            if (r.ok) {
+              const all = await r.json();
+              permitsLen = Array.isArray(all)
+                ? all.filter((p) => String(p.address_id) === String(id)).length
+                : 0;
+            }
+          } else {
+            const list = await r.json();
+            permitsLen = Array.isArray(list) ? list.length : 0;
+          }
+        } catch {
+          permitsLen = 0;
+        }
+        next.permits = permitsLen;
+
+        if (!cancelled) {
+          setCounts((prev) => ({ ...prev, ...next }));
+        }
+      } catch {
+        // ignore
+      }
+    };
+    loadCounts();
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
   const mostRecentLicense = useMemo(() => {
     if (!Array.isArray(addrLicenses) || addrLicenses.length === 0) return null;
     const getTime = (l) => {
@@ -286,6 +391,7 @@ const AddressDetails = () => {
 
   // License type labels for quick badges
   const LICENSE_TYPE_LABELS = {
+    0: 'Business License',
     1: 'Business License',
     2: 'Single Family License',
     3: 'Multifamily License',
@@ -542,7 +648,7 @@ const AddressDetails = () => {
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="3" />
           </svg>
-          <span>Contacts</span>
+          <span>Contacts ({counts.contacts || 0})</span>
         </button>
 
         {/* Quick access: Businesses */}
@@ -557,7 +663,7 @@ const AddressDetails = () => {
             <path d="M3 21V7a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2v14" />
             <path d="M3 10h18" />
           </svg>
-          <span>Businesses</span>
+          <span>Businesses ({Array.isArray(businesses) ? businesses.length : 0})</span>
         </button>
 
         {/* Main tabs: Units → Permits (same row styling) */}
@@ -572,7 +678,7 @@ const AddressDetails = () => {
             <path d="M3 10h18" />
             <path d="M7 14h2M11 14h2M15 14h2M7 18h2M11 18h2M15 18h2" />
           </svg>
-          <span>Units</span>
+          <span>Units ({Array.isArray(units) ? units.length : 0})</span>
         </button>
         <button
           type="button"
@@ -584,7 +690,7 @@ const AddressDetails = () => {
             <path d="M21 15a4 4 0 0 1-4 4H8l-4 3V7a4 4 0 0 1 4-4h9a4 4 0 0 1 4 4z" />
             <path d="M8 9h8M8 12h5" />
           </svg>
-          <span>Comments</span>
+          <span>Comments ({counts.comments || 0})</span>
         </button>
         <button
           type="button"
@@ -597,7 +703,7 @@ const AddressDetails = () => {
             <path d="M12 17h.01" />
             <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
           </svg>
-          <span>Violations</span>
+          <span>Violations ({counts.violations || 0})</span>
         </button>
         <button
           type="button"
@@ -609,7 +715,7 @@ const AddressDetails = () => {
             <path d="M4 7h3l2-3h6l2 3h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" />
             <circle cx="12" cy="13" r="3" />
           </svg>
-          <span>Photos</span>
+          <span>Photos ({counts.photos || 0})</span>
         </button>
         <button
           type="button"
@@ -622,7 +728,7 @@ const AddressDetails = () => {
             <path d="M14 2v6h6" />
             <path d="M16 13H8M16 17H8M10 9H8" />
           </svg>
-          <span>Citations</span>
+          <span>Citations ({counts.citations || 0})</span>
         </button>
         <button
           type="button"
@@ -634,7 +740,7 @@ const AddressDetails = () => {
             <circle cx="11" cy="11" r="7" />
             <path d="M21 21l-3.5-3.5" />
           </svg>
-          <span>Inspections</span>
+          <span>Inspections ({counts.inspections || 0})</span>
         </button>
         <button
           type="button"
@@ -647,7 +753,7 @@ const AddressDetails = () => {
             <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
             <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
           </svg>
-          <span>Complaints</span>
+          <span>Complaints ({counts.complaints || 0})</span>
         </button>
         <button
           type="button"
@@ -660,7 +766,7 @@ const AddressDetails = () => {
             <circle cx="8" cy="12" r="2" />
             <path d="M12 12h6M12 16h6" />
           </svg>
-          <span>Licenses</span>
+          <span>Licenses ({counts.licenses || 0})</span>
         </button>
         <button
           type="button"
@@ -673,7 +779,7 @@ const AddressDetails = () => {
             <path d="M9 5h6" />
             <path d="M9 14l2 2 4-4" />
           </svg>
-          <span>Permits</span>
+          <span>Permits ({counts.permits || 0})</span>
         </button>
       </div>
 

@@ -8,8 +8,12 @@ export default function LicenseDetail() {
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [business, setBusiness] = useState(null);
+  const [businessLoading, setBusinessLoading] = useState(false);
+  const [businessError, setBusinessError] = useState(null);
   const [form, setForm] = useState({
     license_type: '',
+    license_number: '',
     paid: false,
     sent: false,
     date_issued: '',
@@ -33,6 +37,7 @@ export default function LicenseDetail() {
   }, [id]);
 
   const LICENSE_TYPE_LABELS = {
+    0: 'Business License',
     1: 'Business License',
     2: 'Single Family License',
     3: 'Multifamily License',
@@ -48,11 +53,32 @@ export default function LicenseDetail() {
     return `${yyyy}-${mm}-${dd}`;
   };
 
+  // Build a sensible list of fiscal year options (current +/- a few years),
+  // and include the existing license's fiscal year if it's outside the range.
+  const fiscalYearOptions = useMemo(() => {
+    const today = new Date();
+    const currentEndYear = today.getMonth() < 6 ? today.getFullYear() : today.getFullYear() + 1; // FY ends June
+    const range = [];
+    for (let end = currentEndYear + 3; end >= currentEndYear - 6; end--) {
+      range.push(`${end - 1}-${end}`);
+    }
+    if (license?.fiscal_year && !range.includes(license.fiscal_year)) {
+      range.unshift(license.fiscal_year);
+    }
+    return range.map((fy) => {
+      const parts = String(fy).split('-');
+      const end = parts[1] ? parts[1] : '';
+      const endYY = end ? String(end).slice(-2) : '';
+      return { value: fy, label: `FY${endYY} (${fy})` };
+    });
+  }, [license?.fiscal_year]);
+
   useEffect(() => {
     if (!license) return;
     // Initialize form from loaded license
     setForm({
       license_type: license.license_type ?? '',
+      license_number: license.license_number ?? '',
       paid: Boolean(license.paid),
       sent: Boolean(license.sent),
       date_issued: toDateInput(license.date_issued),
@@ -61,8 +87,71 @@ export default function LicenseDetail() {
     });
   }, [license]);
 
+  useEffect(() => {
+    if (!license?.business_id) {
+      setBusiness(null);
+      setBusinessError(null);
+      setBusinessLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setBusinessLoading(true);
+    setBusinessError(null);
+    setBusiness(null);
+    (async () => {
+      try {
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/businesses/${license.business_id}`);
+        if (!res.ok) {
+          const message = await res.text();
+          throw new Error(message || 'Failed to load business');
+        }
+        const data = await res.json();
+        if (!cancelled) {
+          setBusiness(data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          const message = (err && err.message && err.message.trim()) || 'Unable to load business details';
+          setBusinessError(message);
+          setBusiness(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setBusinessLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [license?.business_id]);
+
+  const businessLabel = useMemo(() => {
+    if (!license?.business_id || !business) return null;
+    const preferred = [business.name, business.trading_as].find((value) => value && String(value).trim());
+    return preferred || null;
+  }, [business, license?.business_id]);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    // Special handling: selecting a fiscal year sets the expiration date to June 29 of the end year
+    if (name === 'fiscal_year') {
+      let newExp = '';
+      if (value) {
+        const parts = String(value).split('-');
+        const endYear = parseInt(parts[1], 10);
+        if (!Number.isNaN(endYear)) {
+          newExp = `${endYear}-06-29`;
+        }
+      }
+      setForm((prev) => ({
+        ...prev,
+        fiscal_year: value,
+        expiration_date: newExp || prev.expiration_date,
+      }));
+      return;
+    }
+
     setForm((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
@@ -76,6 +165,7 @@ export default function LicenseDetail() {
     try {
       const payload = {
         license_type: form.license_type === '' ? null : Number(form.license_type),
+        license_number: form.license_number === '' ? null : form.license_number,
         paid: Boolean(form.paid),
         sent: Boolean(form.sent),
         date_issued: form.date_issued || null,
@@ -162,15 +252,40 @@ export default function LicenseDetail() {
             )}
           </div>
 
+          <div className="text-sm font-medium text-gray-500">License Number</div>
+          <div className="sm:col-span-2">
+            {isEditing ? (
+              <input
+                type="text"
+                name="license_number"
+                value={form.license_number}
+                onChange={handleChange}
+                className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                placeholder="e.g. BL-12345"
+              />
+            ) : (
+              license.license_number || 'N/A'
+            )}
+          </div>
+
           {/* Business link row (read-only) */}
           <div className="text-sm font-medium text-gray-500">Business</div>
           <div className="sm:col-span-2">
             {license?.business_id ? (
-              <Link to={`/businesses/${license.business_id}`} className="text-indigo-600 hover:text-indigo-800">
-                Business #{license.business_id}
-              </Link>
+              businessLoading ? (
+                <span className="text-sm text-gray-500">Loading business...</span>
+              ) : (
+                <>
+                  <Link to={`/businesses/${license.business_id}`} className="text-indigo-600 hover:text-indigo-800">
+                    {businessLabel || `Business #${license.business_id}`}
+                  </Link>
+                  {businessError && (
+                    <span className="ml-2 text-xs text-red-600">{businessError}</span>
+                  )}
+                </>
+              )
             ) : (
-              '—'
+              'N/A'
             )}
           </div>
 
@@ -243,13 +358,17 @@ export default function LicenseDetail() {
           <div className="text-sm font-medium text-gray-500">Fiscal Year</div>
           <div className="sm:col-span-2">
             {isEditing ? (
-              <input
-                type="text"
+              <select
                 name="fiscal_year"
                 value={form.fiscal_year}
                 onChange={handleChange}
                 className="mt-1 block w-full rounded-md border-gray-300 text-sm"
-              />
+              >
+                <option value="">Select fiscal year</option>
+                {fiscalYearOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             ) : (
               license.fiscal_year || '—'
             )}
