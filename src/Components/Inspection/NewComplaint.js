@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
 import AsyncSelect from "react-select/async";
 import ContactSelection from "../Contact/ContactSelection";
@@ -7,6 +8,7 @@ import NewUnit from "../Inspection/NewUnit"; // Import NewUnit instead of NewUni
 
 export default function NewComplaint() {
   const { user, token } = useAuth();
+  const navigate = useNavigate();
   const [units, setUnits] = useState([]);
   const [businesses, setBusinesses] = useState([]);
   const [showBusinessSelection, setShowBusinessSelection] = useState(false); // State to toggle business selection
@@ -106,9 +108,16 @@ export default function NewComplaint() {
       if (formData.address_id) createForm.append('address_id', String(formData.address_id));
       if (formData.unit_id) createForm.append('unit_id', String(formData.unit_id));
       createForm.append('source', formData.source || 'Complaint');
-      createForm.append('description', formData.description || '');
+  createForm.append('description', formData.description || '');
+  // Mirror to comment for compatibility with backends that use `comment` or `details`
+  createForm.append('comment', formData.description || '');
       if (formData.contact_id) createForm.append('contact_id', String(formData.contact_id));
       createForm.append('paid', formData.paid ? 'true' : 'false');
+      if (photos.length > 0) {
+        photos.forEach((photo) => {
+          createForm.append('attachments', photo);
+        });
+      }
       // Admin-selected assignee -> inspector_id; OAS defaults to inspector 1
       if (user?.role === 3 && assigneeId) {
         createForm.append('inspector_id', String(assigneeId));
@@ -130,32 +139,10 @@ export default function NewComplaint() {
 
       const createdComplaint = await complaintResponse.json();
       alert("Complaint created successfully!");
-
-      // Step 2: Upload Photos for the Created Complaint
-      if (photos.length > 0) {
-        const formData = new FormData();
-        photos.forEach((photo) => {
-          formData.append('files', photo);
-        });
-
-        const photoUploadResponse = await fetch(
-          `${process.env.REACT_APP_API_URL}/inspections/${createdComplaint.id}/photos`,
-          {
-            method: 'POST',
-            headers: {
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            body: formData,
-          }
-        );
-
-        if (!photoUploadResponse.ok) {
-          throw new Error('Failed to upload photos');
-        }
-
-        alert("Photos uploaded successfully!");
-        setPhotos([]); // Clear the selected photos
+      if (createdComplaint?.id) {
+        navigate(`/complaint/${createdComplaint.id}`);
       }
+      setPhotos([]);
     } catch (error) {
       console.error("Error creating complaint:", error);
       alert("Error creating complaint.");
@@ -167,8 +154,9 @@ export default function NewComplaint() {
     const response = await fetch(
       `${process.env.REACT_APP_API_URL}/addresses/search?query=${inputValue}&limit=5`
     );
+
     const data = await response.json();
-  
+
     return data.map((address) => ({
       label: `${address.property_name ? address.property_name + " - " : ""}${address.combadd}${address.aka ? ` (AKA: ${address.aka})` : ""}`,
       value: address.id,
@@ -201,8 +189,9 @@ export default function NewComplaint() {
     const response = await fetch(
       `${process.env.REACT_APP_API_URL}/contacts/search?query=${inputValue}&limit=5`
     );
+
     const data = await response.json();
-  
+
     return data.map((contact) => ({
       label: `${contact.name} (${contact.email})`,
       value: contact.id,
@@ -221,7 +210,7 @@ export default function NewComplaint() {
     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
       <h1 className="text-2xl font-semibold text-gray-900">New Complaint</h1>
       <form onSubmit={handleSubmit} className="mt-6 bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
-        
+
         {/* Address Selection */}
         <div className="mb-4">
           <label htmlFor="address_id" className="block text-sm font-medium text-gray-700">
@@ -389,9 +378,6 @@ export default function NewComplaint() {
         </div>
       </form>
     </div>
+
   );
 }
-
-
-
-

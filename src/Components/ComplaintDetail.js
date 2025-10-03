@@ -4,6 +4,29 @@ import { useAuth } from "../AuthContext";
 import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
 import NewViolationForm from "./Inspection/NewViolationForm";
 
+const pickDescription = (payload) => {
+  if (!payload || typeof payload !== 'object') return '';
+  const fields = [
+    'description',
+		'details',
+    'comment',
+    'thoughts',
+    'result',
+		'notes',
+    'notes_area_1',
+    'notes_area_2',
+    'notes_area_3',
+  ];
+  for (const field of fields) {
+    const value = payload[field];
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed) return trimmed;
+    }
+  }
+  return '';
+};
+
 export default function ComplaintDetail() {
 	const { id } = useParams();
 	const navigate = useNavigate();
@@ -50,7 +73,18 @@ export default function ComplaintDetail() {
 				const resp = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}`);
 				if (!resp.ok) throw new Error("Failed to fetch complaint");
 				const data = await resp.json();
-				setComplaint(data);
+				// Debug: inspect payload keys and description sources
+				try {
+					// eslint-disable-next-line no-console
+					console.debug('Inspection payload keys:', Object.keys(data || {}));
+					// eslint-disable-next-line no-console
+					console.debug('Inspection payload sample:', data);
+				} catch {}
+				const picked = pickDescription(data);
+				const merged = picked && picked.trim()
+					? { ...data, description: picked }
+					: data; // don't overwrite a real description with empty text
+				setComplaint(merged);
 			} catch (e) {
 				setError(e.message);
 			} finally {
@@ -391,7 +425,7 @@ export default function ComplaintDetail() {
 
 					<div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
 						<dt className="text-sm font-medium leading-6 text-gray-900">Description</dt>
-						<dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">{complaint.description || "—"}</dd>
+          <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">{complaint.description && complaint.description.trim() ? complaint.description.trim() : 'No description provided.'}</dd>
 					</div>
 
 					<div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
