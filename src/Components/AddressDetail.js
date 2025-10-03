@@ -300,7 +300,9 @@ const AddressDetails = () => {
             }
           } else {
             const list = await r.json();
-            permitsLen = Array.isArray(list) ? list.length : 0;
+            permitsLen = Array.isArray(list)
+              ? list.filter((p) => String(p.address_id) === String(id)).length
+              : 0;
           }
         } catch {
           permitsLen = 0;
