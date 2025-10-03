@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
 
 export default function InspectionDetail() {
   const { id } = useParams();
+  const { user, token } = useAuth();
   const [inspection, setInspection] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -11,6 +13,11 @@ export default function InspectionDetail() {
   const [scheduleError, setScheduleError] = useState(null);
   const [attachments, setAttachments] = useState([]);
   const [attachmentsError, setAttachmentsError] = useState(null);
+  const [assignableUsers, setAssignableUsers] = useState([]);
+  const [assigneeId, setAssigneeId] = useState('');
+  const [assignSaving, setAssignSaving] = useState(false);
+  const [assignError, setAssignError] = useState(null);
+  const [assignSuccess, setAssignSuccess] = useState('');
   const formatStatus = (s) => {
     if (!s) return 'Pending';
     return s
@@ -55,6 +62,26 @@ export default function InspectionDetail() {
     fetchInspection();
   }, [id]);
 
+
+  useEffect(() => {
+    if (typeof inspection?.inspector_id === "undefined") return;
+    setAssigneeId(inspection?.inspector_id ? String(inspection.inspector_id) : '');
+  }, [inspection?.inspector_id]);
+
+  useEffect(() => {
+    if (user?.role !== 3) return;
+    const loadAssignable = async () => {
+      try {
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/users/ons/`);
+        if (!resp.ok) throw new Error('Failed to load users');
+        const data = await resp.json();
+        setAssignableUsers(Array.isArray(data) ? data : []);
+      } catch (err) {
+        setAssignableUsers([]);
+      }
+    };
+    loadAssignable();
+  }, [user?.role]);
   const pad2 = (n) => String(n).padStart(2, '0');
   function formatForInput(dtStr) {
     if (!dtStr) return '';
@@ -96,6 +123,61 @@ export default function InspectionDetail() {
     setScheduleInput('');
     await saveSchedule();
   };
+
+  const handleAssigneeUpdate = async () => {
+    if (user?.role !== 3) return;
+    try {
+      setAssignSaving(true);
+      setAssignError(null);
+      setAssignSuccess('');
+      const fd = new FormData();
+      if (assigneeId) {
+        fd.append('inspector_id', assigneeId);
+      } else {
+        fd.append('inspector_id', '');
+      }
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/assignee`, {
+        method: 'PATCH',
+        headers,
+        body: fd,
+      });
+      if (!resp.ok) {
+        let msg = 'Failed to update assignment';
+        try {
+          const errData = await resp.json();
+          if (errData?.detail) msg = errData.detail;
+        } catch {}
+        throw new Error(msg);
+      }
+      const updated = await resp.json();
+      setInspection(updated);
+      setAssignSuccess('Assignee updated');
+    } catch (err) {
+      setAssignError(err.message);
+    } finally {
+      setAssignSaving(false);
+    }
+  };
+
+
+  const assignmentOptions = useMemo(() => {
+    const base = Array.isArray(assignableUsers) ? assignableUsers : [];
+    if (inspection?.inspector_id && inspection?.inspector) {
+      const exists = base.some((u) => Number(u.id) === Number(inspection.inspector_id));
+      if (!exists) {
+        return [
+          ...base,
+          {
+            id: inspection.inspector_id,
+            name: inspection.inspector.name,
+            email: inspection.inspector.email,
+          },
+        ];
+      }
+    }
+    return base;
+  }, [assignableUsers, inspection?.inspector_id, inspection?.inspector]);
 
   if (loading) {
     return <p>Loading inspection...</p>;
@@ -184,6 +266,47 @@ export default function InspectionDetail() {
             <dt className="text-sm font-medium leading-6 text-gray-900">Inspection Status</dt>
             <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
               {formatStatus(inspection.status)}
+            </dd>
+          </div>
+
+          {/* Inspector Assignment */}
+          <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+            <dt className="text-sm font-medium leading-6 text-gray-900">Assigned Inspector</dt>
+            <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
+              {user?.role === 3 ? (
+                <div className="max-w-md">
+                  <div className="flex gap-2">
+                    <select
+                      value={assigneeId}
+                      onChange={(e) => setAssigneeId(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    >
+                      <option value="">Unassigned</option>
+                      {assignmentOptions.map((ons) => (
+                        <option key={ons.id} value={String(ons.id)}>
+                          {ons.name || ons.email || `User ${ons.id}`}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleAssigneeUpdate}
+                      disabled={assignSaving}
+                      className="px-3 py-2 rounded bg-indigo-600 text-white text-sm disabled:opacity-60"
+                    >
+                      {assignSaving ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                  {assignError && <div className="text-xs text-red-600 mt-1">{assignError}</div>}
+                  {!assignError && assignSuccess && <div className="text-xs text-green-600 mt-1">{assignSuccess}</div>}
+                </div>
+              ) : (
+                <span>
+                  {inspection.inspector
+                    ? inspection.inspector.name || inspection.inspector.email || `User ${inspection.inspector_id}`
+                    : "Unassigned"}
+                </span>
+              )}
             </dd>
           </div>
 
@@ -303,3 +426,8 @@ export default function InspectionDetail() {
     </div>
   );
 }
+
+
+
+
+

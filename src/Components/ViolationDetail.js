@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import NewCitationForm from "./NewCitationForm";
@@ -82,6 +82,11 @@ const ViolationDetail = () => {
   const [submitting, setSubmitting] = useState(false);
   const [commentFiles, setCommentFiles] = useState([]);
   const [commentAttachments, setCommentAttachments] = useState({}); // { [commentId]: Attachment[] }
+  const [assignableUsers, setAssignableUsers] = useState([]);
+  const [assigneeId, setAssigneeId] = useState('');
+  const [assignSaving, setAssignSaving] = useState(false);
+  const [assignError, setAssignError] = useState(null);
+  const [assignSuccess, setAssignSuccess] = useState('');
 
   useEffect(() => {
     const prefetchCommentAttachments = async (comments) => {
@@ -159,6 +164,26 @@ const ViolationDetail = () => {
     fetchCitations();
     fetchPhotos();
   }, [id]);
+
+  useEffect(() => {
+    if (!violation) return;
+    setAssigneeId(violation.user_id ? String(violation.user_id) : '');
+  }, [violation?.user_id]);
+
+  useEffect(() => {
+    if (user?.role !== 3) return;
+    const loadAssignable = async () => {
+      try {
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/users/ons/`);
+        if (!resp.ok) throw new Error('Failed to load users');
+        const data = await resp.json();
+        setAssignableUsers(Array.isArray(data) ? data : []);
+      } catch (err) {
+        setAssignableUsers([]);
+      }
+    };
+    loadAssignable();
+  }, [user?.role]);
 
   // Add comment submit handler
   const handleCommentSubmit = async (e) => {
@@ -242,6 +267,24 @@ const ViolationDetail = () => {
     } catch {}
   };
 
+  const assignmentOptions = useMemo(() => {
+    const base = Array.isArray(assignableUsers) ? assignableUsers : [];
+    if (violation?.user_id && violation?.user) {
+      const exists = base.some((u) => Number(u.id) === Number(violation.user_id));
+      if (!exists) {
+        return [
+          ...base,
+          {
+            id: violation.user_id,
+            name: violation.user.name,
+            email: violation.user.email,
+          },
+        ];
+      }
+    }
+    return base;
+  }, [assignableUsers, violation?.user_id, violation?.user]);
+
   if (loading) {
     return <p>Loading violation...</p>;
   }
@@ -295,6 +338,39 @@ const ViolationDetail = () => {
       });
     } catch {}
   };
+
+  const handleAssigneeUpdate = async () => {
+    if (user?.role !== 3 || !assigneeId) return;
+    try {
+      setAssignSaving(true);
+      setAssignError(null);
+      setAssignSuccess('');
+      const fd = new FormData();
+      fd.append('user_id', assigneeId);
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/assignee`, {
+        method: 'PATCH',
+        headers,
+        body: fd,
+      });
+      if (!resp.ok) {
+        let msg = 'Failed to update assignment';
+        try {
+          const errData = await resp.json();
+          if (errData?.detail) msg = errData.detail;
+        } catch {}
+        throw new Error(msg);
+      }
+      const updated = await resp.json();
+      setViolation(updated);
+      setAssignSuccess('Assignee updated');
+    } catch (err) {
+      setAssignError(err.message);
+    } finally {
+      setAssignSaving(false);
+    }
+  };
+
 
   // Handler for marking as abated (closed)
   const handleMarkAbated = async () => {
@@ -362,6 +438,46 @@ const ViolationDetail = () => {
                 violation.combadd
               )}
             </p>
+
+            <div className="mt-3">
+              {user?.role === 3 ? (
+                <div className="max-w-md">
+                  <label className="block text-sm font-medium text-gray-700">Assigned To</label>
+                  <div className="mt-1 flex gap-2">
+                    <select
+                      value={assigneeId}
+                      onChange={(e) => setAssigneeId(e.target.value)}
+                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    >
+                      <option value="">Select an inspector</option>
+                      {assignmentOptions.map((ons) => (
+                        <option key={ons.id} value={String(ons.id)}>
+                          {ons.name || ons.email || `User ${ons.id}`}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleAssigneeUpdate}
+                      disabled={assignSaving || !assigneeId}
+                      className="px-3 py-2 rounded bg-indigo-600 text-white text-xs font-semibold disabled:opacity-60"
+                    >
+                      {assignSaving ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                  {assignError && <div className="text-xs text-red-600 mt-1">{assignError}</div>}
+                  {!assignError && assignSuccess && <div className="text-xs text-green-600 mt-1">{assignSuccess}</div>}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-700">
+                  <span className="font-semibold">Assigned To:</span>{" "}
+                  {violation.user
+                    ? violation.user.name || violation.user.email || `User ${violation.user_id}`
+                    : "Unassigned"}
+                </p>
+              )}
+            </div>
+
 
             {/* Deadline moved here */}
             {violation.deadline_date && (() => {
@@ -761,3 +877,8 @@ function ToggleCitationForm({ violationId, onCitationAdded, codes, showCitationF
 }
 
 export default ViolationDetail;
+
+
+
+
+

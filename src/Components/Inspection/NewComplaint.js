@@ -9,8 +9,6 @@ export default function NewComplaint() {
   const { user, token } = useAuth();
   const [units, setUnits] = useState([]);
   const [businesses, setBusinesses] = useState([]);
-  const [contacts, setContacts] = useState([]);
-  const [addresses, setAddresses] = useState([]);
   const [showBusinessSelection, setShowBusinessSelection] = useState(false); // State to toggle business selection
   const [showNewUnitForm, setShowNewUnitForm] = useState(false); // State to toggle new unit form
   const [formData, setFormData] = useState({
@@ -31,27 +29,19 @@ export default function NewComplaint() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Fetch initial data for contacts, addresses, and businesses
-    const fetchData = async () => {
+    const fetchBusinesses = async () => {
       try {
-        const [contactsRes, addressesRes, businessesRes] = await Promise.all([
-          fetch(`${process.env.REACT_APP_API_URL}/contacts/`),
-          fetch(`${process.env.REACT_APP_API_URL}/addresses/`),  // Replace with actual endpoint for addresses
-          fetch(`${process.env.REACT_APP_API_URL}/businesses/`),  // Replace with actual endpoint for businesses
-        ]);
-
-        setContacts(await contactsRes.json());
-        setAddresses(await addressesRes.json());
-        setBusinesses(await businessesRes.json());
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/businesses/`);
+        setBusinesses(await response.json());
         setLoading(false);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching businesses:", error);
         setError(error.message);
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchBusinesses();
   }, []);
 
   useEffect(() => {
@@ -119,9 +109,11 @@ export default function NewComplaint() {
       createForm.append('description', formData.description || '');
       if (formData.contact_id) createForm.append('contact_id', String(formData.contact_id));
       createForm.append('paid', formData.paid ? 'true' : 'false');
-      // Admin-selected assignee -> inspector_id
+      // Admin-selected assignee -> inspector_id; OAS defaults to inspector 1
       if (user?.role === 3 && assigneeId) {
         createForm.append('inspector_id', String(assigneeId));
+      } else if (user?.role === 2) {
+        createForm.append('inspector_id', '1');
       }
 
       const complaintResponse = await fetch(`${process.env.REACT_APP_API_URL}/inspections/`, {
@@ -169,11 +161,6 @@ export default function NewComplaint() {
       alert("Error creating complaint.");
     }
   };
-
-  const addressOptions = addresses.map((address) => ({
-    value: address.id,
-    label: address.combadd,
-  }));
 
   // Function to load options asynchronously
   const loadAddressOptions = async (inputValue) => {
@@ -404,3 +391,7 @@ export default function NewComplaint() {
     </div>
   );
 }
+
+
+
+
