@@ -1,3 +1,40 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@media screen {
+	.print-only {
+		display: none;
+	}
+}
+
+@media print {
+	body {
+		background: #fff;
+	}
+
+	.print-hidden {
+		display: none !important;
+	}
+
+	.print-only {
+		display: block !important;
+	}
+
+	.print-table {
+		width: 100%;
+		border-collapse: collapse;
+	}
+
+	.print-table th,
+	.print-table td {
+		border: 1px solid #000;
+		padding: 6px 8px;
+		font-size: 12px;
+		text-align: left;
+	}
+
+	.print-table th {
+		font-weight: 600;
+	}
+}
