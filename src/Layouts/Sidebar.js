@@ -79,7 +79,8 @@ export default function Sidebar({ children }) {
       }
 
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/notifications`, {
+        const userIdParam = user?.id ? `?user_id=${encodeURIComponent(user.id)}` : '';
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/notifications${userIdParam}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -105,7 +106,7 @@ export default function Sidebar({ children }) {
         }
       }
     },
-    [token]
+    [token, user]
   );
 
   // Search addresses via API when query changes (debounced)
@@ -257,6 +258,21 @@ export default function Sidebar({ children }) {
       return next;
     });
     setShowDropdown(false);
+  };
+
+  const handleMarkAllAsRead = async () => {
+    if (!token) return;
+    try {
+      await fetch(`${process.env.REACT_APP_API_URL}/notifications/read-all`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch (e) {
+      // silently ignore
+    }
   };
 
   const roleMapping = {
@@ -493,7 +509,30 @@ export default function Sidebar({ children }) {
                     ) : (
                       <ul className="divide-y divide-gray-100">
                         {notifications.map((notification) => (
-                          <li key={notification.id} className="p-4 hover:bg-gray-50">
+                          <li
+                            key={notification.id}
+                            className="p-4 hover:bg-gray-50 cursor-pointer"
+                            onClick={async () => {
+                              try {
+                                // Mark as read
+                                await fetch(`${process.env.REACT_APP_API_URL}/notifications/${notification.id}/read`, {
+                                  method: 'PATCH',
+                                  headers: {
+                                    Authorization: `Bearer ${token}`,
+                                  },
+                                });
+                                // Optimistically update UI
+                                setNotifications((prev) => prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)));
+                                // Navigate to inspection if available
+                                if (notification.inspection_id) {
+                                  navigate(`/inspection/${notification.inspection_id}`);
+                                  setShowNotificationsDropdown(false);
+                                }
+                              } catch (e) {
+                                // ignore errors for marking read
+                              }
+                            }}
+                          >
                             <div className="flex items-start gap-3">
                               <div className="flex-1">
                                 <p className="text-sm font-medium text-gray-900">
@@ -518,6 +557,22 @@ export default function Sidebar({ children }) {
                         ))}
                       </ul>
                     )}
+                    <div className="border-t border-gray-100 px-4 py-3 flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={handleMarkAllAsRead}
+                        className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                      >
+                        Mark all as read
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowNotificationsDropdown(false)}
+                        className="text-sm text-gray-500 hover:text-gray-700"
+                      >
+                        Close
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
