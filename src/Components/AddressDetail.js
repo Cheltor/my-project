@@ -54,6 +54,18 @@ const AddressDetails = () => {
   const [contactResults, setContactResults] = useState([]);
   const [newContact, setNewContact] = useState({ name: '', email: '', phone: '' });
   const [addContactError, setAddContactError] = useState(null);
+  // Add Business state
+  const [showAddBusiness, setShowAddBusiness] = useState(false);
+  const [newBusiness, setNewBusiness] = useState({
+    name: '',
+    trading_as: '',
+    phone: '',
+    email: '',
+    website: '',
+    is_closed: false,
+  });
+  const [submittingBusiness, setSubmittingBusiness] = useState(false);
+  const [addBusinessError, setAddBusinessError] = useState(null);
   // Fetch contacts for this address
   useEffect(() => {
     if (!id) return;
@@ -960,7 +972,139 @@ const AddressDetails = () => {
         )}
         {activeTab === 'businesses' && (
           <div className="mb-6">
-            <h2 className="text-xl font-bold text-gray-700 mb-3">Businesses</h2>
+            <h2 className="text-xl font-bold text-gray-700 mb-3 flex items-center justify-between">
+              <span>Businesses</span>
+              <button
+                type="button"
+                className="ml-4 px-3 py-1 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-500"
+                onClick={() => setShowAddBusiness((v) => !v)}
+                aria-expanded={showAddBusiness}
+              >
+                {showAddBusiness ? 'Cancel' : 'Add Business'}
+              </button>
+            </h2>
+            {showAddBusiness && (
+              <div className="mb-4 p-4 bg-white border rounded shadow">
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!id) return;
+                    setAddBusinessError(null);
+                    setSubmittingBusiness(true);
+                    try {
+                      const payload = {
+                        address_id: Number(id),
+                        name: newBusiness.name?.trim() || '',
+                        trading_as: newBusiness.trading_as?.trim() || '',
+                        phone: newBusiness.phone?.trim() || '',
+                        email: newBusiness.email?.trim() || '',
+                        website: newBusiness.website?.trim() || '',
+                        is_closed: !!newBusiness.is_closed,
+                      };
+                      const res = await fetch(`${process.env.REACT_APP_API_URL}/businesses/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                      });
+                      if (!res.ok) throw new Error('Failed to create business');
+                      const created = await res.json();
+                      setBusinesses((prev) => Array.isArray(prev) ? [created, ...prev] : [created]);
+                      setShowAddBusiness(false);
+                      setNewBusiness({ name: '', trading_as: '', phone: '', email: '', website: '', is_closed: false });
+                    } catch (err) {
+                      setAddBusinessError('Could not create business.');
+                    } finally {
+                      setSubmittingBusiness(false);
+                    }
+                  }}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                >
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-gray-600">Business Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={newBusiness.name}
+                      onChange={(e) => setNewBusiness((nb) => ({ ...nb, name: e.target.value }))}
+                      className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                      placeholder="e.g., ACME LLC"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600">Trading As</label>
+                    <input
+                      type="text"
+                      value={newBusiness.trading_as}
+                      onChange={(e) => setNewBusiness((nb) => ({ ...nb, trading_as: e.target.value }))}
+                      className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                      placeholder="DBA / storefront name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600">Phone</label>
+                    <input
+                      type="tel"
+                      value={newBusiness.phone}
+                      onChange={(e) => setNewBusiness((nb) => ({ ...nb, phone: e.target.value }))}
+                      className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                      placeholder="(555) 555‑5555"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600">Email</label>
+                    <input
+                      type="email"
+                      value={newBusiness.email}
+                      onChange={(e) => setNewBusiness((nb) => ({ ...nb, email: e.target.value }))}
+                      className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                      placeholder="name@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600">Website</label>
+                    <input
+                      type="url"
+                      value={newBusiness.website}
+                      onChange={(e) => setNewBusiness((nb) => ({ ...nb, website: e.target.value }))}
+                      className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="biz-is-closed"
+                      type="checkbox"
+                      checked={newBusiness.is_closed}
+                      onChange={(e) => setNewBusiness((nb) => ({ ...nb, is_closed: e.target.checked }))}
+                      className="rounded border-gray-300"
+                    />
+                    <label htmlFor="biz-is-closed" className="text-xs font-medium text-gray-600">Closed</label>
+                  </div>
+                  {addBusinessError && (
+                    <div className="sm:col-span-2 text-red-600 text-sm">{addBusinessError}</div>
+                  )}
+                  <div className="sm:col-span-2 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddBusiness(false);
+                        setAddBusinessError(null);
+                      }}
+                      className="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submittingBusiness || !newBusiness.name.trim()}
+                      className="px-3 py-1 rounded-md bg-green-600 text-white text-sm disabled:bg-gray-300"
+                    >
+                      {submittingBusiness ? 'Saving...' : 'Save Business'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
             {businesses.length === 0 ? (
               <p className="text-gray-500">No businesses associated with this address.</p>
             ) : (
