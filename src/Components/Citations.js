@@ -7,6 +7,7 @@ export default function Citations() {
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 0, 1, 2, 3
   const [filterPastDue, setFilterPastDue] = useState('all'); // 'all', 'pastdue', 'notpastdue'
   const [filterCitationId, setFilterCitationId] = useState(''); // citation ID filter
+  const [printGeneratedAt, setPrintGeneratedAt] = useState('');
   // Sorting state
   const [sortBy, setSortBy] = useState(null); // 'unpaid' | 'pastdue' | null
   const [sortDirection, setSortDirection] = useState('desc'); // 'asc' | 'desc'
@@ -92,6 +93,25 @@ export default function Citations() {
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
+  // Labels for print summary
+  const statusFilterLabel = (() => {
+    if (filterStatus === 'all') return 'All statuses';
+    const map = { '0': 'Unpaid', '1': 'Paid', '2': 'Pending Trial', '3': 'Dismissed' };
+    return map[filterStatus] || 'Unknown';
+  })();
+  const pastDueFilterLabel = (() => {
+    if (filterPastDue === 'all') return 'All deadlines';
+    return filterPastDue === 'pastdue' ? 'Past Due only' : 'Not Past Due only';
+  })();
+  const idFilterLabel = filterCitationId.trim() ? `ID contains "${filterCitationId.trim()}"` : 'All IDs';
+  const printableResultsLabel = filteredCitations.length === 1 ? '1 result' : `${filteredCitations.length} results`;
+  const resolvedPrintTimestamp = printGeneratedAt || new Date().toLocaleString('en-US');
+
+  const handlePrint = () => {
+    setPrintGeneratedAt(new Date().toLocaleString('en-US'));
+    setTimeout(() => window.print(), 0);
+  };
+
 
   // Add loading state for status update
   const [loadingStatus, setLoadingStatus] = useState(false);
@@ -103,171 +123,222 @@ export default function Citations() {
     <div className="flex flex-col md:flex-row px-4 sm:px-6 lg:px-8 gap-8">
       {/* Sidebar/Table */}
       <div className="w-full">
-        <div className="sm:flex sm:items-center justify-between flex-wrap gap-4">
-          <div className="sm:flex-auto">
-            <h1 className="text-base font-semibold leading-6 text-gray-900">Citations</h1>
+        <div className="print-hidden">
+          <div className="sm:flex sm:items-center justify-between flex-wrap gap-4">
+            <div className="sm:flex-auto">
+              <h1 className="text-base font-semibold leading-6 text-gray-900">Citations</h1>
+            </div>
+            {/* Filters */}
+            <div className="flex flex-wrap gap-4 items-center mt-2">
+              <label className="text-sm text-gray-700">
+                Citation ID:
+                <input
+                  type="text"
+                  className="ml-2 border rounded p-1 text-sm"
+                  placeholder="Search by ID"
+                  value={filterCitationId}
+                  onChange={e => setFilterCitationId(e.target.value)}
+                />
+              </label>
+              <label className="text-sm text-gray-700">
+                Status:
+                <select
+                  className="ml-2 border rounded p-1 text-sm"
+                  value={filterStatus}
+                  onChange={e => setFilterStatus(e.target.value)}
+                >
+                  <option value="all">All</option>
+                  <option value="0">Unpaid</option>
+                  <option value="1">Paid</option>
+                  <option value="2">Pending Trial</option>
+                  <option value="3">Dismissed</option>
+                </select>
+              </label>
+              <label className="text-sm text-gray-700">
+                Past Due:
+                <select
+                  className="ml-2 border rounded p-1 text-sm"
+                  value={filterPastDue}
+                  onChange={e => setFilterPastDue(e.target.value)}
+                >
+                  <option value="all">All</option>
+                  <option value="pastdue">Past Due</option>
+                  <option value="notpastdue">Not Past Due</option>
+                </select>
+              </label>
+              <button
+                type="button"
+                className="rounded bg-slate-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-500"
+                onClick={handlePrint}
+              >
+                Print Results
+              </button>
+            </div>
           </div>
-          {/* Filters */}
-          <div className="flex flex-wrap gap-4 items-center mt-2">
-            <label className="text-sm text-gray-700">
-              Citation ID:
-              <input
-                type="text"
-                className="ml-2 border rounded p-1 text-sm"
-                placeholder="Search by ID"
-                value={filterCitationId}
-                onChange={e => setFilterCitationId(e.target.value)}
-              />
-            </label>
-            <label className="text-sm text-gray-700">
-              Status:
-              <select
-                className="ml-2 border rounded p-1 text-sm"
-                value={filterStatus}
-                onChange={e => setFilterStatus(e.target.value)}
-              >
-                <option value="all">All</option>
-                <option value="0">Unpaid</option>
-                <option value="1">Paid</option>
-                <option value="2">Pending Trial</option>
-                <option value="3">Dismissed</option>
-              </select>
-            </label>
-            <label className="text-sm text-gray-700">
-              Past Due:
-              <select
-                className="ml-2 border rounded p-1 text-sm"
-                value={filterPastDue}
-                onChange={e => setFilterPastDue(e.target.value)}
-              >
-                <option value="all">All</option>
-                <option value="pastdue">Past Due</option>
-                <option value="notpastdue">Not Past Due</option>
-              </select>
-            </label>
+
+          <div className="mt-8 overflow-x-auto rounded-lg shadow-md">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Citation ID
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Address
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none" onClick={() => {
+                      if (sortBy === 'pastdue') {
+                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortBy('pastdue');
+                        setSortDirection('desc');
+                      }
+                    }}>
+                    Deadline
+                    <span className="ml-1 text-xs align-middle">{sortBy === 'pastdue' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}</span>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none" onClick={() => {
+                      if (sortBy === 'unpaid') {
+                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortBy('unpaid');
+                        setSortDirection('desc');
+                      }
+                    }}>
+                    Status
+                    <span className="ml-1 text-xs align-middle">{sortBy === 'unpaid' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {currentCitations.map((citation, idx) => (
+                  <tr key={citation.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <Link to={`/citation/${citation.id}`} className="text-indigo-600 hover:text-indigo-900">
+                        {citation.citationid ? citation.citationid : 'Missing'}
+                      </Link>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {citation.combadd ? (
+                        <span>{citation.combadd}</span>
+                      ) : (
+                        <span className="text-gray-400 italic">No Address</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 flex items-center gap-2">
+                      {(() => {
+                        if (!citation.deadline) return 'N/A';
+                        const deadline = new Date(citation.deadline);
+                        const now = new Date();
+                        const diffMs = deadline - now;
+                        const diffDays = diffMs / (1000 * 60 * 60 * 24);
+                        let deadlineStatus = '';
+                        let badgeClass = '';
+                        // Remove deadline hints for Paid (1) and Dismissed (3)
+                        if (citation.status === 1 || citation.status === 3) {
+                          deadlineStatus = '';
+                          badgeClass = '';
+                        } else if (diffDays < 0) {
+                          deadlineStatus = 'Past Due';
+                          badgeClass = 'bg-red-200 text-red-800';
+                        } else if (diffDays <= 3) {
+                          deadlineStatus = 'Approaching';
+                          badgeClass = 'bg-yellow-200 text-yellow-900';
+                        } else {
+                          deadlineStatus = 'Plenty of Time';
+                          badgeClass = 'bg-green-100 text-green-800';
+                        }
+                        return <>
+                          {deadline.toLocaleDateString('en-US')}
+                          {deadlineStatus && (
+                            <span className={`ml-2 px-2 py-0.5 rounded text-xs font-semibold align-middle ${badgeClass}`}>
+                              {deadlineStatus}
+                            </span>
+                          )}
+                        </>;
+                      })()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium 
+                        ${citation.status === 0 ? 'bg-red-100 text-red-800 border border-red-200' :
+                          citation.status === 1 ? 'bg-green-100 text-green-800 border border-green-200' :
+                          citation.status === 2 ? 'bg-yellow-100 text-yellow-900 border border-yellow-200' :
+                          citation.status === 3 ? 'bg-gray-200 text-gray-700 border border-gray-300' :
+                          'bg-gray-100 text-gray-700 border border-gray-200'}`}
+                      >
+                        {citation.status === 0 && 'Unpaid'}
+                        {citation.status === 1 && 'Paid'}
+                        {citation.status === 2 && 'Pending Trial'}
+                        {citation.status === 3 && 'Dismissed'}
+                        {![0,1,2,3].includes(citation.status) && 'Unknown'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="mt-4 flex justify-between">
+            <button
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-500 disabled:bg-gray-300"
+            >
+              Previous
+            </button>
+            <p className="text-sm text-gray-700">
+              Page {currentPage} of {totalPages}
+            </p>
+            <button
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-500 disabled:bg-gray-300"
+            >
+              Next
+            </button>
           </div>
         </div>
-        <div className="mt-8 overflow-x-auto rounded-lg shadow-md">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+
+        {/* Print-only full list */}
+        <div className="print-only">
+          <h1 className="text-2xl font-semibold text-gray-900">Citations Report</h1>
+          <p className="mt-2 text-sm text-gray-700">
+            Generated {resolvedPrintTimestamp} · {statusFilterLabel} · {pastDueFilterLabel} · {idFilterLabel} · {printableResultsLabel}
+          </p>
+          <table className="print-table mt-6">
+            <thead>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Citation ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Address
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none" onClick={() => {
-                    if (sortBy === 'pastdue') {
-                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                    } else {
-                      setSortBy('pastdue');
-                      setSortDirection('desc');
-                    }
-                  }}>
-                  Deadline
-                  <span className="ml-1 text-xs align-middle">{sortBy === 'pastdue' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}</span>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none" onClick={() => {
-                    if (sortBy === 'unpaid') {
-                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                    } else {
-                      setSortBy('unpaid');
-                      setSortDirection('desc');
-                    }
-                  }}>
-                  Status
-                  <span className="ml-1 text-xs align-middle">{sortBy === 'unpaid' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}</span>
-                </th>
+                <th>Citation ID</th>
+                <th>Address</th>
+                <th>Deadline</th>
+                <th>Status</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {currentCitations.map((citation, idx) => (
-                <tr key={citation.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    <Link to={`/citation/${citation.id}`} className="text-indigo-600 hover:text-indigo-900">
-                      {citation.citationid ? citation.citationid : 'Missing'}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {citation.combadd ? (
-                      <span>{citation.combadd}</span>
-                    ) : (
-                      <span className="text-gray-400 italic">No Address</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 flex items-center gap-2">
-                    {(() => {
-                      if (!citation.deadline) return 'N/A';
-                      const deadline = new Date(citation.deadline);
-                      const now = new Date();
-                      const diffMs = deadline - now;
-                      const diffDays = diffMs / (1000 * 60 * 60 * 24);
-                      let deadlineStatus = '';
-                      let badgeClass = '';
-                      // Remove deadline hints for Paid (1) and Dismissed (3)
-                      if (citation.status === 1 || citation.status === 3) {
-                        deadlineStatus = '';
-                        badgeClass = '';
-                      } else if (diffDays < 0) {
-                        deadlineStatus = 'Past Due';
-                        badgeClass = 'bg-red-200 text-red-800';
-                      } else if (diffDays <= 3) {
-                        deadlineStatus = 'Approaching';
-                        badgeClass = 'bg-yellow-200 text-yellow-900';
-                      } else {
-                        deadlineStatus = 'Plenty of Time';
-                        badgeClass = 'bg-green-100 text-green-800';
-                      }
-                      return <>
-                        {deadline.toLocaleDateString('en-US')}
-                        {deadlineStatus && (
-                          <span className={`ml-2 px-2 py-0.5 rounded text-xs font-semibold align-middle ${badgeClass}`}>
-                            {deadlineStatus}
-                          </span>
-                        )}
-                      </>;
-                    })()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium 
-                      ${citation.status === 0 ? 'bg-red-100 text-red-800 border border-red-200' :
-                        citation.status === 1 ? 'bg-green-100 text-green-800 border border-green-200' :
-                        citation.status === 2 ? 'bg-yellow-100 text-yellow-900 border border-yellow-200' :
-                        citation.status === 3 ? 'bg-gray-200 text-gray-700 border border-gray-300' :
-                        'bg-gray-100 text-gray-700 border border-gray-200'}`}
-                    >
-                      {citation.status === 0 && 'Unpaid'}
-                      {citation.status === 1 && 'Paid'}
-                      {citation.status === 2 && 'Pending Trial'}
-                      {citation.status === 3 && 'Dismissed'}
-                      {![0,1,2,3].includes(citation.status) && 'Unknown'}
-                    </span>
-                  </td>
+            <tbody>
+              {filteredCitations.length === 0 ? (
+                <tr>
+                  <td colSpan={4}>No results match the active filters.</td>
                 </tr>
-              ))}
+              ) : (
+                filteredCitations.map((citation) => {
+                  const statusLabel = (citation.status === 0 && 'Unpaid') ||
+                    (citation.status === 1 && 'Paid') ||
+                    (citation.status === 2 && 'Pending Trial') ||
+                    (citation.status === 3 && 'Dismissed') || 'Unknown';
+                  return (
+                    <tr key={`print-${citation.id}`}>
+                      <td>{citation.citationid || 'Missing'}</td>
+                      <td>{citation.combadd || 'No Address'}</td>
+                      <td>{citation.deadline ? new Date(citation.deadline).toLocaleDateString('en-US') : 'N/A'}</td>
+                      <td>{statusLabel}</td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
-        </div>
-        {/* Pagination Controls */}
-        <div className="mt-4 flex justify-between">
-          <button
-            onClick={() => paginate(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-500 disabled:bg-gray-300"
-          >
-            Previous
-          </button>
-          <p className="text-sm text-gray-700">
-            Page {currentPage} of {totalPages}
-          </p>
-          <button
-            onClick={() => paginate(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-500 disabled:bg-gray-300"
-          >
-            Next
-          </button>
         </div>
       </div>
     </div>
