@@ -13,6 +13,7 @@ export default function Violations() {
   const [showMyViolations, setShowMyViolations] = useState(false);
   const [onsUsers, setOnsUsers] = useState([]); // <-- Add state for ONS users
   const [printGeneratedAt, setPrintGeneratedAt] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const violationsPerPage = 10;
 
 
@@ -107,77 +108,98 @@ export default function Violations() {
   return (
     <div className="px-4 sm:px-6 lg:px-8">
       <div className="print-hidden">
-        <div className="sm:flex sm:items-center">
+        <div className="sm:flex sm:items-center justify-between">
           <div className="sm:flex-auto">
             <h1 className="text-base font-semibold leading-6 text-gray-900">Violations</h1>
             <p className="mt-2 text-sm text-gray-700">
               A list of all violations, including their status, type, and associated address.
             </p>
           </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          {user?.role === 1 && (
+          <div className="mt-4 sm:mt-0 sm:ml-auto flex gap-2">
             <button
               type="button"
-              className={`${showMyViolations ? 'bg-blue-800' : 'bg-blue-600'} rounded px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500`}
-              onClick={() => {
-                setShowMyViolations(!showMyViolations);
-                setCurrentPage(1);
-              }}
+              onClick={() => setShowFilters((v) => !v)}
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-700 hover:bg-gray-600"
             >
-              {showMyViolations ? 'Show All Violations' : 'Show My Violations'}
+              {showFilters ? 'Hide Filters' : 'Show Filters'}
             </button>
-          )}
-          <button
-            type="button"
-            className="rounded bg-slate-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-500"
-            onClick={handlePrint}
-          >
-            Print Results
-          </button>
+            <button
+              type="button"
+              className="rounded bg-slate-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-500"
+              onClick={handlePrint}
+            >
+              Print Results
+            </button>
+          </div>
         </div>
 
         {/* Filter UI */}
-        <div className="mt-4">
-          <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700">
-            Filter by Status:
-          </label>
-          <select
-            id="status-filter"
-            name="status-filter"
-            value={statusFilter}
-            onChange={handleFilterChange}
-            className="mt-1 block w-full pl-3 pr-10 py-2 border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-          >
-            <option value="all">All</option>
-            <option value="current">Current</option>
-            <option value="resolved">Resolved</option>
-            <option value="pending trial">Pending Trial</option>
-            <option value="dismissed">Dismissed</option>
-          </select>
-        </div>
-
-        {user?.role === 3 && (
-          <div className="mt-4">
-            <label htmlFor="email-filter" className="block text-sm font-medium text-gray-700">
-              Filter by ONS User Email:
-            </label>
-            <select
-              id="email-filter"
-              value={emailFilter}
-              onChange={e => { setEmailFilter(e.target.value); setCurrentPage(1); }}
-              className="mt-1 block w-full pl-3 pr-10 py-2 border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-            >
-              <option value="">All</option>
-              {onsUsers.map(user => (
-                <option key={user.id} value={user.email}>
-                  {user.email}
-                </option>
-              ))}
-            </select>
+        {showFilters && (
+          <div className="mt-4 bg-white rounded-lg shadow p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700">
+                  Status
+                </label>
+                <select
+                  id="status-filter"
+                  name="status-filter"
+                  value={statusFilter}
+                  onChange={handleFilterChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                >
+                  <option value="all">All</option>
+                  <option value="current">Current</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="pending trial">Pending Trial</option>
+                  <option value="dismissed">Dismissed</option>
+                </select>
+              </div>
+              {user?.role === 3 && (
+                <div>
+                  <label htmlFor="email-filter" className="block text-sm font-medium text-gray-700">
+                    ONS User Email
+                  </label>
+                  <select
+                    id="email-filter"
+                    value={emailFilter}
+                    onChange={e => { setEmailFilter(e.target.value); setCurrentPage(1); }}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  >
+                    <option value="">All</option>
+                    {onsUsers.map(user => (
+                      <option key={user.id} value={user.email}>
+                        {user.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {user?.role === 1 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Assignments</label>
+                  <div className="mt-1">
+                    <button
+                      type="button"
+                      className={`${showMyViolations ? 'bg-blue-800' : 'bg-blue-600'} rounded px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500`}
+                      onClick={() => {
+                        setShowMyViolations(!showMyViolations);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      {showMyViolations ? 'Show All Violations' : 'Show My Violations'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="mt-3 flex items-center justify-between text-sm text-gray-600">
+              <span>Showing {filteredViolations.length} results</span>
+            </div>
           </div>
         )}
+
+        
 
         {/* Responsive Table Container */}
         <div className="mt-8 overflow-x-auto rounded-lg shadow-md">

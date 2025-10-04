@@ -149,6 +149,18 @@ const AddressDetails = () => {
     return arr;
   }, [units]);
 
+  // Filter units for the Units tab display using the search term (matches name or number)
+  const filteredUnitsForList = useMemo(() => {
+    const base = Array.isArray(units) ? units : [];
+    const q = (searchTerm || '').trim().toLowerCase();
+    if (!q) return base;
+    return base.filter((u) => {
+      const name = String(u?.name || '').toLowerCase();
+      const num = String(u?.number || '').toLowerCase();
+      return name.includes(q) || num.includes(q);
+    });
+  }, [units, searchTerm]);
+
   useEffect(() => {
     setLoading(true);
     fetch(`${process.env.REACT_APP_API_URL}/addresses/${id}`)
@@ -833,26 +845,24 @@ const AddressDetails = () => {
           {/* Conditionally render NewUnit form */}
           {showNewUnitForm && <NewUnit addressId={id} inspectionId={null} />}
 
-          {/* Display existing units as buttons */}
-          <div className="mb-4 text-center">
-            {units.length > 0 ? (
-              <div>
-                {units.length <= 5 ? (
-                  <div className="flex flex-wrap space-x-2">
-                    {units.map((unit) => (
-                      <button
-                        key={unit.id}
-                        onClick={() => handleUnitSelect(unit.id)}
-                        className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-100"
-                      >
-                        Unit {unit.number}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-600"></p>
-                )}
-              </div>
+          {/* Display existing units as a list of buttons showing Unit {unit.name} */}
+          <div className="mb-4">
+            {Array.isArray(units) && units.length > 0 ? (
+              filteredUnitsForList.length === 0 ? (
+                <p className="text-gray-600">No units match your search.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {filteredUnitsForList.map((unit) => (
+                    <button
+                      key={unit.id}
+                      onClick={() => handleUnitSelect(unit.id)}
+                      className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-100"
+                    >
+                      {`Unit ${unit?.name ?? unit?.number ?? unit.id}`}
+                    </button>
+                  ))}
+                </div>
+              )
             ) : (
               <p className="text-gray-600">No units for this address in CodeSoft.</p>
             )}

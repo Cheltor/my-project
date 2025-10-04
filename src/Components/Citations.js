@@ -8,6 +8,7 @@ export default function Citations() {
   const [filterPastDue, setFilterPastDue] = useState('all'); // 'all', 'pastdue', 'notpastdue'
   const [filterCitationId, setFilterCitationId] = useState(''); // citation ID filter
   const [printGeneratedAt, setPrintGeneratedAt] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   // Sorting state
   const [sortBy, setSortBy] = useState(null); // 'unpaid' | 'pastdue' | null
   const [sortDirection, setSortDirection] = useState('desc'); // 'asc' | 'desc'
@@ -128,44 +129,14 @@ export default function Citations() {
             <div className="sm:flex-auto">
               <h1 className="text-base font-semibold leading-6 text-gray-900">Citations</h1>
             </div>
-            {/* Filters */}
-            <div className="flex flex-wrap gap-4 items-center mt-2">
-              <label className="text-sm text-gray-700">
-                Citation ID:
-                <input
-                  type="text"
-                  className="ml-2 border rounded p-1 text-sm"
-                  placeholder="Search by ID"
-                  value={filterCitationId}
-                  onChange={e => setFilterCitationId(e.target.value)}
-                />
-              </label>
-              <label className="text-sm text-gray-700">
-                Status:
-                <select
-                  className="ml-2 border rounded p-1 text-sm"
-                  value={filterStatus}
-                  onChange={e => setFilterStatus(e.target.value)}
-                >
-                  <option value="all">All</option>
-                  <option value="0">Unpaid</option>
-                  <option value="1">Paid</option>
-                  <option value="2">Pending Trial</option>
-                  <option value="3">Dismissed</option>
-                </select>
-              </label>
-              <label className="text-sm text-gray-700">
-                Past Due:
-                <select
-                  className="ml-2 border rounded p-1 text-sm"
-                  value={filterPastDue}
-                  onChange={e => setFilterPastDue(e.target.value)}
-                >
-                  <option value="all">All</option>
-                  <option value="pastdue">Past Due</option>
-                  <option value="notpastdue">Not Past Due</option>
-                </select>
-              </label>
+            <div className="mt-4 sm:mt-0 sm:ml-auto flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowFilters((v) => !v)}
+                className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-700 hover:bg-gray-600"
+              >
+                {showFilters ? 'Hide Filters' : 'Show Filters'}
+              </button>
               <button
                 type="button"
                 className="rounded bg-slate-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-500"
@@ -174,6 +145,59 @@ export default function Citations() {
                 Print Results
               </button>
             </div>
+            {/* Filters */}
+            {showFilters && (
+              <div className="mt-4 bg-white rounded-lg shadow p-4 w-full">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Citation ID</label>
+                    <input
+                      type="text"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      placeholder="Search by ID"
+                      value={filterCitationId}
+                      onChange={e => setFilterCitationId(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Status</label>
+                    <select
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      value={filterStatus}
+                      onChange={e => setFilterStatus(e.target.value)}
+                    >
+                      <option value="all">All</option>
+                      <option value="0">Unpaid</option>
+                      <option value="1">Paid</option>
+                      <option value="2">Pending Trial</option>
+                      <option value="3">Dismissed</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Past Due</label>
+                    <select
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      value={filterPastDue}
+                      onChange={e => setFilterPastDue(e.target.value)}
+                    >
+                      <option value="all">All</option>
+                      <option value="pastdue">Past Due</option>
+                      <option value="notpastdue">Not Past Due</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between text-sm text-gray-600">
+                  <span>Showing {filteredCitations.length} of {citations.length}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setFilterCitationId(''); setFilterStatus('all'); setFilterPastDue('all'); }}
+                    className="px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50"
+                  >
+                    Clear filters
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="mt-8 overflow-x-auto rounded-lg shadow-md">
