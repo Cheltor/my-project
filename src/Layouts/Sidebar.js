@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Dialog,
   DialogBackdrop,
@@ -16,6 +16,7 @@ import {
   UsersIcon,
   XMarkIcon,
   ArrowLeftIcon,
+  BellIcon,
 } from '@heroicons/react/24/outline';
 import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
 import { Link, useNavigate } from 'react-router-dom'; // Import Link and useNavigate
@@ -53,9 +54,59 @@ export default function Sidebar({ children }) {
   const [error, setError] = useState(null); // Error state for API call
   const [showDropdown, setShowDropdown] = useState(false); // State to show/hide dropdown
   const [activeIndex, setActiveIndex] = useState(-1); // Track active/focused dropdown item
+  const [notifications, setNotifications] = useState([]); // Notifications for the current user
+  const [notificationsLoading, setNotificationsLoading] = useState(false); // Loading state for notifications
+  const [notificationsError, setNotificationsError] = useState(null); // Error state for notifications
+  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false); // Toggle notifications dropdown
+  const notificationsRef = useRef(null); // Anchor element for notifications dropdown
 
   const navigate = useNavigate(); // To navigate programmatically
-  const { user } = useAuth(); // Get user data from context
+  const { user, token } = useAuth(); // Get user data and token from context
+
+  const fetchNotifications = useCallback(
+    async ({ showSpinner = false, signal } = {}) => {
+      if (!token) {
+        setNotifications([]);
+        setNotificationsError(null);
+        if (showSpinner) {
+          setNotificationsLoading(false);
+        }
+        return;
+      }
+
+      if (showSpinner) {
+        setNotificationsLoading(true);
+      }
+
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/notifications`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('Unable to load notifications');
+        }
+
+        const data = await response.json();
+        setNotifications(Array.isArray(data) ? data : []);
+        setNotificationsError(null);
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          return;
+        }
+        setNotificationsError(err.message || 'Unable to load notifications');
+        setNotifications([]);
+      } finally {
+        if (showSpinner) {
+          setNotificationsLoading(false);
+        }
+      }
+    },
+    [token]
+  );
 
   // Search addresses via API when query changes (debounced)
   useEffect(() => {
@@ -96,6 +147,55 @@ export default function Sidebar({ children }) {
     };
   }, [searchQuery]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    if (!token) {
+      setShowNotificationsDropdown(false);
+      setNotifications([]);
+      setNotificationsError(null);
+      setNotificationsLoading(false);
+      return () => controller.abort();
+    }
+
+    fetchNotifications({ showSpinner: true, signal: controller.signal });
+
+    const intervalId = setInterval(() => {
+      fetchNotifications({ signal: controller.signal });
+    }, 60000);
+
+    return () => {
+      controller.abort();
+      clearInterval(intervalId);
+    };
+  }, [token, fetchNotifications]);
+
+  useEffect(() => {
+    if (!showNotificationsDropdown) {
+      return;
+    }
+
+    const handleClickOutside = (event) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+        setShowNotificationsDropdown(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setShowNotificationsDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showNotificationsDropdown]);
+
   // Handle search query change (debounced effect will fetch)
   const handleSearchChange = (event) => {
     const query = event.target.value;
@@ -133,6 +233,30 @@ export default function Sidebar({ children }) {
       event.preventDefault();
       setActiveIndex(0); // Set active index to first item
     }
+  };
+
+  const unreadCount = notifications.filter((notification) => !notification.read).length;
+
+  const formatNotificationTimestamp = (timestamp) => {
+    if (!timestamp) {
+      return '';
+    }
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
+    return date.toLocaleString();
+  };
+
+  const handleNotificationsToggle = () => {
+    setShowNotificationsDropdown((prev) => {
+      const next = !prev;
+      if (next && token) {
+        fetchNotifications({ showSpinner: notifications.length === 0 });
+      }
+      return next;
+    });
+    setShowDropdown(false);
   };
 
   const roleMapping = {
@@ -339,7 +463,64 @@ export default function Sidebar({ children }) {
                 <ArrowLeftIcon className="h-5 w-5 mr-1" aria-hidden="true" />
                 Back
               </button>
-              {/* Additional elements like notifications and user menu */}
+              <div className="relative" ref={notificationsRef}>
+                <button
+                  type="button"
+                  onClick={handleNotificationsToggle}
+                  className="relative inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+                  aria-label="Open notifications"
+                  aria-haspopup="true"
+                  aria-expanded={showNotificationsDropdown}
+                >
+                  <BellIcon className="h-5 w-5" aria-hidden="true" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-semibold text-white">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                {showNotificationsDropdown && (
+                  <div className="absolute right-0 z-50 mt-3 w-80 max-h-96 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-black/5">
+                    <div className="border-b border-gray-100 px-4 py-3">
+                      <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+                    </div>
+                    {notificationsLoading ? (
+                      <p className="p-4 text-sm text-gray-500">Loading notifications...</p>
+                    ) : notificationsError ? (
+                      <p className="p-4 text-sm text-red-500">{notificationsError}</p>
+                    ) : notifications.length === 0 ? (
+                      <p className="p-4 text-sm text-gray-500">You're all caught up.</p>
+                    ) : (
+                      <ul className="divide-y divide-gray-100">
+                        {notifications.map((notification) => (
+                          <li key={notification.id} className="p-4 hover:bg-gray-50">
+                            <div className="flex items-start gap-3">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  {notification.title || 'Notification'}
+                                </p>
+                                {notification.body && (
+                                  <p className="mt-1 whitespace-pre-line text-sm text-gray-600">
+                                    {notification.body}
+                                  </p>
+                                )}
+                                <p className="mt-2 text-xs text-gray-400">
+                                  {formatNotificationTimestamp(notification.created_at) || 'Just now'}
+                                </p>
+                              </div>
+                              {!notification.read && (
+                                <span className="mt-1 inline-flex shrink-0 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-600">
+                                  New
+                                </span>
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
