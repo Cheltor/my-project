@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../AuthContext';
 
 const NewAddressForm = ({ onAddressCreated }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     property_name: '',
     ownername: '',
@@ -26,16 +28,44 @@ const NewAddressForm = ({ onAddressCreated }) => {
     setLoading(true);
     setError(null);
     setSuccess(false);
+    // Basic client validation: require a combined address string
+    const payload = {
+      property_name: (form.property_name || '').trim(),
+      ownername: (form.ownername || '').trim(),
+      combadd: (form.combadd || '').trim(),
+      owneraddress: (form.owneraddress || '').trim(),
+      ownerzip: (form.ownerzip || '').trim(),
+    };
+    if (!payload.combadd) {
+      setError('Combined Address is required.');
+      setLoading(false);
+      return;
+    }
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/addresses/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
-      if (!response.ok) throw new Error('Failed to create address');
+      if (!response.ok) {
+        // Try to show server-provided error details when available
+        let msg = 'Failed to create address';
+        try {
+          const errJson = await response.json();
+          if (errJson?.detail) msg = errJson.detail;
+        } catch {
+          try { msg = await response.text(); } catch {}
+        }
+        throw new Error(msg);
+      }
+      const created = await response.json();
       setSuccess(true);
       setForm({ property_name: '', ownername: '', combadd: '', owneraddress: '', ownerzip: '' });
-      if (onAddressCreated) onAddressCreated();
+      if (onAddressCreated) onAddressCreated(created);
+      // Navigate to the newly created address page
+      if (created?.id) {
+        navigate(`/address/${created.id}`);
+      }
     } catch (err) {
       setError(err.message);
     } finally {

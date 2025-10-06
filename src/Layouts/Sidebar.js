@@ -237,6 +237,7 @@ export default function Sidebar({ children }) {
   };
 
   const unreadCount = notifications.filter((notification) => !notification.read).length;
+  const unreadNotifications = notifications.filter((notification) => !notification.read);
 
   const formatNotificationTimestamp = (timestamp) => {
     if (!timestamp) {
@@ -270,8 +271,13 @@ export default function Sidebar({ children }) {
         },
       });
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      // Close the dropdown after successful action
+      setShowNotificationsDropdown(false);
     } catch (e) {
       // silently ignore
+    } finally {
+      // Ensure dropdown closes even if the request errors
+      setShowNotificationsDropdown(false);
     }
   };
 
@@ -504,11 +510,11 @@ export default function Sidebar({ children }) {
                       <p className="p-4 text-sm text-gray-500">Loading notifications...</p>
                     ) : notificationsError ? (
                       <p className="p-4 text-sm text-red-500">{notificationsError}</p>
-                    ) : notifications.length === 0 ? (
+                    ) : unreadNotifications.length === 0 ? (
                       <p className="p-4 text-sm text-gray-500">You're all caught up.</p>
                     ) : (
                       <ul className="divide-y divide-gray-100">
-                        {notifications.map((notification) => (
+                        {unreadNotifications.map((notification) => (
                           <li
                             key={notification.id}
                             className="p-4 hover:bg-gray-50 cursor-pointer"
