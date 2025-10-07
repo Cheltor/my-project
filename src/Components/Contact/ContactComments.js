@@ -16,6 +16,7 @@ export default function ContactComments({ contactId }) {  // Accept contactId as
   const [attachments, setAttachments] = useState([]);
   const [attachmentsLoading, setAttachmentsLoading] = useState(false);
   const [attachmentCounts, setAttachmentCounts] = useState({}); // commentId -> number
+  const [usersMap, setUsersMap] = useState({}); // userId -> email
 
   // Function to fetch comments
   const fetchComments = () => {
@@ -41,6 +42,23 @@ export default function ContactComments({ contactId }) {  // Accept contactId as
   useEffect(() => {
     fetchComments();  // Fetch comments on component load and when contactId changes
   }, [contactId]);
+
+  // Fetch all users once to map user_id -> email
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${process.env.REACT_APP_API_URL}/users/`, { signal: controller.signal })
+      .then((resp) => (resp.ok ? resp.json() : []))
+      .then((users) => {
+        const map = {};
+        (users || []).forEach((u) => {
+          map[u.id] = u.email || '';
+        });
+        setUsersMap(map);
+      })
+      .catch(() => {})
+      .finally(() => {});
+    return () => controller.abort();
+  }, []);
 
   // After comments load, prefetch attachment counts to know when to show the button
   useEffect(() => {
@@ -110,10 +128,17 @@ export default function ContactComments({ contactId }) {  // Accept contactId as
           {comments.map((comment) => (
             <li key={comment.id} className="bg-gray-100 p-4 rounded-lg shadow">
               <p className="text-gray-700">{comment.comment}</p>
-              <p className="text-sm text-gray-500 mt-2">Created on {formatDate(comment.created_at)}</p>
-              {comment.updated_at && (
-                <p className="text-sm text-gray-500">Updated on {formatDate(comment.updated_at)}</p>
-              )}
+              <div className="mt-2 flex items-start justify-between">
+                <div className="text-sm text-gray-500">
+                  <p>Created on {formatDate(comment.created_at)}</p>
+                  {comment.updated_at && (
+                    <p>Updated on {formatDate(comment.updated_at)}</p>
+                  )}
+                </div>
+                <div className="text-xs text-gray-500 self-end">
+                  {usersMap[comment.user_id] ? usersMap[comment.user_id] : 'Unknown user'}
+                </div>
+              </div>
               {attachmentCounts[comment.id] > 0 && (
                 <div className="mt-3">
                   <button

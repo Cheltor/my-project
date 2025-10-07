@@ -1,16 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../AuthContext'; // Import the useAuth hook from the AuthContext
 
-const NewContactComment = ({ contactId, onCommentAdded }) => {
+const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }) => {
   const [newComment, setNewComment] = useState(''); // State for new comment input
   const [submitting, setSubmitting] = useState(false); // State for form submission
   const [files, setFiles] = useState([]); // Selected files
   const { user } = useAuth(); // Get user data from context
 
+  useEffect(() => {
+    // Initialize text when editing
+    if (commentId && typeof initialText === 'string') {
+      setNewComment(initialText);
+    }
+  }, [commentId, initialText]);
+
   // Function to handle form submission
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (!newComment.trim()) {
+    const trimmed = (newComment || '').trim();
+    if (!trimmed) {
       return; // Prevent submission of empty comments
     }
 
@@ -21,15 +29,31 @@ const NewContactComment = ({ contactId, onCommentAdded }) => {
 
     const userId = user.id; // Get the user ID from the user context
 
-    // Log the comment and contact ID before submission
-    console.log("Submitting comment:", newComment);
-    console.log("Contact ID:", contactId);
-    console.log("User ID:", userId);
-
     setSubmitting(true);
 
+    if (commentId) {
+      // Editing existing contact comment
+      const payload = { comment: trimmed, user_id: userId, contact_id: contactId };
+      fetch(`${process.env.REACT_APP_API_URL}/comments/contact/${commentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+        .then((response) => response.json())
+        .then((updated) => {
+          if (onCommentAdded) onCommentAdded(updated);
+          setSubmitting(false);
+        })
+        .catch((error) => {
+          console.error('Error updating contact comment:', error);
+          setSubmitting(false);
+        });
+      return;
+    }
+
+    // Creating a new comment with attachments
     const formData = new FormData();
-    formData.append('comment', newComment);
+    formData.append('comment', trimmed);
     formData.append('user_id', userId);
     // contact_id is in the path; backend doesn't need it in body
     for (const f of files) {
@@ -40,13 +64,9 @@ const NewContactComment = ({ contactId, onCommentAdded }) => {
       method: 'POST',
       body: formData,
     })
-      .then((response) => {
-        console.log("Response status:", response.status); // Log the response status
-        return response.json();
-      })
-      .then((newComment) => {
-        console.log("Received response:", newComment); // Log the response data
-        onCommentAdded(newComment); // Notify parent component of the new comment
+      .then((response) => response.json())
+      .then((created) => {
+        if (onCommentAdded) onCommentAdded(created);
         setNewComment(''); // Clear the input field
         setFiles([]);
         setSubmitting(false);
@@ -57,58 +77,62 @@ const NewContactComment = ({ contactId, onCommentAdded }) => {
       });
   };
 
+  const isEditing = !!commentId;
+
   return (
     <form onSubmit={handleSubmit} className="mt-4">
       <textarea
         value={newComment}
         onChange={(e) => setNewComment(e.target.value)}
-        placeholder="Write a comment..."
+        placeholder={isEditing ? 'Edit your comment...' : 'Write a comment...'}
         className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-200"
         rows="4"
         disabled={submitting}
       />
 
-      <div className="mt-2 flex flex-wrap items-center gap-3">
-        <input
-          id="contact-attachments"
-          type="file"
-          multiple
-          accept="image/*,application/pdf"
-          className="hidden"
-          disabled={submitting}
-          onChange={(e) => setFiles(Array.from(e.target.files || []))}
-        />
-        <label
-          htmlFor="contact-attachments"
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-md border shadow-sm text-sm font-medium transition-colors cursor-pointer ${submitting ? 'pointer-events-none opacity-60 bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500'}`}
-          aria-disabled={submitting}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="w-5 h-5"
-            aria-hidden="true"
+      {!isEditing && (
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <input
+            id="contact-attachments"
+            type="file"
+            multiple
+            accept="image/*,application/pdf"
+            className="hidden"
+            disabled={submitting}
+            onChange={(e) => setFiles(Array.from(e.target.files || []))}
+          />
+          <label
+            htmlFor="contact-attachments"
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md border shadow-sm text-sm font-medium transition-colors cursor-pointer ${submitting ? 'pointer-events-none opacity-60 bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500'}`}
+            aria-disabled={submitting}
           >
-            <path d="M21.44 11.05L12 20.5a6 6 0 1 1-8.49-8.49l9.9-9.9a4.5 4.5 0 1 1 6.36 6.36L9.88 19.36a3 3 0 1 1-4.24-4.24l8.49-8.49" />
-          </svg>
-          {files.length > 0 ? 'Change files' : 'Choose files'}
-        </label>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-5 h-5"
+              aria-hidden="true"
+            >
+              <path d="M21.44 11.05L12 20.5a6 6 0 1 1-8.49-8.49l9.9-9.9a4.5 4.5 0 1 1 6.36 6.36L9.88 19.36a3 3 0 1 1-4.24-4.24l8.49-8.49" />
+            </svg>
+            {files.length > 0 ? 'Change files' : 'Choose files'}
+          </label>
 
-        <button
-          type="submit"
-          className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
-          disabled={submitting}
-        >
-          {submitting ? 'Submitting...' : 'Add Comment'}
-        </button>
-      </div>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
+            disabled={submitting}
+          >
+            {submitting ? 'Submitting...' : 'Add Comment'}
+          </button>
+        </div>
+      )}
 
-      {files.length > 0 && (
+      {files.length > 0 && !isEditing && (
         <div className="mt-2">
           <div className="flex flex-wrap gap-2">
             {files.map((f, idx) => (
@@ -124,6 +148,18 @@ const NewContactComment = ({ contactId, onCommentAdded }) => {
             disabled={submitting}
           >
             Clear selection
+          </button>
+        </div>
+      )}
+
+      {isEditing && (
+        <div className="mt-2">
+          <button
+            type="submit"
+            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
+            disabled={submitting}
+          >
+            {submitting ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       )}

@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 
 const RESOURCE_CONFIG = [
@@ -109,6 +108,14 @@ const RESOURCE_CONFIG = [
     viewRoute: (id) => `/users/${id}`,
     fields: ['id', 'name', 'email', 'role'],
   },
+  {
+    key: 'contact_comments',
+    label: 'Contact Comments',
+    listEndpoint: '/comments/contact/',
+    deleteEndpoint: (id) => `/comments/contact/${id}`,
+    viewRoute: (id) => `/admin/contact-comments/${id}/edit`,
+    fields: ['id', 'comment', 'contact_id', 'user_id', 'created_at'],
+  },
 ];
 
 const PAGE_SIZE = 20;
@@ -191,14 +198,13 @@ const resolveFields = (items, resource) => {
 };
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const defaultResourceKey = RESOURCE_CONFIG[0].key;
   const [resourceKey, setResourceKey] = useState(() => {
     const paramKey = searchParams.get('resource');
     return RESOURCE_CONFIG.some((entry) => entry.key === paramKey) ? paramKey : defaultResourceKey;
   });
-  const [resourceKey, setResourceKey] = useState(RESOURCE_CONFIG[0].key);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -290,8 +296,13 @@ const AdminDashboard = () => {
     }
     setStatusMessage('');
     try {
+      const authHeaders = {};
+      if (token) {
+        authHeaders['Authorization'] = `Bearer ${token}`;
+      }
       const response = await fetch(`${process.env.REACT_APP_API_URL}${resource.deleteEndpoint(id)}`, {
         method: 'DELETE',
+        headers: authHeaders,
       });
       if (!response.ok) {
         throw new Error('Failed to delete the record.');
@@ -343,7 +354,6 @@ const AdminDashboard = () => {
             id="resource"
             value={resourceKey}
             onChange={(event) => handleResourceChange(event.target.value)}
-            onChange={(event) => setResourceKey(event.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
           >
             {RESOURCE_CONFIG.map((entry) => (
