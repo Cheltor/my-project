@@ -33,7 +33,7 @@ const RESOURCE_CONFIG = [
     listEndpoint: '/violations/',
     deleteEndpoint: (id) => `/violations/${id}`,
     viewRoute: (id) => `/violation/${id}`,
-    fields: ['id', 'status', 'code.code', 'created_at'],
+    fields: ['id', 'combadd', 'status', 'code.code', 'created_at'],
   },
   {
     key: 'inspections',
@@ -49,7 +49,7 @@ const RESOURCE_CONFIG = [
     listEndpoint: '/permits/',
     deleteEndpoint: (id) => `/permits/${id}`,
     viewRoute: (id) => `/permit/${id}`,
-    fields: ['id', 'permit_number', 'status', 'address.combadd'],
+    fields: ['id', 'permit_number', 'status', 'combadd'],
   },
   {
     key: 'licenses',
@@ -57,7 +57,7 @@ const RESOURCE_CONFIG = [
     listEndpoint: '/licenses/',
     deleteEndpoint: (id) => `/licenses/${id}`,
     viewRoute: (id) => `/license/${id}`,
-    fields: ['id', 'license_number', 'status', 'business.name'],
+    fields: ['id', 'license_number', 'status', 'combadd', 'business.name'],
   },
   {
     key: 'complaints',
@@ -77,7 +77,7 @@ const RESOURCE_CONFIG = [
       'id',
       'content',
       'user.name',
-      'address_id',
+      'combadd',
       'unit_id',
       'violation_id',
       'contact_id',
@@ -417,12 +417,22 @@ const AdminDashboard = () => {
                 {currentItems.map((item) => (
                   <tr key={item.id}>
                     {fields.map((field) => {
-                      const value = normalizeValue(getNestedValue(item, field));
+                      // Prefer showing address combadd when an address is referenced
+                      let displayValue;
+                      if (field === 'address_id') {
+                        const combadd = getNestedValue(item, 'address.combadd') || getNestedValue(item, 'combadd');
+                        displayValue = combadd ?? getNestedValue(item, field);
+                      } else if (field === 'address.id' || field.endsWith('.address_id')) {
+                        const combadd = getNestedValue(item, field.replace(/\.id$/, '.combadd')) || getNestedValue(item, 'address.combadd');
+                        displayValue = combadd ?? getNestedValue(item, field);
+                      } else {
+                        displayValue = normalizeValue(getNestedValue(item, field));
+                      }
                       return (
                         <td key={field} className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
                           {field === 'role' && typeof item.role === 'number'
                             ? ROLE_LABELS[item.role] || item.role
-                            : value}
+                            : displayValue}
                         </td>
                       );
                     })}
