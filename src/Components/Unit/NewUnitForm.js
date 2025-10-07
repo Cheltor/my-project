@@ -1,8 +1,10 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
 
 export default function NewUnitForm({ addressId, onUnitCreated }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [unitNumber, setUnitNumber] = useState("");
 
   const handleSubmit = async (e) => {
@@ -22,6 +24,10 @@ export default function NewUnitForm({ addressId, onUnitCreated }) {
       const newUnit = await response.json();
       onUnitCreated(newUnit);
       setUnitNumber("");
+      // Navigate to the parent address page (unit detail route may not exist)
+      if (addressId) {
+        navigate(`/address/${addressId}`);
+      }
     } catch (error) {
       console.error("Error creating unit:", error);
       alert("Error creating unit.");

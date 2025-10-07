@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AsyncSelect from 'react-select/async';
 import { useAuth } from '../../AuthContext';
 
 export default function NewBusinessForm({ onCancel, onCreated, embedded = false }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [units, setUnits] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
@@ -82,6 +84,10 @@ export default function NewBusinessForm({ onCancel, onCreated, embedded = false 
       if (typeof onCancel === 'function') onCancel();
       setFormData({ name: '', address_id: null, unit_id: null, phone: '', email: '', website: '', trading_as: '', is_closed: false, opened_on: '', employee_count: '' });
       setUnits([]);
+      // Navigate to the newly created business page
+      if (created?.id) {
+        navigate(`/business/${created.id}`);
+      }
     } catch (err) {
       setFormError(err.message);
     } finally {

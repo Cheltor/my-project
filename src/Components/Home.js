@@ -23,6 +23,8 @@ export default function Example() {
   const [showNewBusinessLicense, setShowNewBusinessLicense] = useState(false); // State to toggle NewBusinessLicense form
   const [showNewViolationForm, setShowNewViolationForm] = useState(false); // State to toggle NewViolationForm
   const [showAdminWidgets, setShowAdminWidgets] = useState(false); // Admin widgets toggle
+  const [emailTestStatus, setEmailTestStatus] = useState(null);
+  const [emailTestLoading, setEmailTestLoading] = useState(false);
 
   const toggleNewComplaint = () => {
     setShowNewComplaint(!showNewComplaint);
@@ -80,6 +82,31 @@ export default function Example() {
 
   const toggleAdminWidgets = () => {
     setShowAdminWidgets((prev) => !prev);
+  };
+
+  const sendTestEmail = async () => {
+    setEmailTestLoading(true);
+    setEmailTestStatus(null);
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/notifications/test-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('token') ? { Authorization: `Bearer ${localStorage.getItem('token')}` } : {}),
+        },
+        body: JSON.stringify({
+          subject: 'Admin test notification email',
+          body: 'This is a test email triggered from the Admin dashboard.',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || 'Failed to send test email');
+      setEmailTestStatus(`Sent (email_sent=${data.email_sent ? 'true' : 'false'}, id=${data.notification_id})`);
+    } catch (e) {
+      setEmailTestStatus(`Error: ${e.message}`);
+    } finally {
+      setEmailTestLoading(false);
+    }
   };
 
   const buttons = [
@@ -187,6 +214,20 @@ export default function Example() {
           >
             {showAdminWidgets ? 'Hide Admin Activity' : 'Show Admin Activity'}
           </button>
+
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={sendTestEmail}
+              disabled={emailTestLoading}
+              className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
+              {emailTestLoading ? 'Sending…' : 'Send Test Email'}
+            </button>
+            {emailTestStatus && (
+              <span className="text-sm text-gray-600">{emailTestStatus}</span>
+            )}
+          </div>
 
           {showAdminWidgets && (
             <AdminRecentActivity className="mt-6" limit={5} />

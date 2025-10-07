@@ -1,15 +1,21 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AsyncSelect from "react-select/async";
 import CodeSelect from "../CodeSelect";
 import { useAuth } from "../../AuthContext";
 
 export default function NewViolationForm({ onCreated, initialAddressId, initialAddressLabel, lockAddress = false, inspectionId, selectedCodesValue, onSelectedCodesChange }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     codes: [], // array of code objects
     address_id: initialAddressId || ""
   });
   const [files, setFiles] = useState([]);
+  // Keep a ref to the file input so we can reset it on submit/clear
+  const fileInputRef = React.useRef(null);
+  // Force re-mount the input to clear mobile file pickers that may cache selection
+  const [fileInputKey, setFileInputKey] = useState(0);
   const [selectedCodes, setSelectedCodes] = useState([]); // internal when uncontrolled
   const [addressLabel, setAddressLabel] = useState(initialAddressLabel || "");
   // Admin assignment state
@@ -160,12 +166,21 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
         }
       }
 
-  setSuccess(true);
-  setForm({ codes: [], address_id: "" });
-  setSelectedCodes([]);
-  if (onSelectedCodesChange) onSelectedCodesChange([]);
-  setFiles([]);
-  if (onCreated) onCreated(created);
+      setSuccess(true);
+      setForm({ codes: [], address_id: "" });
+      setSelectedCodes([]);
+      if (onSelectedCodesChange) onSelectedCodesChange([]);
+      // Clear files state and reset the actual input element (mobile browsers can keep selection)
+      setFiles([]);
+      if (fileInputRef.current) {
+        try { fileInputRef.current.value = null; } catch {}
+      }
+      setFileInputKey((k) => k + 1);
+      if (onCreated) onCreated(created);
+      // Navigate to the created violation's detail page
+      if (created?.id) {
+        navigate(`/violation/${created.id}`);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -270,6 +285,8 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
                 multiple
                 accept="image/*,application/pdf"
                 className="sr-only"
+                key={fileInputKey}
+                ref={fileInputRef}
                 onChange={(e) => setFiles(Array.from(e.target.files || []))}
               />
             </label>
@@ -287,7 +304,13 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
               <button
                 type="button"
                 className="mt-2 text-xs text-gray-600 hover:text-gray-900 underline"
-                onClick={() => setFiles([])}
+                onClick={() => {
+                  setFiles([]);
+                  if (fileInputRef.current) {
+                    try { fileInputRef.current.value = null; } catch {}
+                  }
+                  setFileInputKey((k) => k + 1);
+                }}
                 disabled={loading}
               >
                 Clear selection

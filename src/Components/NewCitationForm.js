@@ -1,9 +1,11 @@
 
 
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import CodeSelect from "./CodeSelect";
 
 export default function NewCitationForm({ violationId, onCitationAdded, codes, userId }) {
+  const navigate = useNavigate();
   const [fine, setFine] = useState(200);
   // Set default deadline to 3 weeks from today
   const getDefaultDeadline = () => {
@@ -46,6 +48,10 @@ export default function NewCitationForm({ violationId, onCitationAdded, codes, u
       // setTrialDate("");
       // setStatus(0);
       if (onCitationAdded) onCitationAdded();
+      // Navigate to the violation detail page after adding
+      if (violationId) {
+        navigate(`/violation/${violationId}`);
+      }
     } catch (err) {
       setError(err.message);
     } finally {

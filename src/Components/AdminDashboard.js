@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 
 const RESOURCE_CONFIG = [
@@ -197,6 +198,7 @@ const AdminDashboard = () => {
     const paramKey = searchParams.get('resource');
     return RESOURCE_CONFIG.some((entry) => entry.key === paramKey) ? paramKey : defaultResourceKey;
   });
+  const [resourceKey, setResourceKey] = useState(RESOURCE_CONFIG[0].key);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -341,6 +343,7 @@ const AdminDashboard = () => {
             id="resource"
             value={resourceKey}
             onChange={(event) => handleResourceChange(event.target.value)}
+            onChange={(event) => setResourceKey(event.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
           >
             {RESOURCE_CONFIG.map((entry) => (
