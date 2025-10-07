@@ -42,6 +42,8 @@ import Helpful from './Components/Helpful'; // Import the HelpfulLinks component
 import NewAddressPage from './Components/Address/NewAddressPage';
 import VacancyStatusList from './Components/VacancyStatusList';
 import Review from './Components/Inspection/Review';
+import AdminDashboard from './Components/AdminDashboard';
+import AdminCommentEditor from './Components/AdminCommentEditor';
 
 function App() {
   return (
@@ -110,6 +112,8 @@ function MainApp() {
             <Route path="/helpful" element={<Helpful />} />
             <Route path="/new-address" element={<NewAddressPage />} />
             <Route path="/vacancy-statuses" element={<VacancyStatusList />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/comments/:commentId/edit" element={<AdminCommentEditor />} />
             {/* Add more routes as needed */}
           </Routes>
         </Sidebar>
