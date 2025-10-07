@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 
@@ -66,6 +67,23 @@ const RESOURCE_CONFIG = [
     deleteEndpoint: (id) => `/complaints/${id}`,
     viewRoute: (id) => `/complaint/${id}`,
     fields: ['id', 'type', 'status', 'address.combadd'],
+  },
+  {
+    key: 'comments',
+    label: 'Comments',
+    listEndpoint: '/comments/',
+    deleteEndpoint: (id) => `/comments/${id}`,
+    viewRoute: (id) => `/admin/comments/${id}/edit`,
+    fields: [
+      'id',
+      'content',
+      'user.name',
+      'address_id',
+      'unit_id',
+      'violation_id',
+      'contact_id',
+      'created_at',
+    ],
   },
   {
     key: 'citations',
@@ -174,6 +192,12 @@ const resolveFields = (items, resource) => {
 
 const AdminDashboard = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const defaultResourceKey = RESOURCE_CONFIG[0].key;
+  const [resourceKey, setResourceKey] = useState(() => {
+    const paramKey = searchParams.get('resource');
+    return RESOURCE_CONFIG.some((entry) => entry.key === paramKey) ? paramKey : defaultResourceKey;
+  });
   const [resourceKey, setResourceKey] = useState(RESOURCE_CONFIG[0].key);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -212,10 +236,33 @@ const AdminDashboard = () => {
   }, [resource.listEndpoint, resource.label]);
 
   useEffect(() => {
+    const paramKey = searchParams.get('resource');
+    if (paramKey && RESOURCE_CONFIG.some((entry) => entry.key === paramKey) && paramKey !== resourceKey) {
+      setResourceKey(paramKey);
+    } else if (!paramKey && resourceKey !== defaultResourceKey) {
+      setResourceKey(defaultResourceKey);
+    }
+  }, [searchParams, resourceKey, defaultResourceKey]);
+
+  useEffect(() => {
     fetchItems();
     setPage(1);
     setSearchTerm('');
   }, [resourceKey, fetchItems]);
+
+  const handleResourceChange = useCallback(
+    (nextKey) => {
+      setResourceKey(nextKey);
+      const nextParams = new URLSearchParams(searchParams);
+      if (nextKey === defaultResourceKey) {
+        nextParams.delete('resource');
+      } else {
+        nextParams.set('resource', nextKey);
+      }
+      setSearchParams(nextParams, { replace: true });
+    },
+    [defaultResourceKey, searchParams, setSearchParams]
+  );
 
   const filteredItems = useMemo(() => {
     if (!searchTerm.trim()) return items;
@@ -295,6 +342,7 @@ const AdminDashboard = () => {
           <select
             id="resource"
             value={resourceKey}
+            onChange={(event) => handleResourceChange(event.target.value)}
             onChange={(event) => setResourceKey(event.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
           >

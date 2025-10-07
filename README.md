@@ -68,3 +68,17 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## Working with Pull Requests
+
+### Targeting a different base branch
+
+If you opened a pull request against the wrong base branch (for example, `main`) but would prefer it to merge into another branch such as `v1`, you can update it without recreating the PR:
+
+1. Open the pull request in your Git hosting provider (e.g., GitHub).
+2. Locate the base branch selector near the top of the page. On GitHub this appears as `base: <branch-name>`.
+3. Change the base from the current branch to `v1`.
+4. Review the comparison view that appears. If the new base introduces merge conflicts, resolve them locally and push the fixes to your feature branch.
+5. Once everything looks correct, save the change. The PR will now target `v1`.
+
+If you are still creating the PR, simply choose `v1` as the base branch in the pull request form before submitting.
