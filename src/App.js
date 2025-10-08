@@ -45,6 +45,7 @@ import Review from './Components/Inspection/Review';
 import AdminDashboard from './Components/AdminDashboard';
 import AdminCommentEditor from './Components/AdminCommentEditor';
 import AdminContactCommentEditor from './Components/AdminContactCommentEditor';
+import ChatWidget from './Components/ChatWidget';
 
 function App() {
   return (
@@ -72,6 +73,7 @@ function MainApp() {
 
   return (
     <Router>
+      <ChatWidget />
       {user ? (
         // If the user is logged in, show the Sidebar and main content
         <Sidebar>
