@@ -105,6 +105,18 @@ img, table, .responsive-element {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  max-height: 80vh; /* Ensure the widget doesn't exceed the viewport height while allowing it to be taller */
+}
+
+.chat-widget-modal--fullscreen {
+  position: fixed;
+  inset: 0.75rem;
+  width: calc(100vw - 1.5rem);
+  height: calc(100vh - 1.5rem);
+  max-height: none;
+  border-radius: 1rem;
+  box-shadow: 0 25px 45px rgba(15, 23, 42, 0.2);
+  z-index: 1001;
 }
 
 .chat-widget-header {
@@ -130,6 +142,32 @@ img, table, .responsive-element {
   color: #2563eb;
 }
 
+.chat-widget-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chat-fullscreen-button {
+  border: none;
+  background: transparent;
+  padding: 0.25rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  color: #6b7280;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.chat-fullscreen-button:hover {
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+}
+
+.chat-fullscreen-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
 .chat-close-button {
   border: none;
   background: transparent;
@@ -153,15 +191,24 @@ img, table, .responsive-element {
 .chat-widget-body {
   padding: 1rem 1.25rem;
   background: linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.9));
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* Allow body to consume available vertical space so the form sits at the bottom */
 }
 
 .chat-messages {
-  max-height: 18rem;
+  /* Make the messages area taller but keep it responsive to the viewport */
+  max-height: 60vh;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   padding-right: 0.5rem;
+  flex: 1; /* Stretch to fill body so input stays at the bottom */
+}
+
+.chat-widget-modal--fullscreen .chat-messages {
+  max-height: none; /* In fullscreen, let messages grow to fill body */
 }
 
 .chat-message {
@@ -171,6 +218,22 @@ img, table, .responsive-element {
   font-size: 0.9rem;
   line-height: 1.4;
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+}
+
+/* Markdown element tweaks inside messages */
+.chat-message p {
+  margin: 0.15rem 0;
+}
+.chat-message strong {
+  font-weight: 600;
+}
+.chat-message code {
+  background: rgba(148, 163, 184, 0.2);
+  padding: 0.1rem 0.25rem;
+  border-radius: 0.25rem;
+}
+.chat-message ul, .chat-message ol {
+  margin: 0.3rem 0 0.3rem 1rem;
 }
 
 .chat-message-user {
@@ -194,6 +257,10 @@ img, table, .responsive-element {
   padding: 0.85rem 1.25rem 1.25rem;
   border-top: 1px solid rgba(15, 23, 42, 0.05);
   background: rgba(248, 250, 252, 0.9);
+}
+
+.chat-widget-modal--fullscreen .chat-widget-form {
+  padding-bottom: 1rem;
 }
 
 .chat-input {

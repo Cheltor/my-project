@@ -1,5 +1,7 @@
 ﻿import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChatBubbleOvalLeftEllipsisIcon, PaperAirplaneIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { ChatBubbleOvalLeftEllipsisIcon, PaperAirplaneIcon, XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
 import API from '../Services/api';
 
 const INITIAL_GREETING = {
@@ -13,7 +15,9 @@ function ChatWidget() {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [threadId, setThreadId] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const messagesEndRef = useRef(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -21,8 +25,39 @@ function ChatWidget() {
     }
   }, [messages, isOpen]);
 
+  // Detect mobile (using viewport width as a simple heuristic)
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 640px)');
+    const update = () => setIsMobile(mql.matches);
+    update();
+    mql.addEventListener?.('change', update);
+    return () => {
+      mql.removeEventListener?.('change', update);
+    };
+  }, []);
+
+  // Lock background scroll when the chat is fullscreen to prevent page scroll on mobile
+  useEffect(() => {
+    if (isOpen && isFullscreen) {
+      document.body.classList.add('no-scroll');
+    } else {
+      document.body.classList.remove('no-scroll');
+    }
+    return () => {
+      document.body.classList.remove('no-scroll');
+    };
+  }, [isOpen, isFullscreen]);
+
   const toggleWidget = useCallback(() => {
     setIsOpen((prev) => !prev);
+    // If closing the widget, also exit fullscreen to avoid odd reopen states
+    setIsFullscreen(false);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    // Disable fullscreen on mobile
+    if (isMobile) return;
+    setIsFullscreen((prev) => !prev);
   }, []);
 
   const handleChange = useCallback((event) => {
@@ -104,23 +139,60 @@ function ChatWidget() {
       )}
 
       {isOpen && (
-        <div className="chat-widget-modal" role="dialog" aria-modal="true" id="chat-widget-panel">
+        <div
+          className={`chat-widget-modal ${isFullscreen ? 'chat-widget-modal--fullscreen' : ''}`}
+          role="dialog"
+          aria-modal="true"
+          id="chat-widget-panel"
+        >
           <div className="chat-widget-header">
             <div className="chat-widget-title">
               <ChatBubbleOvalLeftEllipsisIcon className="chat-widget-title-icon" aria-hidden="true" />
               <span>Code Question?</span>
             </div>
+            <div className="chat-widget-actions">
+              {/* Hide fullscreen toggle on mobile devices */}
+              {!isMobile && (
+                <button
+                  type="button"
+                  className="chat-fullscreen-button"
+                  onClick={toggleFullscreen}
+                  aria-pressed={isFullscreen}
+                  aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                  title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                >
+                  {isFullscreen ? (
+                    <ArrowsPointingInIcon className="chat-fullscreen-icon" aria-hidden="true" />
+                  ) : (
+                    <ArrowsPointingOutIcon className="chat-fullscreen-icon" aria-hidden="true" />
+                  )}
+                </button>
+              )}
             <button type="button" className="chat-close-button" onClick={toggleWidget}>
               <XMarkIcon className="chat-close-icon" aria-hidden="true" />
               <span className="sr-only">Close chat</span>
             </button>
+            </div>
           </div>
 
           <div className="chat-widget-body">
             <div className="chat-messages" role="log" aria-live="polite">
               {messages.map((message, index) => (
                 <div key={`message-${index}`} className={`chat-message chat-message-${message.role}`}>
-                  <span>{message.content}</span>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    // Prevent any raw HTML from being rendered for safety
+                    skipHtml
+                    // Allow line breaks to be respected
+                    components={{
+                      p: ({ node, ...props }) => <p {...props} />,
+                      a: ({ node, ...props }) => (
+                        <a target="_blank" rel="noopener noreferrer" {...props} />
+                      ),
+                    }}
+                  >
+                    {String(message.content ?? '')}
+                  </ReactMarkdown>
                 </div>
               ))}
               {isLoading && (
@@ -141,7 +213,7 @@ function ChatWidget() {
               rows="2"
               value={inputValue}
               onChange={handleChange}
-              placeholder="Ask anything about the app..."
+              placeholder="Ask anything about the code..."
               className="chat-input"
               disabled={isLoading}
             />

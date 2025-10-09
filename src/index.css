@@ -1,3 +1,59 @@
+/* Prevent background scroll when fullscreen */
+.no-scroll {
+	overflow: hidden;
+}
+
+/* Base modal positioning */
+.chat-widget-modal {
+	position: fixed;
+	bottom: 16px;
+	right: 16px;
+	z-index: 1000;
+	max-width: 420px;
+	display: flex;
+	flex-direction: column;
+}
+
+/* Fullscreen uses small viewport height for mobile browsers */
+.chat-widget-modal--fullscreen {
+	position: fixed;
+	inset: 0;
+	width: 100%;
+	height: 100svh; /* small viewport for mobile UI chrome */
+	max-width: none;
+	border-radius: 0;
+	z-index: 1000;
+	background: var(--chat-bg, #fff);
+	display: flex;
+	flex-direction: column;
+	/* Safe-area padding for iOS */
+	padding-top: env(safe-area-inset-top);
+	padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Prefer dynamic viewport height when supported to avoid bottom clipping */
+@supports (height: 100dvh) {
+	.chat-widget-modal--fullscreen {
+		height: 100dvh;
+	}
+}
+
+/* Ensure header/footer don't shrink and body scrolls */
+.chat-widget-header {
+	flex: 0 0 auto;
+}
+
+.chat-widget-body {
+	flex: 1 1 0;
+	min-height: 0; /* allow flex child to shrink */
+	overflow: auto; /* scroll messages inside */
+}
+
+.chat-widget-form {
+	flex: 0 0 auto;
+	/* Ensure controls aren’t under the home indicator */
+	padding-bottom: env(safe-area-inset-bottom);
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
