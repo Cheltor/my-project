@@ -19,23 +19,38 @@ const AdminContactCommentEditor = () => {
     Promise.all([
       fetch(`${process.env.REACT_APP_API_URL}/comments/contact/by-id/${commentId}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
-      }).then((res) => {
-        if (!res.ok) throw new Error(res.status === 404 ? 'Comment not found.' : 'Failed to load comment.');
-        return res.json();
+      }).then(async (res) => {
+        if (!res.ok) {
+          throw new Error(res.status === 404 ? 'Comment not found.' : 'Failed to load comment.');
+        }
+        const payload = await res.json();
+        if (!payload || typeof payload !== 'object') {
+          throw new Error('Unexpected comment response format.');
+        }
+        return payload;
       }),
       fetch(`${process.env.REACT_APP_API_URL}/users/`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
-      }).then((res) => {
-        if (!res.ok) throw new Error('Failed to load users.');
-        return res.json();
+      }).then(async (res) => {
+        if (!res.ok) {
+          throw new Error('Failed to load users.');
+        }
+        const payload = await res.json();
+        if (!Array.isArray(payload)) {
+          throw new Error('Unexpected users response format.');
+        }
+        return payload;
       }),
     ])
       .then(([commentData, usersData]) => {
         setComment(commentData);
-        setUsers(usersData || []);
+        setUsers(usersData);
         setSelectedUserId(commentData.user_id || null);
       })
-      .catch((err) => setError(err.message))
+      .catch((err) => {
+        console.error('AdminContactCommentEditor fetch error:', err);
+        setError(err.message || 'Failed to load data.');
+      })
       .finally(() => setLoading(false));
   }, [commentId, token]);
 

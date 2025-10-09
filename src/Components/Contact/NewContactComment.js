@@ -5,7 +5,7 @@ const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }
   const [newComment, setNewComment] = useState(''); // State for new comment input
   const [submitting, setSubmitting] = useState(false); // State for form submission
   const [files, setFiles] = useState([]); // Selected files
-  const { user } = useAuth(); // Get user data from context
+  const { user, token } = useAuth(); // Get user data and token from context
 
   useEffect(() => {
     // Initialize text when editing
@@ -36,7 +36,10 @@ const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }
       const payload = { comment: trimmed, user_id: userId, contact_id: contactId };
       fetch(`${process.env.REACT_APP_API_URL}/comments/contact/${commentId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(payload),
       })
         .then((response) => response.json())
@@ -60,8 +63,11 @@ const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }
       formData.append('files', f);
     }
 
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
+
     fetch(`${process.env.REACT_APP_API_URL}/comments/${contactId}/contact/`, {
       method: 'POST',
+      headers: authHeaders,
       body: formData,
     })
       .then((response) => response.json())
