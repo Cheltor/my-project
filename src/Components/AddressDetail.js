@@ -1112,7 +1112,7 @@ const AddressDetails = () => {
                 {businesses.map((b) => (
                   <li key={b.id} className="p-3 flex items-center justify-between">
                     <div>
-                      <Link to={`/businesses/${b.id}`} className="font-semibold text-blue-700 hover:underline hover:text-blue-900">
+                      <Link to={`/business/${b.id}`} className="font-semibold text-blue-700 hover:underline hover:text-blue-900">
                         {b.name || 'Untitled Business'}
                       </Link>
                       {b.trading_as && (

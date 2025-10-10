@@ -5,11 +5,18 @@ import FullScreenPhotoViewer from '../FullScreenPhotoViewer';
 
 // Utility function to format the date
 const formatDate = (dateString) => {
-  const options = {
-    year: 'numeric', month: 'long', day: 'numeric',
-    hour: '2-digit', minute: '2-digit'
-  };
-  return new Date(dateString).toLocaleDateString(undefined, options);
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  // Show local time in 12-hour format with hours, minutes, AM/PM, and short timezone
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZoneName: 'short'
+  });
 };
 
 const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
