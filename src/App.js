@@ -46,6 +46,7 @@ import AdminDashboard from './Components/AdminDashboard';
 import AdminCommentEditor from './Components/AdminCommentEditor';
 import AdminContactCommentEditor from './Components/AdminContactCommentEditor';
 import ChatWidget from './Components/ChatWidget';
+import AdminChat from './Components/AdminChat';
 
 function App() {
   return (
@@ -57,8 +58,44 @@ function App() {
 
 function MainApp() {
   const { user } = useAuth(); // Get user data from context
+  const [chatEnabled, setChatEnabled] = React.useState(true);
 
   useEffect(() => {
+    // Load global chat setting from backend
+    (async () => {
+      try {
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/settings/chat`);
+        if (resp.ok) {
+          const data = await resp.json();
+          if (typeof data.enabled === 'boolean') setChatEnabled(data.enabled);
+        }
+      } catch (e) {
+        // ignore and default to true
+      }
+    })();
+
+    // subscribe to server-sent events for settings updates
+    let es;
+    try {
+      es = new EventSource(`${process.env.REACT_APP_API_URL}/settings/stream`);
+      es.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          if (data && data.key === 'chat_enabled') {
+            setChatEnabled(Boolean(data.enabled));
+          }
+        } catch (e) {
+          // ignore
+        }
+      };
+    } catch (e) {
+      // ignore if SSE not available
+    }
+
+    return () => {
+      if (es) es.close();
+    };
+
     // Make an initial request to get the CSRF token set in cookies
     /*
     API.get('/')
@@ -73,7 +110,7 @@ function MainApp() {
 
   return (
     <Router>
-      <ChatWidget />
+      {chatEnabled && <ChatWidget />}
       {user ? (
         // If the user is logged in, show the Sidebar and main content
         <Sidebar>
@@ -118,6 +155,7 @@ function MainApp() {
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/comments/:commentId/edit" element={<AdminCommentEditor />} />
             <Route path="/admin/contact-comments/:commentId/edit" element={<AdminContactCommentEditor />} />
+            <Route path="/admin-chat" element={<AdminChat user={user} chatEnabled={chatEnabled} setChatEnabled={setChatEnabled} />} />
             {/* Add more routes as needed */}
           </Routes>
         </Sidebar>
