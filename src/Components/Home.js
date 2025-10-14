@@ -111,37 +111,37 @@ export default function Example() {
 
   const buttons = [
     {
-      label: showNewViolationForm ? "Hide Violation Form" : "New Violation form",
+      label: showNewViolationForm ? "Hide Violation Form" : "New Violation Form",
       state: showNewViolationForm,
       toggle: toggleNewViolationForm,
       color: "bg-red-500",
     },
     {
-      label: showNewComplaint ? "Hide Complaint Form" : "New Complaint form",
+      label: showNewComplaint ? "Hide Complaint Form" : "New Complaint Form",
       state: showNewComplaint,
       toggle: toggleNewComplaint,
       color: "bg-indigo-500",
     },
     {
-      label: showNewMFLicense ? "Hide Multifamily License Form" : "New Multi Family License Application form",
+      label: showNewMFLicense ? "Hide Multifamily License Form" : "New Multi Family License Application Form",
       state: showNewMFLicense,
       toggle: toggleNewMFLicense,
       color: "bg-green-500",
     },
     {
-      label: showNewSFLicense ? "Hide Single Family License Form" : "New Single Family License Application form",
+      label: showNewSFLicense ? "Hide Single Family License Form" : "New Single Family License Application Form",
       state: showNewSFLicense,
       toggle: toggleNewSFLicense,
       color: "bg-teal-500",
     },
     {
-      label: showNewBuildingPermit ? "Hide Building Permit Form" : "New Building Permit Application form",
+      label: showNewBuildingPermit ? "Hide Building Permit Form" : "New Building Permit Application Form",
       state: showNewBuildingPermit,
       toggle: toggleNewBuildingPermit,
       color: "bg-violet-500",
     },
     {
-      label: showNewBusinessLicense ? "Hide Business License Form" : "New Business License Application form",
+      label: showNewBusinessLicense ? "Hide Business License Form" : "New Business License Application Form",
       state: showNewBusinessLicense,
       toggle: toggleNewBusinessLicense,
       color: "bg-orange-500",

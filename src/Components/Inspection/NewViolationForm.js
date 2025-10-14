@@ -61,6 +61,9 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  // Validation UI state
+  const [addressError, setAddressError] = useState('');
+  const [codesError, setCodesError] = useState('');
 
 
   // Handle code select change (multi)
@@ -105,6 +108,26 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
     setError(null);
     setSuccess(false);
 
+    // Client-side validation
+    let invalid = false;
+    if (!form.address_id) {
+      setAddressError('Please select an address.');
+      invalid = true;
+    } else {
+      setAddressError('');
+    }
+    const effectiveSelectedCodes = selectedCodesValue ?? selectedCodes;
+    if (!effectiveSelectedCodes || effectiveSelectedCodes.length === 0) {
+      setCodesError('Please select at least one violation code.');
+      invalid = true;
+    } else {
+      setCodesError('');
+    }
+    if (invalid) {
+      setLoading(false);
+      return;
+    }
+
     // Validate deadline
     let safeDeadline = deadline;
     if (!DEADLINE_OPTIONS.includes(deadline)) {
@@ -117,7 +140,6 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
 
     try {
       // Submit one violation with all selected codes
-      const effectiveSelectedCodes = selectedCodesValue ?? selectedCodes;
       // If admin selected an assignee, use that; else default to current user
   const assignedUserId = user?.role === 3 && assigneeId
         ? parseInt(assigneeId, 10)
@@ -195,17 +217,20 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
         {/* Address Search */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-          <AsyncSelect
-            cacheOptions
-            defaultOptions
-            loadOptions={loadAddressOptions}
-            onChange={handleAddressChange}
-            value={form.address_id ? { value: form.address_id, label: addressLabel } : null}
-            placeholder="Type to search addresses..."
-            isClearable
-            isDisabled={!!lockAddress}
-            className="mb-2"
-          />
+          <div className={`${addressError ? 'border border-red-500 rounded' : ''} mb-2`}> 
+            <AsyncSelect
+              cacheOptions
+              defaultOptions
+              loadOptions={loadAddressOptions}
+              onChange={handleAddressChange}
+              value={form.address_id ? { value: form.address_id, label: addressLabel } : null}
+              placeholder="Type to search addresses..."
+              isClearable
+              isDisabled={!!lockAddress}
+              className="mb-0"
+            />
+          </div>
+          {addressError && <div className="text-xs text-red-600 mt-1">{addressError}</div>}
         </div>
         {/* Assignee (Admin only) */}
   {user?.role === 3 && (
@@ -241,11 +266,14 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
         {/* Violation Code Selection (multi) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Violation Codes</label>
-          <CodeSelect
-            onChange={handleCodeChange}
-            value={selectedCodesValue ?? selectedCodes}
-            isMulti={true}
-          />
+          <div className={`${codesError ? 'border border-red-500 rounded p-1' : ''}`}>
+            <CodeSelect
+              onChange={handleCodeChange}
+              value={selectedCodesValue ?? selectedCodes}
+              isMulti={true}
+            />
+          </div>
+          {codesError && <div className="text-xs text-red-600 mt-1">{codesError}</div>}
         </div>
         {/* Show selected code descriptions (truncated) */}
         {selectedCodes.length > 0 && (
