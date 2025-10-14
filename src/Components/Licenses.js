@@ -82,6 +82,21 @@ export default function Licenses() {
   const currentLicenses = filteredLicenses.slice(indexOfFirstLicense, indexOfLastLicense);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  const [editingPage, setEditingPage] = useState(false);
+  const [pageInput, setPageInput] = useState('');
+
+  const startEditPage = () => {
+    setPageInput(String(currentPage));
+    setEditingPage(true);
+  };
+
+  const applyPageInput = () => {
+    const n = parseInt(pageInput, 10);
+    if (!Number.isNaN(n) && n >= 1 && n <= totalPages) {
+      paginate(n);
+    }
+    setEditingPage(false);
+  };
 
   if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
   if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;

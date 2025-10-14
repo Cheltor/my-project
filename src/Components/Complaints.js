@@ -74,6 +74,21 @@ export default function Complaints() {
   const currentComplaints = sortedComplaints.slice(indexOfFirstComplaint, indexOfLastComplaint);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  const [editingPage, setEditingPage] = useState(false);
+  const [pageInput, setPageInput] = useState('');
+
+  const startEditPage = () => {
+    setPageInput(String(currentPage));
+    setEditingPage(true);
+  };
+
+  const applyPageInput = () => {
+    const n = parseInt(pageInput, 10);
+    if (!Number.isNaN(n) && n >= 1 && n <= totalPages) {
+      paginate(n);
+    }
+    setEditingPage(false);
+  };
 
   // Print helpers
   const statusFilterLabel = statusFilter ? `Status: ${statusFilter}` : 'All statuses';
@@ -293,25 +308,44 @@ export default function Complaints() {
         </div>
 
         {/* Pagination Controls */}
-        <div className="mt-4 flex justify-between">
-          <button
-            onClick={() => paginate(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-500 disabled:bg-gray-300"
-          >
-            Previous
-          </button>
-          <p className="text-sm text-gray-700">
-            Page {currentPage} of {totalPages}
-          </p>
-          <button
-            onClick={() => paginate(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-500 disabled:bg-gray-300"
-          >
-            Next
-          </button>
-        </div>
+            <div className="mt-4 flex justify-between items-center">
+              <button
+                onClick={() => paginate(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-500 disabled:bg-gray-300"
+              >
+                Previous
+              </button>
+              <div className="text-sm text-gray-700">
+                {editingPage ? (
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={pageInput}
+                    onChange={(e) => setPageInput(e.target.value)}
+                    onBlur={applyPageInput}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') applyPageInput();
+                      if (e.key === 'Escape') setEditingPage(false);
+                    }}
+                    className="w-20 px-2 py-1 border rounded"
+                    autoFocus
+                  />
+                ) : (
+                  <button onClick={startEditPage} className="underline">
+                    Page {currentPage} of {totalPages}
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => paginate(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-500 disabled:bg-gray-300"
+              >
+                Next
+              </button>
+            </div>
       </div>
 
       {/* Print-only full list */}

@@ -8,6 +8,7 @@ const AddressPhotos = ({ addressId }) => {
   const [currentPage, setCurrentPage] = useState(1); // Current page state
   const [editingPage, setEditingPage] = useState(false); // Track whether the page number is being edited
   const [inputPage, setInputPage] = useState(currentPage); // Hold the page input value
+  const [pageError, setPageError] = useState('');
   const [loadedImages, setLoadedImages] = useState([]); // Track loaded images
   const photosPerPage = 6; // Define how many photos you want per page
 
@@ -63,10 +64,13 @@ const AddressPhotos = ({ addressId }) => {
   // Handle pressing "Enter" or blurring the input field
   const handlePageSubmit = () => {
     const pageNumber = parseInt(inputPage, 10);
-    if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber); // Set to the desired page if it's valid
+    if (Number.isNaN(pageNumber) || pageNumber < 1 || pageNumber > totalPages) {
+      setPageError(`Enter a number between 1 and ${totalPages}`);
+      return;
     }
+    setCurrentPage(pageNumber); // Set to the desired page if it's valid
     setEditingPage(false); // Exit edit mode
+    setPageError('');
   };
 
   // Handle when the user clicks outside the input field
@@ -150,21 +154,25 @@ const AddressPhotos = ({ addressId }) => {
         {/* Page number with editable input */}
         <div className="text-gray-700">
           {editingPage ? (
-            <input
-              type="text"
-              value={inputPage}
-              onChange={handlePageInputChange}
-              onBlur={handlePageBlur}
-              onKeyDown={(e) => e.key === 'Enter' && handlePageSubmit()}
-              className="border px-2 py-1 w-16 text-center"
-              autoFocus
-            />
+            <div>
+              <input
+                type="number"
+                min={1}
+                max={totalPages}
+                value={inputPage}
+                onChange={(e) => { setInputPage(e.target.value); setPageError(''); }}
+                onBlur={handlePageBlur}
+                onKeyDown={(e) => e.key === 'Enter' && handlePageSubmit()}
+                className={`border px-2 py-1 w-16 text-center ${pageError ? 'border-red-500' : ''}`}
+                autoFocus
+              />
+              {pageError && <div className="text-xs text-red-600 mt-1">{pageError}</div>}
+            </div>
           ) : (
             <span onClick={() => { setEditingPage(true); setInputPage(currentPage); }} className="cursor-pointer">
               Page {currentPage}
             </span>
-          )}{" "}
-          of {totalPages}
+          )} of {totalPages}
         </div>
 
         <button

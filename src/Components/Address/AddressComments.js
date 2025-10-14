@@ -25,6 +25,21 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
   const [error, setError] = useState(null);
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState(null);
   const [page, setPage] = useState(initialPage);
+  const [editingPage, setEditingPage] = useState(false);
+  const [pageInputVal, setPageInputVal] = useState('');
+  const [pageError, setPageError] = useState('');
+
+  const startEditPage = () => { setPageInputVal(String(page)); setPageError(''); setEditingPage(true); };
+  const applyPageInput = () => {
+    const n = parseInt(pageInputVal, 10);
+    const totalPages = Math.max(1, Math.ceil((comments?.length || 0) / pageSize));
+    if (Number.isNaN(n) || n < 1 || n > totalPages) {
+      setPageError(`Enter a number between 1 and ${totalPages}`);
+      return;
+    }
+    setPage(n);
+    setEditingPage(false);
+  };
 
   const downloadAttachments = async (commentId) => {
     if (!commentId) return;
@@ -193,27 +208,47 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
             <span>0 results</span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-            className="px-2 py-1 rounded border border-gray-300 bg-white disabled:opacity-50"
-          >
-            Prev
-          </button>
-          <span>
-            Page <span className="font-medium">{page}</span> of <span className="font-medium">{totalPages}</span>
-          </span>
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-            className="px-2 py-1 rounded border border-gray-300 bg-white disabled:opacity-50"
-          >
-            Next
-          </button>
-        </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="px-2 py-1 rounded border border-gray-300 bg-white disabled:opacity-50"
+            >
+              Prev
+            </button>
+            <span>
+              {editingPage ? (
+                <span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={pageInputVal}
+                    onChange={(e) => { setPageInputVal(e.target.value); setPageError(''); }}
+                    onBlur={applyPageInput}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') applyPageInput();
+                      if (e.key === 'Escape') setEditingPage(false);
+                    }}
+                    className={`w-20 px-2 py-1 border rounded ${pageError ? 'border-red-500' : ''}`}
+                    autoFocus
+                  />
+                  {pageError && <div className="text-xs text-red-600 mt-1">{pageError}</div>}
+                </span>
+              ) : (
+                <button onClick={startEditPage} className="underline">Page <span className="font-medium">{page}</span> of <span className="font-medium">{totalPages}</span></button>
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="px-2 py-1 rounded border border-gray-300 bg-white disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
       </div>
 
       <ul className="space-y-4 mt-2">

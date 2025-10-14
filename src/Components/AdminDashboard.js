@@ -210,6 +210,20 @@ const AdminDashboard = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
+  const [editingPage, setEditingPage] = useState(false);
+  const [pageInput, setPageInput] = useState('');
+  const [pageError, setPageError] = useState('');
+
+  const startEditPage = () => { setPageInput(String(currentPage)); setPageError(''); setEditingPage(true); };
+  const applyPageInput = () => {
+    const n = parseInt(pageInput, 10);
+    if (Number.isNaN(n) || n < 1 || n > totalPages) {
+      setPageError(`Enter a number between 1 and ${totalPages}`);
+      return;
+    }
+    setPage(n);
+    setEditingPage(false);
+  };
   const [statusMessage, setStatusMessage] = useState('');
 
   const resource = useMemo(

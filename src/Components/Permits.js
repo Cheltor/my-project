@@ -41,6 +41,21 @@ export default function Permits() {
   const currentPermits = permits.slice(indexOfFirstPermit, indexOfLastPermit);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  const [editingPage, setEditingPage] = useState(false);
+  const [pageInput, setPageInput] = useState('');
+
+  const startEditPage = () => {
+    setPageInput(String(currentPage));
+    setEditingPage(true);
+  };
+
+  const applyPageInput = () => {
+    const n = parseInt(pageInput, 10);
+    if (!Number.isNaN(n) && n >= 1 && n <= totalPages) {
+      paginate(n);
+    }
+    setEditingPage(false);
+  };
 
   if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
   if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
@@ -122,7 +137,7 @@ export default function Permits() {
         </table>
       </div>
 
-      <div className="mt-4 flex justify-between">
+      <div className="mt-4 flex justify-between items-center">
         <button
           onClick={() => paginate(currentPage - 1)}
           disabled={currentPage === 1}
@@ -130,9 +145,28 @@ export default function Permits() {
         >
           Previous
         </button>
-        <p className="text-sm text-gray-700">
-          Page {currentPage} of {totalPages}
-        </p>
+        <div className="text-sm text-gray-700">
+          {editingPage ? (
+            <input
+              type="number"
+              min={1}
+              max={totalPages}
+              value={pageInput}
+              onChange={(e) => setPageInput(e.target.value)}
+              onBlur={applyPageInput}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') applyPageInput();
+                if (e.key === 'Escape') setEditingPage(false);
+              }}
+              className="w-20 px-2 py-1 border rounded"
+              autoFocus
+            />
+          ) : (
+            <button onClick={startEditPage} className="underline">
+              Page {currentPage} of {totalPages}
+            </button>
+          )}
+        </div>
         <button
           onClick={() => paginate(currentPage + 1)}
           disabled={currentPage === totalPages}
