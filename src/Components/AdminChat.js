@@ -27,15 +27,25 @@ const AdminChat = ({ user: userProp, chatEnabled: initialChatEnabled, setChatEna
   const [filterEnd, setFilterEnd] = useState('');
   const [selectedLog, setSelectedLog] = useState(null);
 
-  // Only show for admin users (role === 3)
-  if (!user || user.role !== 3) return null;
+  // Note: do not return early here (hooks must be declared unconditionally).
+  // We'll check admin permission after all hooks are declared.
 
   // Fetch recent logs on mount
   const buildLogsUrl = (opts = {}) => {
     const params = new URLSearchParams();
     params.set('limit', opts.limit ?? limit);
     params.set('offset', opts.offset ?? offset);
-    if (opts.user_id ?? filterUserId) params.set('user_id', opts.user_id ?? filterUserId);
+    const rawUser = (opts.user_id ?? filterUserId);
+    if (rawUser !== undefined && rawUser !== null && String(rawUser).toString().trim() !== '') {
+      const s = String(rawUser).trim();
+      const parsed = Number(s);
+      if (!Number.isNaN(parsed)) {
+        params.set('user_id', String(Math.floor(parsed)));
+      } else {
+        // treat as email or partial email
+        params.set('user_email', s);
+      }
+    }
     if (opts.thread_id ?? filterThreadId) params.set('thread_id', opts.thread_id ?? filterThreadId);
     if (opts.q ?? filterQ) params.set('q', opts.q ?? filterQ);
     if (opts.start_date ?? filterStart) params.set('start_date', opts.start_date ?? filterStart);
@@ -76,6 +86,9 @@ const AdminChat = ({ user: userProp, chatEnabled: initialChatEnabled, setChatEna
       mounted = false;
     };
   }, [ctxUser, limit, offset, filterUserId, filterThreadId, filterQ, filterStart, filterEnd]);
+
+  // Don't render UI if not admin
+  if (!user || user.role !== 3) return null;
 
   return (
     <div className="p-4 bg-white rounded shadow border mt-4">
@@ -143,33 +156,59 @@ const AdminChat = ({ user: userProp, chatEnabled: initialChatEnabled, setChatEna
         {!loadingLogs && logs.length === 0 && <div className="text-sm text-gray-600">No logs yet.</div>}
 
         {!loadingLogs && logs.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left">
-                  <th className="pr-4">When</th>
-                  <th className="pr-4">User ID</th>
-                  <th className="pr-4">Question</th>
-                  <th>Assistant Reply</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((l) => (
-                  <tr key={l.id} className="align-top border-t">
-                    <td className="py-2 pr-4">{new Date(l.created_at).toLocaleString()}</td>
-                      <td className="py-2 pr-4">{l.user_email || l.user_id}</td>
-                    <td className="py-2 pr-4">
-                      <div className="max-w-xs truncate">{l.user_message}</div>
-                      <button className="text-xs text-blue-600 underline" onClick={()=>setSelectedLog(l)}>View</button>
-                    </td>
-                    <td className="py-2">
-                      <div className="max-w-xl truncate">{l.assistant_reply}</div>
-                      <button className="text-xs text-blue-600 underline" onClick={()=>setSelectedLog(l)}>View</button>
-                    </td>
+          <div>
+            {/* Desktop/tablet layout */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left">
+                    <th className="pr-4">When</th>
+                    <th className="pr-4">User</th>
+                    <th className="pr-4">Question</th>
+                    <th>Assistant Reply</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {logs.map((l) => (
+                    <tr key={l.id} className="align-top border-t">
+                      <td className="py-2 pr-4">{new Date(l.created_at).toLocaleString()}</td>
+                      <td className="py-2 pr-4">{l.user_email || l.user_id}</td>
+                      <td className="py-2 pr-4">
+                        <div className="max-w-xs truncate">{l.user_message}</div>
+                        <button className="text-xs text-blue-600 underline" onClick={()=>setSelectedLog(l)}>View</button>
+                      </td>
+                      <td className="py-2">
+                        <div className="max-w-xl truncate">{l.assistant_reply}</div>
+                        <button className="text-xs text-blue-600 underline" onClick={()=>setSelectedLog(l)}>View</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile layout - stacked cards */}
+            <div className="md:hidden space-y-3">
+              {logs.map((l) => (
+                <div key={l.id} className="p-3 border rounded bg-white shadow-sm">
+                  <div className="flex justify-between items-start">
+                    <div className="text-xs text-gray-500">{new Date(l.created_at).toLocaleString()}</div>
+                    <div className="text-xs text-gray-500">{l.user_email || l.user_id}</div>
+                  </div>
+                  <div className="mt-2">
+                    <div className="text-sm font-medium">Question</div>
+                    <div className="text-sm text-gray-700 truncate">{l.user_message}</div>
+                  </div>
+                  <div className="mt-2">
+                    <div className="text-sm font-medium">Reply</div>
+                    <div className="text-sm text-gray-700 truncate">{l.assistant_reply}</div>
+                  </div>
+                  <div className="mt-2 flex justify-end">
+                    <button className="text-xs text-blue-600 underline" onClick={()=>setSelectedLog(l)}>View</button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

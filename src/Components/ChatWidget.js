@@ -42,8 +42,7 @@ export default function ChatWidget() {
   const messagesEndRef = useRef(null);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Only render for authenticated users
-  if (!user) return null;
+  // (auth check will be performed after all hooks are declared)
 
   useEffect(() => {
     if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -122,6 +121,9 @@ export default function ChatWidget() {
     },
     [inputValue, threadId]
   );
+
+  // Only render for authenticated users
+  if (!user) return null;
 
   return (
     <div className="chat-widget-container">
