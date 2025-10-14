@@ -313,7 +313,16 @@ const ViolationDetail = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `violation_notice_${id}.docx`;
+      // Build a filename from the violation address (combadd) and current date
+      const combadd = violation && violation.combadd ? String(violation.combadd) : `violation_${id}`;
+      // sanitize combadd: replace non-alphanum with underscore, collapse multiple underscores
+      const sanitize = (s) => s.replace(/[^a-zA-Z0-9]+/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+      const safeAdd = sanitize(combadd) || `violation_${id}`;
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const yy = String(now.getFullYear()).slice(-2);
+      a.download = `${safeAdd}_${mm}_${dd}_${yy}.docx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
