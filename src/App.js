@@ -110,10 +110,11 @@ function MainApp() {
 
   return (
     <Router>
-      {chatEnabled && <ChatWidget />}
       {user ? (
-        // If the user is logged in, show the Sidebar and main content
-        <Sidebar>
+        <>
+          {chatEnabled && <ChatWidget />}
+          {/* If the user is logged in, show the Sidebar and main content */}
+          <Sidebar>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
@@ -159,6 +160,7 @@ function MainApp() {
             {/* Add more routes as needed */}
           </Routes>
         </Sidebar>
+        </>
       ) : (
         // If the user is not logged in, show the Login page
         <Routes>

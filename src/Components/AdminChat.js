@@ -1,20 +1,20 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
+import { useAuth } from '../AuthContext';
 
-// Example: import your user context if available
-// import { AuthContext } from '../../AuthContext';
+const AdminChat = ({ user: userProp, chatEnabled: initialChatEnabled, setChatEnabled }) => {
+  // Prefer token from AuthContext; fall back to user prop for role checks
+  const { user: ctxUser } = useAuth();
+  const user = ctxUser || userProp;
 
-const AdminChat = ({ user, chatEnabled: initialChatEnabled, setChatEnabled }) => {
-  // If using context, you can get user from there
-  // const { user } = useContext(AuthContext);
-
-  // Only show for admin users (role === 3)
-  if (!user || user.role !== 3) return null;
-
+  // React hooks must be called unconditionally at the top of the component
   const [loading, setLoading] = useState(false);
   const [enabled, setEnabled] = useState(
     typeof initialChatEnabled === 'boolean' ? initialChatEnabled : true
   );
   const [toast, setToast] = useState(null);
+
+  // Only show for admin users (role === 3)
+  if (!user || user.role !== 3) return null;
 
   return (
     <div className="p-4 bg-white rounded shadow border mt-4">
@@ -29,9 +29,14 @@ const AdminChat = ({ user, chatEnabled: initialChatEnabled, setChatEnabled }) =>
             setLoading(true);
             try {
               // Send to backend
+              const token = localStorage.getItem('token') || (ctxUser && ctxUser.token);
+              const headers = {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              };
               const resp = await fetch(`${process.env.REACT_APP_API_URL}/settings/chat`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({ enabled: next }),
               });
               if (!resp.ok) {

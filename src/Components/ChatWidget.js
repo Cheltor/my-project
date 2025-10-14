@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ChatBubbleOvalLeftEllipsisIcon, PaperAirplaneIcon, XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
 import API from '../Services/api';
+import { useAuth } from '../AuthContext';
 
 const INITIAL_GREETING = {
   role: 'assistant',
@@ -18,6 +19,10 @@ function ChatWidget() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const messagesEndRef = useRef(null);
   const [isMobile, setIsMobile] = useState(false);
+
+  const { user } = useAuth();
+  // Only show the chat widget to authenticated users
+  if (!user) return null;
 
   useEffect(() => {
     if (isOpen) {
