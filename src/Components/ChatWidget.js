@@ -1,7 +1,13 @@
 ﻿import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ChatBubbleOvalLeftEllipsisIcon, PaperAirplaneIcon, XMarkIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
+import {
+  ChatBubbleOvalLeftEllipsisIcon,
+  PaperAirplaneIcon,
+  XMarkIcon,
+  ArrowsPointingOutIcon,
+  ArrowsPointingInIcon,
+} from '@heroicons/react/24/outline';
 import API from '../Services/api';
 import { useAuth } from '../AuthContext';
 
@@ -10,7 +16,23 @@ const INITIAL_GREETING = {
   content: "Hi there! I'm here to help. What would you like to know?",
 };
 
-function ChatWidget() {
+function cleanResponseText(text) {
+  if (typeof text !== 'string') return text;
+  // Remove explicit patterns like [10:0†source†] or [10†source†]
+  let cleaned = text.replace(/\[\d+:\d+†.*?†\]/g, '')
+                    .replace(/\[\d+†.*?†\]/g, '')
+                    .replace(/\[\d+:\d+†.*?\]/g, '')
+                    .replace(/\[\d+†.*?\]/g, '');
+  // General catch-all for any lingering bracketed citation with dagger markers
+  cleaned = cleaned.replace(/\[\d+(?::\d+)?[^\]]*?†[^\]]*?\]/g, '');
+  return cleaned.trim();
+}
+
+export default function ChatWidget() {
+  // Call auth hook first so hooks order is stable
+  const { user } = useAuth();
+
+  // Declare all hooks unconditionally
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([INITIAL_GREETING]);
   const [inputValue, setInputValue] = useState('');
@@ -20,73 +42,52 @@ function ChatWidget() {
   const messagesEndRef = useRef(null);
   const [isMobile, setIsMobile] = useState(false);
 
-  const { user } = useAuth();
-  // Only show the chat widget to authenticated users
+  // Only render for authenticated users
   if (!user) return null;
 
   useEffect(() => {
-    if (isOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isOpen]);
 
-  // Detect mobile (using viewport width as a simple heuristic)
   useEffect(() => {
     const mql = window.matchMedia('(max-width: 640px)');
     const update = () => setIsMobile(mql.matches);
     update();
     mql.addEventListener?.('change', update);
-    return () => {
-      mql.removeEventListener?.('change', update);
-    };
+    return () => mql.removeEventListener?.('change', update);
   }, []);
 
-  // Lock background scroll when the chat is fullscreen to prevent page scroll on mobile
   useEffect(() => {
-    if (isOpen && isFullscreen) {
-      document.body.classList.add('no-scroll');
-    } else {
-      document.body.classList.remove('no-scroll');
-    }
-    return () => {
-      document.body.classList.remove('no-scroll');
-    };
+    if (isOpen && isFullscreen) document.body.classList.add('no-scroll');
+    else document.body.classList.remove('no-scroll');
+    return () => document.body.classList.remove('no-scroll');
   }, [isOpen, isFullscreen]);
 
   const toggleWidget = useCallback(() => {
-    setIsOpen((prev) => !prev);
-    // If closing the widget, also exit fullscreen to avoid odd reopen states
+    setIsOpen((p) => !p);
     setIsFullscreen(false);
   }, []);
 
   const toggleFullscreen = useCallback(() => {
-    // Disable fullscreen on mobile
     if (isMobile) return;
-    setIsFullscreen((prev) => !prev);
-  }, []);
+    setIsFullscreen((p) => !p);
+  }, [isMobile]);
 
-  const handleChange = useCallback((event) => {
-    setInputValue(event.target.value);
-  }, []);
+  const handleChange = useCallback((e) => setInputValue(e.target.value), []);
 
   const handleSubmit = useCallback(
     async (event) => {
       event.preventDefault();
       const trimmedMessage = inputValue.trim();
-
-      if (!trimmedMessage) {
-        return;
-      }
+      if (!trimmedMessage) return;
 
       const userMessage = { role: 'user', content: trimmedMessage };
-      setMessages((prev) => [...prev, userMessage]);
+      setMessages((p) => [...p, userMessage]);
       setInputValue('');
       setIsLoading(true);
 
       const payload = { message: trimmedMessage };
-      if (threadId) {
-        payload.threadId = threadId;
-      }
+      if (threadId) payload.threadId = threadId;
 
       try {
         const response = await API.post('/chat', payload);
@@ -101,25 +102,19 @@ function ChatWidget() {
 
         const assistantContent =
           typeof reply === 'string' && reply.trim().length > 0
-            ? reply.trim()
+            ? cleanResponseText(reply)
             : "I'm not sure how to respond to that just yet, but I'm learning!";
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: assistantContent,
-          },
+        setMessages((p) => [
+          ...p,
+          { role: 'assistant', content: assistantContent },
         ]);
       } catch (error) {
         console.error('Chat widget error:', error);
         setThreadId(null);
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: "Sorry, I'm having trouble connecting right now. Please try again in a moment.",
-          },
+        setMessages((p) => [
+          ...p,
+          { role: 'assistant', content: "Sorry, I'm having trouble connecting right now. Please try again in a moment." },
         ]);
       } finally {
         setIsLoading(false);
@@ -156,7 +151,6 @@ function ChatWidget() {
               <span>Code Question?</span>
             </div>
             <div className="chat-widget-actions">
-              {/* Hide fullscreen toggle on mobile devices */}
               {!isMobile && (
                 <button
                   type="button"
@@ -173,10 +167,10 @@ function ChatWidget() {
                   )}
                 </button>
               )}
-            <button type="button" className="chat-close-button" onClick={toggleWidget}>
-              <XMarkIcon className="chat-close-icon" aria-hidden="true" />
-              <span className="sr-only">Close chat</span>
-            </button>
+              <button type="button" className="chat-close-button" onClick={toggleWidget}>
+                <XMarkIcon className="chat-close-icon" aria-hidden="true" />
+                <span className="sr-only">Close chat</span>
+              </button>
             </div>
           </div>
 
@@ -186,14 +180,10 @@ function ChatWidget() {
                 <div key={`message-${index}`} className={`chat-message chat-message-${message.role}`}>
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
-                    // Prevent any raw HTML from being rendered for safety
                     skipHtml
-                    // Allow line breaks to be respected
                     components={{
                       p: ({ node, ...props }) => <p {...props} />,
-                      a: ({ node, ...props }) => (
-                        <a target="_blank" rel="noopener noreferrer" {...props} />
-                      ),
+                      a: ({ node, ...props }) => <a target="_blank" rel="noopener noreferrer" {...props} />,
                     }}
                   >
                     {String(message.content ?? '')}
@@ -232,5 +222,3 @@ function ChatWidget() {
     </div>
   );
 }
-
-export default ChatWidget;

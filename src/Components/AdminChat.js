@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
 
 const AdminChat = ({ user: userProp, chatEnabled: initialChatEnabled, setChatEnabled }) => {
@@ -12,9 +12,70 @@ const AdminChat = ({ user: userProp, chatEnabled: initialChatEnabled, setChatEna
     typeof initialChatEnabled === 'boolean' ? initialChatEnabled : true
   );
   const [toast, setToast] = useState(null);
+  // New: chat logs state
+  const [logs, setLogs] = useState([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [logsError, setLogsError] = useState(null);
+  // Pagination & filters
+  const [limit, setLimit] = useState(25);
+  const [offset, setOffset] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [filterUserId, setFilterUserId] = useState('');
+  const [filterThreadId, setFilterThreadId] = useState('');
+  const [filterQ, setFilterQ] = useState('');
+  const [filterStart, setFilterStart] = useState('');
+  const [filterEnd, setFilterEnd] = useState('');
+  const [selectedLog, setSelectedLog] = useState(null);
 
   // Only show for admin users (role === 3)
   if (!user || user.role !== 3) return null;
+
+  // Fetch recent logs on mount
+  const buildLogsUrl = (opts = {}) => {
+    const params = new URLSearchParams();
+    params.set('limit', opts.limit ?? limit);
+    params.set('offset', opts.offset ?? offset);
+    if (opts.user_id ?? filterUserId) params.set('user_id', opts.user_id ?? filterUserId);
+    if (opts.thread_id ?? filterThreadId) params.set('thread_id', opts.thread_id ?? filterThreadId);
+    if (opts.q ?? filterQ) params.set('q', opts.q ?? filterQ);
+    if (opts.start_date ?? filterStart) params.set('start_date', opts.start_date ?? filterStart);
+    if (opts.end_date ?? filterEnd) params.set('end_date', opts.end_date ?? filterEnd);
+    return `${process.env.REACT_APP_API_URL}/settings/chat/logs?${params.toString()}`;
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchLogs = async () => {
+      setLoadingLogs(true);
+      setLogsError(null);
+      try {
+        const token = localStorage.getItem('token') || (ctxUser && ctxUser.token);
+        const headers = {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        };
+        const resp = await fetch(buildLogsUrl({ limit, offset }), { headers });
+        if (!resp.ok) {
+          const txt = await resp.text();
+          throw new Error(txt || 'Failed to fetch chat logs');
+        }
+        const data = await resp.json();
+        if (mounted) {
+          setLogs(data.items || []);
+          setTotal(data.total || 0);
+        }
+      } catch (err) {
+        console.error('Failed to load chat logs', err);
+        if (mounted) setLogsError('Failed to load logs');
+      } finally {
+        if (mounted) setLoadingLogs(false);
+      }
+    };
+    fetchLogs();
+    return () => {
+      mounted = false;
+    };
+  }, [ctxUser, limit, offset, filterUserId, filterThreadId, filterQ, filterStart, filterEnd]);
 
   return (
     <div className="p-4 bg-white rounded shadow border mt-4">
@@ -63,6 +124,92 @@ const AdminChat = ({ user: userProp, chatEnabled: initialChatEnabled, setChatEna
           <button className="ml-3 text-xs underline" onClick={() => setToast(null)}>Dismiss</button>
         </div>
       )}
+
+      <div className="mt-4">
+        <h3 className="font-medium mb-2">Recent Chat Logs</h3>
+        <div className="mb-2 flex gap-2 items-center">
+          <input className="border p-1 rounded" placeholder="user id" value={filterUserId} onChange={(e)=>setFilterUserId(e.target.value)} />
+          <input className="border p-1 rounded" placeholder="thread id" value={filterThreadId} onChange={(e)=>setFilterThreadId(e.target.value)} />
+          <input className="border p-1 rounded" placeholder="search text" value={filterQ} onChange={(e)=>setFilterQ(e.target.value)} />
+          <input type="date" className="border p-1 rounded" value={filterStart} onChange={(e)=>setFilterStart(e.target.value)} />
+          <input type="date" className="border p-1 rounded" value={filterEnd} onChange={(e)=>setFilterEnd(e.target.value)} />
+          <button className="px-2 py-1 bg-gray-100 rounded" onClick={()=>{ setOffset(0); /* triggers useEffect */ }}>Apply</button>
+          <button className="px-2 py-1 bg-gray-100 rounded" onClick={()=>{ setFilterUserId(''); setFilterThreadId(''); setFilterQ(''); setFilterStart(''); setFilterEnd(''); setOffset(0); }}>Clear</button>
+        </div>
+
+        {loadingLogs && <div>Loading logs…</div>}
+        {logsError && <div className="text-red-600">{logsError}</div>}
+
+        {!loadingLogs && logs.length === 0 && <div className="text-sm text-gray-600">No logs yet.</div>}
+
+        {!loadingLogs && logs.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left">
+                  <th className="pr-4">When</th>
+                  <th className="pr-4">User ID</th>
+                  <th className="pr-4">Question</th>
+                  <th>Assistant Reply</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((l) => (
+                  <tr key={l.id} className="align-top border-t">
+                    <td className="py-2 pr-4">{new Date(l.created_at).toLocaleString()}</td>
+                      <td className="py-2 pr-4">{l.user_email || l.user_id}</td>
+                    <td className="py-2 pr-4">
+                      <div className="max-w-xs truncate">{l.user_message}</div>
+                      <button className="text-xs text-blue-600 underline" onClick={()=>setSelectedLog(l)}>View</button>
+                    </td>
+                    <td className="py-2">
+                      <div className="max-w-xl truncate">{l.assistant_reply}</div>
+                      <button className="text-xs text-blue-600 underline" onClick={()=>setSelectedLog(l)}>View</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination controls */}
+        <div className="mt-2 flex items-center gap-2">
+          <div className="text-sm">Total: {total}</div>
+          <button className="px-2 py-1 bg-gray-100 rounded" disabled={offset<=0} onClick={()=>setOffset(Math.max(0, offset - limit))}>Prev</button>
+          <button className="px-2 py-1 bg-gray-100 rounded" disabled={offset+limit>=total} onClick={()=>setOffset(offset + limit)}>Next</button>
+          <select value={limit} onChange={(e)=>{ setLimit(Number(e.target.value)); setOffset(0); }} className="border p-1 rounded">
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+        </div>
+
+        {/* Detail modal */}
+        {selectedLog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div className="bg-white p-4 rounded max-w-2xl w-full">
+              <div className="flex justify-between items-start">
+                <h4 className="text-lg font-semibold">Chat Log Detail</h4>
+                <button className="text-gray-600" onClick={()=>setSelectedLog(null)}>Close</button>
+              </div>
+              <div className="mt-2">
+                <div className="text-xs text-gray-500">When: {new Date(selectedLog.created_at).toLocaleString()}</div>
+                <div className="text-xs text-gray-500">User: {selectedLog.user_email || selectedLog.user_id}</div>
+                <div className="mt-3">
+                  <h5 className="font-medium">Question</h5>
+                  <pre className="whitespace-pre-wrap bg-gray-50 p-2 rounded">{selectedLog.user_message}</pre>
+                </div>
+                <div className="mt-3">
+                  <h5 className="font-medium">Assistant Reply</h5>
+                  <pre className="whitespace-pre-wrap bg-gray-50 p-2 rounded">{selectedLog.assistant_reply}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
