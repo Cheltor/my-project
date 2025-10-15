@@ -102,7 +102,18 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
             }
           }
 
-          return { ...comment, photos, unit };
+          // Mentions (users)
+          let mentions = [];
+          try {
+            const mResp = await fetch(`${process.env.REACT_APP_API_URL}/comments/${comment.id}/mentions`);
+            if (mResp.ok) {
+              mentions = await mResp.json();
+            }
+          } catch (e) {
+            console.error(`Error fetching mentions for comment ${comment.id}:`, e);
+          }
+
+          return { ...comment, photos, unit, mentions };
         });
 
         // Wait for all comments with their extras to be fetched
@@ -256,6 +267,15 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
           currentSlice.map((comment) => (
             <li key={comment.id} className="bg-gray-100 p-4 rounded-lg shadow">
               <p className="text-gray-700 whitespace-pre-line">{comment.content}</p>
+              {Array.isArray(comment.mentions) && comment.mentions.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {comment.mentions.map((u) => (
+                    <span key={u.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      @{u.name || u.email}
+                    </span>
+                  ))}
+                </div>
+              )}
               <p className="text-sm text-gray-500 mt-2">Posted on {formatDate(comment.created_at)}</p>
               {comment.user && (
                 <p className="text-sm text-gray-500">

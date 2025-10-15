@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import MentionsTextarea from '../MentionsTextarea';
 import { useAuth } from '../../AuthContext'; // Import the useAuth hook from the AuthContext
 
 const NewAddressComment = ({ addressId, onCommentAdded }) => {
   const [newComment, setNewComment] = useState(''); // State for new comment input
+  const [mentionIds, setMentionIds] = useState([]);
   const [submitting, setSubmitting] = useState(false); // State for form submission
   const [files, setFiles] = useState([]);
   const { user } = useAuth(); // Get user data from context
@@ -30,6 +32,9 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
   
     const formData = new FormData();
     formData.append('content', newComment);
+    if (mentionIds && mentionIds.length > 0) {
+      formData.append('mentioned_user_ids', mentionIds.join(','));
+    }
     formData.append('user_id', userId);
     // address_id is in the path
     for (const f of files) formData.append('files', f);
@@ -63,6 +68,7 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
           onCommentAdded(created);
         }
         setNewComment('');
+        setMentionIds([]);
         setFiles([]);
         setSubmitting(false);
       })
@@ -75,14 +81,15 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
 
   return (
     <form onSubmit={handleSubmit} className="mt-4">
-      <textarea
+      <MentionsTextarea
         value={newComment}
-        onChange={(e) => setNewComment(e.target.value)}
-        placeholder="Write a comment..."
+        onChange={setNewComment}
+        onMentionsChange={setMentionIds}
+        placeholder="Write a comment... Use @Name to mention users"
         className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-200"
-        rows="4"
+        rows={4}
         disabled={submitting}
-      ></textarea>
+      />
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <input
           id="address-attachments"
