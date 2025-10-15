@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../AuthContext'; // Import the useAuth hook from the AuthContext
+import { useAuth } from '../../AuthContext';
+import MentionsTextarea from '../MentionsTextarea';
 
 const NewUnitComment = ({ unitId, addressId, onCommentAdded }) => {
   const [newComment, setNewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [files, setFiles] = useState([]);
+  const [mentionIds, setMentionIds] = useState([]);
   const { user } = useAuth();
 
   const handleSubmit = (event) => {
@@ -28,6 +30,9 @@ const NewUnitComment = ({ unitId, addressId, onCommentAdded }) => {
           formData.append('content', newComment);
           formData.append('user_id', userId);
           formData.append('address_id', addressId);
+          if (mentionIds && mentionIds.length > 0) {
+            formData.append('mentioned_user_ids', mentionIds.join(','));
+          }
           for (const f of files) formData.append('files', f);
           return { method: 'POST', body: formData };
         })()
@@ -64,7 +69,13 @@ const NewUnitComment = ({ unitId, addressId, onCommentAdded }) => {
         }
         setNewComment('');
         setFiles([]);
+        setMentionIds([]);
         setSubmitting(false);
+        try {
+          if (created && Array.isArray(created.mentions) && created.mentions.length > 0) {
+            window.dispatchEvent(new Event('notifications:refresh'));
+          }
+        } catch (_) { /* ignore */ }
       })
       .catch((error) => {
         console.error('Error submitting comment:', error);
@@ -74,14 +85,15 @@ const NewUnitComment = ({ unitId, addressId, onCommentAdded }) => {
 
   return (
     <form onSubmit={handleSubmit} className="mt-4">
-      <textarea
+      <MentionsTextarea
         value={newComment}
-        onChange={(e) => setNewComment(e.target.value)}
-        placeholder="Write a comment..."
+        onChange={setNewComment}
+        onMentionsChange={setMentionIds}
+        placeholder="Write a comment... Use @Name to mention users"
         className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-200"
-        rows="4"
+        rows={4}
         disabled={submitting}
-      ></textarea>
+      />
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <input
           id="unit-attachments"

@@ -173,6 +173,16 @@ export default function Sidebar({ children }) {
     };
   }, [token, fetchNotifications]);
 
+  // Listen for app-wide notifications refresh events (e.g., after posting a comment that mentions someone)
+  useEffect(() => {
+    const handler = () => {
+      if (!token) return;
+      fetchNotifications({ showSpinner: false });
+    };
+    window.addEventListener('notifications:refresh', handler);
+    return () => window.removeEventListener('notifications:refresh', handler);
+  }, [token, fetchNotifications]);
+
   useEffect(() => {
     if (!showNotificationsDropdown) {
       return;
@@ -239,7 +249,9 @@ export default function Sidebar({ children }) {
   };
 
   const unreadCount = notifications.filter((notification) => !notification.read).length;
-  const unreadNotifications = notifications.filter((notification) => !notification.read);
+  const recentNotifications = [...notifications]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 5);
 
   const formatNotificationTimestamp = (timestamp) => {
     if (!timestamp) {
@@ -512,11 +524,11 @@ export default function Sidebar({ children }) {
                       <p className="p-4 text-sm text-gray-500">Loading notifications...</p>
                     ) : notificationsError ? (
                       <p className="p-4 text-sm text-red-500">{notificationsError}</p>
-                    ) : unreadNotifications.length === 0 ? (
-                      <p className="p-4 text-sm text-gray-500">You're all caught up.</p>
+                    ) : recentNotifications.length === 0 ? (
+                      <p className="p-4 text-sm text-gray-500">No notifications yet.</p>
                     ) : (
                       <ul className="divide-y divide-gray-100">
-                        {unreadNotifications.map((notification) => (
+                        {recentNotifications.map((notification) => (
                           <li
                             key={notification.id}
                             className="p-4 hover:bg-gray-50 cursor-pointer"
@@ -531,8 +543,11 @@ export default function Sidebar({ children }) {
                                 });
                                 // Optimistically update UI
                                 setNotifications((prev) => prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)));
-                                // Navigate to inspection if available
-                                if (notification.inspection_id) {
+                                // Navigate using origin_url_path if provided; else fall back
+                                if (notification.origin_url_path) {
+                                  navigate(notification.origin_url_path);
+                                  setShowNotificationsDropdown(false);
+                                } else if (notification.inspection_id) {
                                   navigate(`/inspection/${notification.inspection_id}`);
                                   setShowNotificationsDropdown(false);
                                 }
@@ -546,6 +561,9 @@ export default function Sidebar({ children }) {
                                 <p className="text-sm font-medium text-gray-900">
                                   {notification.title || 'Notification'}
                                 </p>
+                                {notification.origin_label && (
+                                  <p className="mt-0.5 text-xs text-gray-500">{notification.origin_label}</p>
+                                )}
                                 {notification.body && (
                                   <p className="mt-1 whitespace-pre-line text-sm text-gray-600">
                                     {notification.body}
@@ -565,7 +583,7 @@ export default function Sidebar({ children }) {
                         ))}
                       </ul>
                     )}
-                    <div className="border-t border-gray-100 px-4 py-3 flex items-center justify-between">
+                    <div className="border-t border-gray-100 px-4 py-3 flex items-center justify-between gap-2">
                       <button
                         type="button"
                         onClick={handleMarkAllAsRead}
@@ -573,6 +591,15 @@ export default function Sidebar({ children }) {
                       >
                         Mark all as read
                       </button>
+                      {notifications.length > 5 && (
+                        <button
+                          type="button"
+                          onClick={() => { setShowNotificationsDropdown(false); navigate('/notifications'); }}
+                          className="text-sm font-medium text-gray-700 hover:text-gray-900"
+                        >
+                          View all
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => setShowNotificationsDropdown(false)}

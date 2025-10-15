@@ -50,19 +50,25 @@ const UnitComments = ({ unitId, addressId }) => {
         return response.json();
       })
       .then((data) => {
-        // For each comment, fetch photos
-        const fetchPhotosPromises = data.map((comment) => {
-          return fetch(`${process.env.REACT_APP_API_URL}/comments/${comment.id}/photos`)
-            .then((response) => {
-              if (!response.ok) return [];
-              return response.json();
-            })
-            .then((photos) => ({ ...comment, photos }))
-            .catch(() => ({ ...comment, photos: [] }));
+        // For each comment, fetch photos and mentions
+        const fetchExtrasPromises = data.map(async (comment) => {
+          let photos = [];
+          try {
+            const resp = await fetch(`${process.env.REACT_APP_API_URL}/comments/${comment.id}/photos`);
+            photos = resp.ok ? await resp.json() : [];
+          } catch { photos = []; }
+
+          let mentions = [];
+          try {
+            const mResp = await fetch(`${process.env.REACT_APP_API_URL}/comments/${comment.id}/mentions`);
+            mentions = mResp.ok ? await mResp.json() : [];
+          } catch { mentions = []; }
+
+          return { ...comment, photos, mentions };
         });
-        Promise.all(fetchPhotosPromises)
-          .then((commentsWithPhotos) => {
-            setComments(commentsWithPhotos);
+        Promise.all(fetchExtrasPromises)
+          .then((commentsWithExtras) => {
+            setComments(commentsWithExtras);
             setLoading(false);
           })
           .catch((error) => {
@@ -81,18 +87,26 @@ const UnitComments = ({ unitId, addressId }) => {
       setComments([newComment, ...comments]);
       return;
     }
-    fetch(`${process.env.REACT_APP_API_URL}/comments/${newComment.id}/photos`)
-      .then((response) => {
-        if (!response.ok) return [];
-        return response.json();
-      })
-      .then((photos) => {
-        const newCommentWithPhotos = { ...newComment, photos };
-        setComments([newCommentWithPhotos, ...comments]);
-      })
-      .catch(() => {
+    (async () => {
+      try {
+        let photos = [];
+        try {
+          const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/${newComment.id}/photos`);
+          photos = response.ok ? await response.json() : [];
+        } catch { photos = []; }
+
+        let mentions = [];
+        try {
+          const mResp = await fetch(`${process.env.REACT_APP_API_URL}/comments/${newComment.id}/mentions`);
+          mentions = mResp.ok ? await mResp.json() : [];
+        } catch { mentions = []; }
+
+        const newCommentWithExtras = { ...newComment, photos, mentions };
+        setComments([newCommentWithExtras, ...comments]);
+      } catch {
         setComments([newComment, ...comments]);
-      });
+      }
+    })();
   };
 
   if (loading) {
@@ -122,6 +136,15 @@ const UnitComments = ({ unitId, addressId }) => {
           comments.map((comment) => (
             <li key={comment.id} className="bg-gray-100 p-4 rounded-lg shadow">
               <p className="text-gray-700 whitespace-pre-line">{comment.content}</p>
+              {Array.isArray(comment.mentions) && comment.mentions.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {comment.mentions.map((u) => (
+                    <span key={u.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      @{u.name || u.email}
+                    </span>
+                  ))}
+                </div>
+              )}
               <p className="text-sm text-gray-500 mt-2">Posted on {formatDate(comment.created_at)}</p>
               {comment.user && (
                 <p className="text-sm text-gray-500">

@@ -217,12 +217,14 @@ const ViolationDetail = () => {
         });
       }
       if (!response.ok) throw new Error("Failed to post comment");
-      setNewComment("");
-      setCommentFiles([]);
+  setNewComment("");
+  setCommentFiles([]);
       // Refetch violation to update comments
-      const updated = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}`);
+  const updated = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}`);
       const updatedData = await updated.json();
       setViolation(updatedData);
+  // Trigger an immediate notifications refresh for the current session
+  try { window.dispatchEvent(new CustomEvent('notifications:refresh')); } catch (_) {}
       if (updatedData && Array.isArray(updatedData.violation_comments)) {
         // Refresh per-comment attachments too
         const last = updatedData.violation_comments[0]; // newest first if backend returns so; otherwise still fetch all

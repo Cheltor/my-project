@@ -123,7 +123,7 @@ export default function MentionsTextarea({ value, onChange, onMentionsChange, pl
     setOpen(false);
     setQuery('');
     requestAnimationFrame(() => {
-      const newPos = beforeAt.length + 1; // after the inserted newline
+      const newPos = beforeAt.length;
       el.focus();
       el.setSelectionRange(newPos, newPos);
     });

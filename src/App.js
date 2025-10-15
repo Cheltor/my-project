@@ -47,6 +47,7 @@ import AdminCommentEditor from './Components/AdminCommentEditor';
 import AdminContactCommentEditor from './Components/AdminContactCommentEditor';
 import ChatWidget from './Components/ChatWidget';
 import AdminChat from './Components/AdminChat';
+import NotificationsPage from './Components/NotificationsPage';
 
 function App() {
   return (
@@ -157,6 +158,7 @@ function MainApp() {
             <Route path="/admin/comments/:commentId/edit" element={<AdminCommentEditor />} />
             <Route path="/admin/contact-comments/:commentId/edit" element={<AdminContactCommentEditor />} />
             <Route path="/admin-chat" element={<AdminChat user={user} chatEnabled={chatEnabled} setChatEnabled={setChatEnabled} />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
             {/* Add more routes as needed */}
           </Routes>
         </Sidebar>
