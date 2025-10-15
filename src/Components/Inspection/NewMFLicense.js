@@ -25,7 +25,7 @@ export default function NewMFLicense() {
   const [addressError, setAddressError] = useState("");
   const [contactError, setContactError] = useState("");
   const isAddressValid = !!formData.address_id;
-  const isContactValid = !!formData.contact_id;
+  const hasNewContactInput = (formData.new_contact_name || "").trim().length > 0;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -83,17 +83,41 @@ export default function NewMFLicense() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Client-side validation
-    let invalid = false;
+    // Client-side validation (address required only)
     if (!formData.address_id) {
       setAddressError('Address is required.');
-      invalid = true;
+      return;
     }
-    if (!formData.contact_id) {
-      setContactError('Contact is required.');
-      invalid = true;
+
+    // Create contact first if using New Contact path
+    let effectiveContactId = formData.contact_id;
+    if (!effectiveContactId && hasNewContactInput) {
+      try {
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/contacts/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            name: formData.new_contact_name,
+            email: formData.new_contact_email || undefined,
+            phone: formData.new_contact_phone || undefined,
+          }),
+        });
+        if (resp.ok) {
+          const created = await resp.json();
+          effectiveContactId = created?.id ?? null;
+          if (effectiveContactId) setFormData((prev) => ({ ...prev, contact_id: effectiveContactId }));
+        } else {
+          // Optional: show message but continue without blocking
+          setContactError('Failed to create contact. Continuing without contact.');
+        }
+      } catch (err) {
+        // Optional: show message but continue without blocking
+        setContactError('Failed to create contact. Continuing without contact.');
+      }
     }
-    if (invalid) return;
     const inspectionData = new FormData();
 
     Object.keys(formData).forEach((key) => {
@@ -109,6 +133,9 @@ export default function NewMFLicense() {
         }
       }
     });
+    if (effectiveContactId) {
+      inspectionData.set('contact_id', String(effectiveContactId));
+    }
     // inspector assignment
     const effectiveInspectorId = user?.role === 3 && assigneeId ? assigneeId : user?.id;
     if (effectiveInspectorId) inspectionData.set("inspector_id", String(effectiveInspectorId));
@@ -275,10 +302,10 @@ export default function NewMFLicense() {
           />
         </div>*/}
 
-        {/* Contact Selection (Required) */}
+        {/* Contact Selection (Optional) */}
         <div className="mb-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Contact <span className="text-red-600" aria-hidden> *</span>
+            Contact
           </label>
           <ContactSelection
             formData={formData}
@@ -286,7 +313,7 @@ export default function NewMFLicense() {
             loadContactOptions={loadContactOptions}
             onInputChange={handleInputChange}
           />
-          <div className="text-xs text-gray-500 mt-1">This field is required.</div>
+          <div className="text-xs text-gray-500 mt-1">Optional.</div>
           {contactError && <div className="text-xs text-red-600 mt-1">{contactError}</div>}
         </div>
 
@@ -295,8 +322,8 @@ export default function NewMFLicense() {
           <button
             type="submit"
             className="w-full inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60"
-            disabled={!isAddressValid || !isContactValid}
-            aria-disabled={!isAddressValid || !isContactValid}
+            disabled={!isAddressValid}
+            aria-disabled={!isAddressValid}
           >
             Create New Multifamily License
           </button>

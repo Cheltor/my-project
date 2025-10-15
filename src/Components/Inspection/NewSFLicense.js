@@ -24,6 +24,7 @@ export default function NewSFLicense() {
   // Validation state
   const [addressError, setAddressError] = useState("");
   const isAddressValid = !!formData.address_id;
+  const hasNewContactInput = (formData.new_contact_name || '').trim().length > 0;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -83,6 +84,31 @@ export default function NewSFLicense() {
       setAddressError('Address is required.');
       return;
     }
+    // If user provided new contact fields without selecting a contact, create it first
+    let effectiveContactId = formData.contact_id;
+    if (!effectiveContactId && hasNewContactInput) {
+      try {
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/contacts/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            name: formData.new_contact_name,
+            email: formData.new_contact_email || undefined,
+            phone: formData.new_contact_phone || undefined,
+          }),
+        });
+        if (resp.ok) {
+          const created = await resp.json();
+          effectiveContactId = created?.id ?? null;
+          if (effectiveContactId) setFormData((prev) => ({ ...prev, contact_id: effectiveContactId }));
+        }
+      } catch (_) {
+        // best-effort; continue without contact if creation fails
+      }
+    }
     const inspectionData = new FormData();
 
     Object.keys(formData).forEach((key) => {
@@ -98,6 +124,9 @@ export default function NewSFLicense() {
         }
       }
     });
+    if (effectiveContactId) {
+      inspectionData.set('contact_id', String(effectiveContactId));
+    }
     // inspector assignment
     const effectiveInspectorId = user?.role === 3 && assigneeId ? assigneeId : user?.id;
     if (effectiveInspectorId) inspectionData.set("inspector_id", String(effectiveInspectorId));

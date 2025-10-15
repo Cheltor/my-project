@@ -100,6 +100,32 @@ export default function NewBuildingPermit() {
       return;
     }
 
+    // If new contact fields provided and no existing contact selected, create contact first
+    let effectiveContactId = formData.contact_id;
+    if (!effectiveContactId && (formData.new_contact_name || '').trim().length > 0) {
+      try {
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/contacts/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            name: formData.new_contact_name,
+            email: formData.new_contact_email || undefined,
+            phone: formData.new_contact_phone || undefined,
+          }),
+        });
+        if (resp.ok) {
+          const created = await resp.json();
+          effectiveContactId = created?.id ?? null;
+          if (effectiveContactId) setFormData((prev) => ({ ...prev, contact_id: effectiveContactId }));
+        }
+      } catch (_) {
+        // continue without contact
+      }
+    }
+
     const permitData = new FormData();
 
     Object.keys(formData).forEach((key) => {
@@ -116,6 +142,9 @@ export default function NewBuildingPermit() {
         permitData.append(key, value);
       }
     });
+    if (effectiveContactId) {
+      permitData.set('contact_id', String(effectiveContactId));
+    }
     // inspector assignment
     const effectiveInspectorId = user?.role === 3 && assigneeId ? assigneeId : user?.id;
     if (effectiveInspectorId) permitData.set("inspector_id", String(effectiveInspectorId));

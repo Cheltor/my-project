@@ -21,6 +21,9 @@ export default function NewComplaint() {
     attachments: [],
     business_id: null,
     contact_id: null,
+    new_contact_name: "",
+    new_contact_email: "",
+    new_contact_phone: "",
     paid: false,
   });
   // Admin assignment state
@@ -121,6 +124,38 @@ export default function NewComplaint() {
     }
 
     try {
+      // If no existing contact selected but a new contact name is provided, create the contact first
+      let effectiveContactId = formData.contact_id;
+      const hasNewContact = !effectiveContactId && (formData.new_contact_name || "").trim().length > 0;
+      if (hasNewContact) {
+        try {
+          const resp = await fetch(`${process.env.REACT_APP_API_URL}/contacts/`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({
+              name: formData.new_contact_name,
+              email: formData.new_contact_email || undefined,
+              phone: formData.new_contact_phone || undefined,
+            }),
+          });
+          if (resp.ok) {
+            const created = await resp.json();
+            effectiveContactId = created?.id ?? null;
+            if (effectiveContactId) {
+              setFormData((prev) => ({ ...prev, contact_id: effectiveContactId }));
+            }
+          } else {
+            // If contact creation fails, proceed without a contact rather than blocking complaint creation
+            try { const errJson = await resp.json(); console.error('Create contact failed:', errJson); } catch {}
+          }
+        } catch (createErr) {
+          console.error('Create contact error:', createErr);
+        }
+      }
+
       // Step 1: Create Complaint (send as multipart/form-data to match API Form fields)
       const createForm = new FormData();
       if (formData.address_id) createForm.append('address_id', String(formData.address_id));
@@ -129,7 +164,7 @@ export default function NewComplaint() {
   createForm.append('description', formData.description || '');
   // Mirror to comment for compatibility with backends that use `comment` or `details`
   createForm.append('comment', formData.description || '');
-      if (formData.contact_id) createForm.append('contact_id', String(formData.contact_id));
+      if (effectiveContactId) createForm.append('contact_id', String(effectiveContactId));
       createForm.append('paid', formData.paid ? 'true' : 'false');
       if (photos.length > 0) {
         photos.forEach((photo) => {

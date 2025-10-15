@@ -121,6 +121,33 @@ export default function NewBusinessLicense() {
       return;
     }
 
+    // If no existing contact selected and new contact fields are present, create contact first
+    let effectiveContactId = formData.contact_id;
+    const hasNewContact = !effectiveContactId && (formData.new_contact_name || '').trim().length > 0;
+    if (hasNewContact) {
+      try {
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/contacts/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            name: formData.new_contact_name,
+            email: formData.new_contact_email || undefined,
+            phone: formData.new_contact_phone || undefined,
+          }),
+        });
+        if (resp.ok) {
+          const created = await resp.json();
+          effectiveContactId = created?.id ?? null;
+          if (effectiveContactId) setFormData((prev) => ({ ...prev, contact_id: effectiveContactId }));
+        }
+      } catch (_) {
+        // best-effort; continue without contact
+      }
+    }
+
     // Log each field of formData individually to easily view everything in the console
     console.log("Form Data before submission:");
     Object.keys(formData).forEach((key) => {
@@ -140,6 +167,9 @@ export default function NewBusinessLicense() {
       if (value === null || value === undefined || value === "") return;
       inspectionData.append(key, value);
     });
+  if (effectiveContactId) {
+    inspectionData.set('contact_id', String(effectiveContactId));
+  }
   // Ensure address_id is present using the resolved value
     inspectionData.set('address_id', Number(resolvedAddressId));
   // inspector assignment
