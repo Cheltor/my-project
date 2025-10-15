@@ -71,6 +71,12 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
         setMentionIds([]);
         setFiles([]);
         setSubmitting(false);
+        try {
+          // If the created comment has mentions, trigger a notification refresh
+          if (created && Array.isArray(created.mentions) && created.mentions.length > 0) {
+            window.dispatchEvent(new Event('notifications:refresh'));
+          }
+        } catch (_) { /* ignore */ }
       })
       .catch((error) => {
         console.error('Error submitting comment:', error);

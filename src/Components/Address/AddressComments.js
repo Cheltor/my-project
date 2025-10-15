@@ -173,7 +173,18 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
           }
         }
 
-        const newCommentWithExtras = { ...newComment, photos, unit };
+        // Mentions for the new comment (so chips show up immediately)
+        let mentions = [];
+        try {
+          const mResp = await fetch(`${process.env.REACT_APP_API_URL}/comments/${newComment.id}/mentions`);
+          if (mResp.ok) {
+            mentions = await mResp.json();
+          }
+        } catch (e) {
+          console.error(`Error fetching mentions for new comment ${newComment.id}:`, e);
+        }
+
+        const newCommentWithExtras = { ...newComment, photos, unit, mentions };
         setComments([newCommentWithExtras, ...comments]);
         setPage(1);
       } catch (error) {
