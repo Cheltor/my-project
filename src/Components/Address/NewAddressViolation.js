@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '../../AuthContext';
 import CodeSelect from '../CodeSelect';
 
@@ -26,6 +26,31 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [files, setFiles] = useState([]);
+  const fileInputRef = useRef(null);
+  const [fileInputKey, setFileInputKey] = useState(0);
+
+  const resetAttachmentState = () => {
+    setFiles([]);
+    if (fileInputRef.current) {
+      try {
+        fileInputRef.current.value = null;
+      } catch (err) {
+        // ignore reset errors
+      }
+    }
+    setFileInputKey((k) => k + 1);
+  };
+
+  const handleToggleForm = () => {
+    setShowForm((prev) => {
+      const next = !prev;
+      if (!next) {
+        resetAttachmentState();
+      }
+      return next;
+    });
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -66,10 +91,32 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
         throw new Error(msg);
       }
       const newViolation = await response.json();
+
+      if (files.length > 0 && newViolation?.id) {
+        const fd = new FormData();
+        files.forEach((file) => fd.append('files', file));
+        try {
+          const uploadResp = await fetch(`${process.env.REACT_APP_API_URL}/violation/${newViolation.id}/photos`, {
+            method: 'POST',
+            body: fd,
+          });
+          if (!uploadResp.ok) {
+            try {
+              const data = await uploadResp.json();
+              console.error('Attachment upload failed:', data);
+            } catch (uploadErr) {
+              console.error('Attachment upload failed');
+            }
+          }
+        } catch (uploadError) {
+          console.error('Attachment upload failed', uploadError);
+        }
+      }
       setSuccess(true);
       setSelectedCodes([]);
       setViolationType(VIOLATION_TYPE_OPTIONS[0].value);
       setDeadline(DEADLINE_OPTIONS[0]);
+      resetAttachmentState();
       if (onViolationAdded) onViolationAdded(newViolation);
       // Close the form after successful submission
       setShowForm(false);
@@ -84,7 +131,7 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
     <div className="mt-4 mb-6">
       <button
         type="button"
-        onClick={() => setShowForm((v) => !v)}
+        onClick={handleToggleForm}
         aria-expanded={showForm}
         className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
       >
@@ -97,73 +144,117 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
           className="mt-4 space-y-4 bg-white border border-indigo-200 shadow-lg rounded-xl p-6"
           style={{ zIndex: 10 }}
         >
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Violation Type</label>
-        <select
-          className="w-full border border-gray-300 rounded px-2 py-1"
-          value={violationType}
-          onChange={e => setViolationType(e.target.value)}
-          disabled={submitting}
-        >
-          {VIOLATION_TYPE_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Violation Codes</label>
-        <CodeSelect
-          onChange={opts => setSelectedCodes(opts || [])}
-          value={selectedCodes}
-          isMulti={true}
-          isDisabled={submitting}
-        />
-      </div>
-      {selectedCodes.length > 0 && (
-        <div className="mb-2">
-          <label className="block text-xs font-medium text-gray-500">Descriptions:</label>
-          <ul className="list-disc ml-5 text-xs text-gray-700">
-            {selectedCodes.map((opt) => (
-              <li key={opt.value} title={opt.code.description}>
-                {opt.code.description.length > 80 ? opt.code.description.slice(0, 80) + '...' : opt.code.description}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
-        <select
-          className="w-full border border-gray-300 rounded px-2 py-1"
-          value={deadline}
-          onChange={e => setDeadline(e.target.value)}
-          disabled={submitting}
-        >
-          {DEADLINE_OPTIONS.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-      </div>
-      <div className="flex gap-3">
-        <button
-          type="submit"
-          className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
-          disabled={submitting}
-        >
-          {submitting ? 'Submitting...' : 'Add Violation'}
-        </button>
-        <button
-          type="button"
-          className="mt-2 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-          onClick={() => setShowForm(false)}
-          disabled={submitting}
-        >
-          Cancel
-        </button>
-      </div>
-      {error && <div className="text-red-500">{error}</div>}
-      {success && <div className="text-green-600">Violation created!</div>}
-    </form>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Violation Type</label>
+            <select
+              className="w-full border border-gray-300 rounded px-2 py-1"
+              value={violationType}
+              onChange={e => setViolationType(e.target.value)}
+              disabled={submitting}
+            >
+              {VIOLATION_TYPE_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Violation Codes</label>
+            <CodeSelect
+              onChange={opts => setSelectedCodes(opts || [])}
+              value={selectedCodes}
+              isMulti={true}
+              isDisabled={submitting}
+            />
+          </div>
+          {selectedCodes.length > 0 && (
+            <div className="mb-2">
+              <label className="block text-xs font-medium text-gray-500">Descriptions:</label>
+              <ul className="list-disc ml-5 text-xs text-gray-700">
+                {selectedCodes.map((opt) => (
+                  <li key={opt.value} title={opt.code.description}>
+                    {opt.code.description.length > 80 ? opt.code.description.slice(0, 80) + '...' : opt.code.description}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
+            <select
+              className="w-full border border-gray-300 rounded px-2 py-1"
+              value={deadline}
+              onChange={e => setDeadline(e.target.value)}
+              disabled={submitting}
+            >
+              {DEADLINE_OPTIONS.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700">Attachments</label>
+            <div className="mt-1 flex items-center">
+              <label className="bg-white text-gray-700 border border-gray-300 rounded-md shadow-sm px-4 py-2 cursor-pointer hover:bg-gray-50">
+                <span>Choose files</span>
+                <input
+                  type="file"
+                  name="attachments"
+                  multiple
+                  accept="image/*,application/pdf"
+                  className="sr-only"
+                  key={fileInputKey}
+                  ref={fileInputRef}
+                  onChange={(e) => setFiles(Array.from(e.target.files || []))}
+                  disabled={submitting}
+                />
+              </label>
+            </div>
+            {files.length > 0 && (
+              <div className="mt-2">
+                <div className="flex flex-wrap gap-2">
+                  {files.map((file, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded bg-indigo-50 text-indigo-700 text-xs border border-indigo-200"
+                    >
+                      <span className="truncate max-w-[12rem]" title={file.name}>{file.name}</span>
+                    </span>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="mt-2 text-xs text-gray-600 hover:text-gray-900 underline"
+                  onClick={resetAttachmentState}
+                  disabled={submitting}
+                >
+                  Clear selection
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
+              disabled={submitting}
+            >
+              {submitting ? 'Submitting...' : 'Add Violation'}
+            </button>
+            <button
+              type="button"
+              className="mt-2 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+              onClick={() => {
+                setShowForm(false);
+                resetAttachmentState();
+              }}
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+          </div>
+          {error && <div className="text-red-500">{error}</div>}
+          {success && <div className="text-green-600">Violation created!</div>}
+        </form>
       )}
     </div>
   );
