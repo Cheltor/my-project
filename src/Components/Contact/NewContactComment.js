@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import MentionsTextarea from '../MentionsTextarea';
 import { useAuth } from '../../AuthContext'; // Import the useAuth hook from the AuthContext
 
 const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }) => {
   const [newComment, setNewComment] = useState(''); // State for new comment input
   const [submitting, setSubmitting] = useState(false); // State for form submission
+  const [mentionIds, setMentionIds] = useState([]);
   const [files, setFiles] = useState([]); // Selected files
   const { user, token } = useAuth(); // Get user data and token from context
 
@@ -45,6 +47,7 @@ const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }
         .then((response) => response.json())
         .then((updated) => {
           if (onCommentAdded) onCommentAdded(updated);
+          setMentionIds([]);
           setSubmitting(false);
         })
         .catch((error) => {
@@ -58,6 +61,9 @@ const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }
     const formData = new FormData();
     formData.append('comment', trimmed);
     formData.append('user_id', userId);
+    if (mentionIds && mentionIds.length > 0) {
+      formData.append('mentioned_user_ids', mentionIds.join(','));
+    }
     // contact_id is in the path; backend doesn't need it in body
     for (const f of files) {
       formData.append('files', f);
@@ -74,6 +80,7 @@ const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }
       .then((created) => {
         if (onCommentAdded) onCommentAdded(created);
         setNewComment(''); // Clear the input field
+        setMentionIds([]);
         setFiles([]);
         setSubmitting(false);
       })
@@ -87,12 +94,13 @@ const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }
 
   return (
     <form onSubmit={handleSubmit} className="mt-4">
-      <textarea
+      <MentionsTextarea
         value={newComment}
-        onChange={(e) => setNewComment(e.target.value)}
-        placeholder={isEditing ? 'Edit your comment...' : 'Write a comment...'}
+        onChange={setNewComment}
+        onMentionsChange={setMentionIds}
+        placeholder={isEditing ? 'Edit your comment... Use @Name to mention users' : 'Write a comment... Use @Name to mention users'}
         className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-200"
-        rows="4"
+        rows={4}
         disabled={submitting}
       />
 

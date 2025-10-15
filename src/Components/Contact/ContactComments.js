@@ -28,9 +28,19 @@ export default function ContactComments({ contactId }) {  // Accept contactId as
         }
         return response.json();
       })
-      .then((data) => {
+      .then(async (data) => {
         console.log('Fetched comments:', data);
-        setComments(data);
+        // Enrich each comment with mentions
+        const enriched = await Promise.all((data || []).map(async (c) => {
+          try {
+            const resp = await fetch(`${process.env.REACT_APP_API_URL}/comments/${c.id}/mentions`);
+            const mentions = resp.ok ? await resp.json() : [];
+            return { ...c, mentions };
+          } catch {
+            return { ...c, mentions: [] };
+          }
+        }));
+        setComments(enriched);
         setLoading(false);
       })
       .catch((error) => {
@@ -128,6 +138,15 @@ export default function ContactComments({ contactId }) {  // Accept contactId as
           {comments.map((comment) => (
             <li key={comment.id} className="bg-gray-100 p-4 rounded-lg shadow">
               <p className="text-gray-700">{comment.comment}</p>
+              {Array.isArray(comment.mentions) && comment.mentions.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {comment.mentions.map((u) => (
+                    <span key={u.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      @{u.name || u.email}
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="mt-2 flex items-start justify-between">
                 <div className="text-sm text-gray-500">
                   <p>Created on {formatDate(comment.created_at)}</p>
