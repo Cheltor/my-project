@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { toEasternLocaleString } from '../utils';
 
 const RESOURCE_CONFIG = [
   {
@@ -131,7 +132,7 @@ const normalizeValue = (value) => {
   if (value === null || value === undefined) return '—';
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   if (typeof value === 'number') return value;
-  if (value instanceof Date) return value.toLocaleString();
+  if (value instanceof Date) return toEasternLocaleString(value);
   if (typeof value === 'string') {
     const trimmed = value.trim();
     return trimmed.length ? trimmed : '—';

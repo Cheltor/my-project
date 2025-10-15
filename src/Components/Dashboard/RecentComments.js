@@ -1,14 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../AuthContext';
+import { toEasternLocaleString } from '../../utils';
 
-const formatDateTime = (iso) => {
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
-};
+const formatDateTime = (iso) => toEasternLocaleString(iso) || iso;
 
 const RecentComments = ({ limit = 10, className = '', startExpanded = false }) => {
   const { user } = useAuth();

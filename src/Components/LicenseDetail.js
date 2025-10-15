@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { toEasternLocaleString } from '../utils';
 
 export default function LicenseDetail() {
   const { id } = useParams();
@@ -375,10 +376,10 @@ export default function LicenseDetail() {
           </div>
 
           <div className="text-sm font-medium text-gray-500">Created</div>
-          <div className="sm:col-span-2">{new Date(license.created_at).toLocaleString()}</div>
+          <div className="sm:col-span-2">{toEasternLocaleString(license.created_at)}</div>
 
           <div className="text-sm font-medium text-gray-500">Updated</div>
-          <div className="sm:col-span-2">{new Date(license.updated_at).toLocaleString()}</div>
+          <div className="sm:col-span-2">{toEasternLocaleString(license.updated_at)}</div>
         </div>
       </div>
 

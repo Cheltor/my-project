@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { toEasternLocaleString } from '../utils';
 // import CitationDetails from './CitationDetails';
 
 export default function Citations() {
@@ -121,10 +122,10 @@ export default function Citations() {
   })();
   const idFilterLabel = filterCitationId.trim() ? `ID contains "${filterCitationId.trim()}"` : 'All IDs';
   const printableResultsLabel = filteredCitations.length === 1 ? '1 result' : `${filteredCitations.length} results`;
-  const resolvedPrintTimestamp = printGeneratedAt || new Date().toLocaleString('en-US');
+  const resolvedPrintTimestamp = printGeneratedAt || toEasternLocaleString(new Date(), 'en-US');
 
   const handlePrint = () => {
-    setPrintGeneratedAt(new Date().toLocaleString('en-US'));
+    setPrintGeneratedAt(toEasternLocaleString(new Date(), 'en-US'));
     setTimeout(() => window.print(), 0);
   };
 

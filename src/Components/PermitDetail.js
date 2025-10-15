@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { toEasternLocaleString } from '../utils';
 
 export default function PermitDetail() {
   const { id } = useParams();
@@ -56,10 +57,10 @@ export default function PermitDetail() {
           <div className="sm:col-span-2">{permit.conditions || '—'}</div>
 
           <div className="text-sm font-medium text-gray-500">Created</div>
-          <div className="sm:col-span-2">{permit.created_at ? new Date(permit.created_at).toLocaleString() : '—'}</div>
+          <div className="sm:col-span-2">{permit.created_at ? toEasternLocaleString(permit.created_at) : '—'}</div>
 
           <div className="text-sm font-medium text-gray-500">Updated</div>
-          <div className="sm:col-span-2">{permit.updated_at ? new Date(permit.updated_at).toLocaleString() : '—'}</div>
+          <div className="sm:col-span-2">{permit.updated_at ? toEasternLocaleString(permit.updated_at) : '—'}</div>
         </div>
       </div>
 

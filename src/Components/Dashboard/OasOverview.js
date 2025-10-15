@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toEasternLocaleString } from '../../utils';
 
 const LICENSE_TYPE_LABELS = {
   0: 'Business License',
@@ -30,7 +31,11 @@ const formatDate = (iso, { withTime = false } = {}) => {
   if (!iso) return '--';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '--';
-  return withTime ? date.toLocaleString() : date.toLocaleDateString();
+  if (withTime) {
+    const formatted = toEasternLocaleString(date);
+    return formatted || '--';
+  }
+  return date.toLocaleDateString();
 };
 
 const statusPillClass = (label) => {

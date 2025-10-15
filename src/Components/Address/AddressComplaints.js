@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { toEasternLocaleString } from '../../utils';
 
 const normalizeStatus = (s) => {
   if (!s) return 'Pending';
@@ -81,7 +82,7 @@ const AddressComplaints = ({ addressId }) => {
                   })()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {complaint.created_at ? new Date(complaint.created_at).toLocaleString() : ''}
+                  {complaint.created_at ? toEasternLocaleString(complaint.created_at) : ''}
                 </td>
               </tr>
             ))}

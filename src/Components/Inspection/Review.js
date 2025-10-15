@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import NewViolationForm from "./NewViolationForm";
 import FullScreenPhotoViewer from "../FullScreenPhotoViewer";
+import { toEasternLocaleString } from "../../utils";
 
 export default function Review() {
   const { id } = useParams(); // inspection id
@@ -151,7 +152,7 @@ export default function Review() {
                       ))}
                     </div>
                   )}
-                  <div className="text-xs text-gray-500 mt-1">Observed: {new Date(p.created_at).toLocaleString()}</div>
+                  <div className="text-xs text-gray-500 mt-1">Observed: {toEasternLocaleString(p.created_at)}</div>
                 </div>
               </li>
             ))}

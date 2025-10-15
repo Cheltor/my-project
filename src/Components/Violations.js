@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { Link } from 'react-router-dom';
+import { toEasternLocaleString } from '../utils';
 
 export default function Violations() {
   const { user } = useAuth();
@@ -109,10 +110,10 @@ export default function Violations() {
   })();
   const printableResultsLabel =
     filteredViolations.length === 1 ? '1 result' : `${filteredViolations.length} results`;
-  const resolvedPrintTimestamp = printGeneratedAt || new Date().toLocaleString('en-US');
+  const resolvedPrintTimestamp = printGeneratedAt || toEasternLocaleString(new Date(), 'en-US');
 
   const handlePrint = () => {
-    setPrintGeneratedAt(new Date().toLocaleString('en-US'));
+    setPrintGeneratedAt(toEasternLocaleString(new Date(), 'en-US'));
     // allow state to flush before invoking print
     setTimeout(() => window.print(), 0);
   };

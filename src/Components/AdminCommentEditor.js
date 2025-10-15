@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { toEasternLocaleString } from '../utils';
 
 const EXCLUDED_KEYS = new Set([
   'id',
@@ -74,7 +75,7 @@ const formatDateTime = (value) => {
   if (Number.isNaN(date.getTime())) {
     return String(value);
   }
-  return date.toLocaleString();
+  return toEasternLocaleString(date);
 };
 
 const AdminCommentEditor = () => {

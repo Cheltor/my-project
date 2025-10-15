@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { toEasternLocaleString } from '../utils';
 
 export default function InspectionDetail() {
   const { id } = useParams();
@@ -315,7 +316,7 @@ export default function InspectionDetail() {
             <dt className="text-sm font-medium leading-6 text-gray-900">Scheduled Date/Time</dt>
             <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
               <div className="mb-2">
-                {inspection.scheduled_datetime ? new Date(inspection.scheduled_datetime).toLocaleString() : "Not scheduled"}
+                {inspection.scheduled_datetime ? toEasternLocaleString(inspection.scheduled_datetime) : "Not scheduled"}
               </div>
               <div className="flex items-center gap-2">
                 <input

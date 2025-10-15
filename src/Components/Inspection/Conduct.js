@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import NewUnit from './NewUnit';
+import { toEasternLocaleTimeString } from '../../utils';
 
 export default function Conduct() {
   const { id } = useParams(); // inspection ID
@@ -273,7 +274,7 @@ export default function Conduct() {
           <div className="mt-1 text-center text-sm text-red-600">{statusError}</div>
         )}
         {statusSavedAt && !statusError && (
-          <div className="mt-1 text-center text-xs text-green-700">Status updated {statusSavedAt.toLocaleTimeString()}</div>
+          <div className="mt-1 text-center text-xs text-green-700">Status updated {toEasternLocaleTimeString(statusSavedAt)}</div>
         )}
         {statusMessage && !statusError && (
           <div className="mt-2 text-center text-sm text-indigo-700">{statusMessage}</div>

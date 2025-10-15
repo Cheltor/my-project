@@ -22,6 +22,7 @@ import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
 import { Link, useNavigate } from 'react-router-dom'; // Import Link and useNavigate
 import Logout from '../Components/Logout'; // Import the Logout component
 import { useAuth } from '../AuthContext'; // Import useAuth hook
+import { toEasternLocaleString } from '../utils';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon, current: false },
@@ -249,7 +250,7 @@ export default function Sidebar({ children }) {
     if (Number.isNaN(date.getTime())) {
       return '';
     }
-    return date.toLocaleString();
+    return toEasternLocaleString(date);
   };
 
   const handleNotificationsToggle = () => {
@@ -531,8 +532,11 @@ export default function Sidebar({ children }) {
                                 });
                                 // Optimistically update UI
                                 setNotifications((prev) => prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)));
-                                // Navigate to inspection if available
-                                if (notification.inspection_id) {
+                                // Deep-link navigation priority: origin_url_path, then inspection fallback
+                                if (notification.origin_url_path) {
+                                  navigate(notification.origin_url_path);
+                                  setShowNotificationsDropdown(false);
+                                } else if (notification.inspection_id) {
                                   navigate(`/inspection/${notification.inspection_id}`);
                                   setShowNotificationsDropdown(false);
                                 }
@@ -546,6 +550,11 @@ export default function Sidebar({ children }) {
                                 <p className="text-sm font-medium text-gray-900">
                                   {notification.title || 'Notification'}
                                 </p>
+                                {(notification.origin_label || notification.origin_type) && (
+                                  <p className="mt-0.5 text-xs text-gray-600">
+                                    {notification.origin_label || notification.origin_type}
+                                  </p>
+                                )}
                                 {notification.body && (
                                   <p className="mt-1 whitespace-pre-line text-sm text-gray-600">
                                     {notification.body}

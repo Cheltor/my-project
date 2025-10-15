@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toEasternLocaleString } from '../utils';
 
 export default function Complaints() {
   const [complaints, setComplaints] = useState([]);
@@ -93,7 +94,7 @@ export default function Complaints() {
   // Print helpers
   const statusFilterLabel = statusFilter ? `Status: ${statusFilter}` : 'All statuses';
   const printableResultsLabel = sortedComplaints.length === 1 ? '1 result' : `${sortedComplaints.length} results`;
-  const resolvedPrintTimestamp = printGeneratedAt || new Date().toLocaleString('en-US');
+  const resolvedPrintTimestamp = printGeneratedAt || toEasternLocaleString(new Date(), 'en-US');
 
   const handlePrint = async () => {
     // Prefetch any missing unit details for the entire filtered set so names are available in print
@@ -126,7 +127,7 @@ export default function Complaints() {
         // ignore fetch errors, we'll still proceed to print
       }
     }
-    setPrintGeneratedAt(new Date().toLocaleString('en-US'));
+    setPrintGeneratedAt(toEasternLocaleString(new Date(), 'en-US'));
     setTimeout(() => window.print(), 0);
   };
 

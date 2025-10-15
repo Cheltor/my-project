@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import NewAddressComment from './NewAddressComment';
 import FullScreenPhotoViewer from '../FullScreenPhotoViewer';
+import { toEasternLocaleString } from '../../utils';
 
 // Utility function to format the date
 const formatDate = (dateString) => {
   if (!dateString) return '';
-  const date = new Date(dateString);
-  // Show local time in 12-hour format with hours, minutes, AM/PM, and short timezone
-  return date.toLocaleString(undefined, {
+  // Display Eastern time using a 12-hour clock with a short timezone suffix
+  return toEasternLocaleString(dateString, undefined, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

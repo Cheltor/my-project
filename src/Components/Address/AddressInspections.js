@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { toEasternLocaleString } from '../../utils';
 
 // Match Inspections.js status formatting
 const formatStatus = (s) => {
@@ -78,7 +79,7 @@ const AddressInspections = ({ addressId }) => {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {inspection.scheduled_datetime ? new Date(inspection.scheduled_datetime).toLocaleString() : 'Unscheduled'}
+                  {inspection.scheduled_datetime ? toEasternLocaleString(inspection.scheduled_datetime) : 'Unscheduled'}
                 </td>
               </tr>
             ))}

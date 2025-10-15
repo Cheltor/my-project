@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toEasternLocaleString } from '../utils';
 
 export default function Inspections() {
   const [inspections, setInspections] = useState([]);
@@ -230,7 +231,7 @@ export default function Inspections() {
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {inspection.scheduled_datetime ? new Date(inspection.scheduled_datetime).toLocaleString() : 'Unscheduled'}
+                  {inspection.scheduled_datetime ? toEasternLocaleString(inspection.scheduled_datetime) : 'Unscheduled'}
                 </td>
               </tr>
             ))}

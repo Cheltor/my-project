@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toEasternLocaleString } from '../../utils';
 
 const LICENSE_TYPE_LABELS = {
   0: 'Business License',
@@ -10,11 +11,8 @@ const LICENSE_TYPE_LABELS = {
 
 const formatDateTime = (iso) => {
   if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleString();
-  } catch (err) {
-    return iso;
-  }
+  const formatted = toEasternLocaleString(iso);
+  return formatted || iso;
 };
 
 const formatDate = (iso) => {

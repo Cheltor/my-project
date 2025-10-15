@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
+import { toEasternLocaleString } from "../utils";
 import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
 import NewViolationForm from "./Inspection/NewViolationForm";
 
@@ -418,7 +419,7 @@ export default function ComplaintDetail() {
 								{scheduleMessage && <span className="text-xs text-gray-500">{scheduleMessage}</span>}
 							</div>
 							<div className="text-xs text-gray-500 mt-1">
-								{complaint.scheduled_datetime ? new Date(complaint.scheduled_datetime).toLocaleString() : "Not scheduled"}
+								{complaint.scheduled_datetime ? toEasternLocaleString(complaint.scheduled_datetime) : "Not scheduled"}
 							</div>
 						</dd>
 					</div>

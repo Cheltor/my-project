@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
+import { toEasternLocaleString } from '../utils';
 
 const AdminChat = ({ user: userProp, chatEnabled: initialChatEnabled, setChatEnabled }) => {
   // Prefer token from AuthContext; fall back to user prop for role checks
@@ -171,7 +172,7 @@ const AdminChat = ({ user: userProp, chatEnabled: initialChatEnabled, setChatEna
                 <tbody>
                   {logs.map((l) => (
                     <tr key={l.id} className="align-top border-t">
-                      <td className="py-2 pr-4">{new Date(l.created_at).toLocaleString()}</td>
+                      <td className="py-2 pr-4">{toEasternLocaleString(l.created_at)}</td>
                       <td className="py-2 pr-4">{l.user_email || l.user_id}</td>
                       <td className="py-2 pr-4">
                         <div className="max-w-xs truncate">{l.user_message}</div>
@@ -192,7 +193,7 @@ const AdminChat = ({ user: userProp, chatEnabled: initialChatEnabled, setChatEna
               {logs.map((l) => (
                 <div key={l.id} className="p-3 border rounded bg-white shadow-sm">
                   <div className="flex justify-between items-start">
-                    <div className="text-xs text-gray-500">{new Date(l.created_at).toLocaleString()}</div>
+                    <div className="text-xs text-gray-500">{toEasternLocaleString(l.created_at)}</div>
                     <div className="text-xs text-gray-500">{l.user_email || l.user_id}</div>
                   </div>
                   <div className="mt-2">
@@ -234,7 +235,7 @@ const AdminChat = ({ user: userProp, chatEnabled: initialChatEnabled, setChatEna
                 <button className="text-gray-600" onClick={()=>setSelectedLog(null)}>Close</button>
               </div>
               <div className="mt-2">
-                <div className="text-xs text-gray-500">When: {new Date(selectedLog.created_at).toLocaleString()}</div>
+                <div className="text-xs text-gray-500">When: {toEasternLocaleString(selectedLog.created_at)}</div>
                 <div className="text-xs text-gray-500">User: {selectedLog.user_email || selectedLog.user_id}</div>
                 <div className="mt-3">
                   <h5 className="font-medium">Question</h5>
