@@ -24,6 +24,9 @@ export default function NewBuildingPermit() {
   // Admin assignment state
   const [onsUsers, setOnsUsers] = useState([]);
   const [assigneeId, setAssigneeId] = useState("");
+  // Validation state
+  const [addressError, setAddressError] = useState("");
+  const isAddressValid = !!formData.address_id;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -73,6 +76,7 @@ export default function NewBuildingPermit() {
   const handleAddressChange = async (selectedOption) => {
     const addressId = selectedOption ? selectedOption.value : "";
   setFormData({ ...formData, address_id: addressId });
+  if (selectedOption) setAddressError("");
   // Unit selection is currently disabled for permits; leave fetch commented for future use
   // if (addressId) {
   //   try {
@@ -92,7 +96,7 @@ export default function NewBuildingPermit() {
     e.preventDefault();
     // Basic required field validation
     if (!formData.address_id) {
-      alert("Please select an address before creating the permit.");
+      setAddressError('Address is required.');
       return;
     }
 
@@ -200,20 +204,27 @@ export default function NewBuildingPermit() {
         
         {/* Address Selection */}
         <div className="mb-4">
-          <label htmlFor="address_id" className="block text-sm font-medium text-gray-700">
-            Select Address*
+          <label htmlFor="bp-address" className="block text-sm font-medium text-gray-700">
+            Select Address <span className="text-red-600" aria-hidden> *</span>
           </label>
+          <div className={`mt-1 ${addressError ? 'border border-red-500 rounded p-1' : ''}`}
+               aria-invalid={!!addressError}
+               aria-describedby={addressError ? 'bp-address-error' : undefined}
+          >
             <AsyncSelect
-              id="address_id"
+              inputId="bp-address"
               loadOptions={loadAddressOptions}
               onChange={handleAddressChange}
               placeholder="Type to search addresses..."
               isClearable
               styles={customStyles}
-              className="mt-1"
+              className="mb-0"
               cacheOptions
               defaultOptions
             />
+          </div>
+          <div className="text-xs text-gray-500 mt-1">This field is required.</div>
+          {addressError && <div id="bp-address-error" className="text-xs text-red-600 mt-1">{addressError}</div>}
         </div>
 
         {/* Assignee (Admin only) */}
@@ -340,7 +351,9 @@ export default function NewBuildingPermit() {
         <div className="mt-6">
           <button
             type="submit"
-            className="w-full inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+            className="w-full inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60"
+            disabled={!isAddressValid}
+            aria-disabled={!isAddressValid}
           >
             Create New Building/Dumpster/POD Permit
           </button>

@@ -29,6 +29,12 @@ export default function NewComplaint() {
   const [photos, setPhotos] = useState([]); // State to hold the photos
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Local validation state for description
+  const [descError, setDescError] = useState("");
+  const isDescriptionValid = (formData.description || "").trim().length > 0;
+  // Local validation for address
+  const [addressError, setAddressError] = useState("");
+  const isAddressValid = !!formData.address_id;
 
   useEffect(() => {
     const fetchBusinesses = async () => {
@@ -69,6 +75,10 @@ export default function NewComplaint() {
       setPhotos(Array.from(files)); // Set selected files to the state
     } else {
       setFormData({ ...formData, [name]: value });
+      if (name === 'description') {
+        // Clear error as user types something valid
+        if ((value || '').trim().length > 0) setDescError("");
+      }
     }
   };
 
@@ -79,6 +89,9 @@ export default function NewComplaint() {
       address_id: addressId,
       unit_id: "",
     }));
+    if (selectedOption) {
+      setAddressError("");
+    }
 
     if (addressId) {
       try {
@@ -99,7 +112,12 @@ export default function NewComplaint() {
     console.log("Form submitted"); // Add this line to confirm the function is called
 
     if (!formData.description.trim()) {
+      setDescError('Description is required.');
       return; // Don't submit if description is empty
+    }
+    if (!formData.address_id) {
+      setAddressError('Address is required.');
+      return; // Don't submit if address is empty
     }
 
     try {
@@ -214,19 +232,30 @@ export default function NewComplaint() {
         {/* Address Selection */}
         <div className="mb-4">
           <label htmlFor="address_id" className="block text-sm font-medium text-gray-700">
-            Select Address*
+            Select Address <span className="text-red-600" aria-hidden> *</span>
           </label>
+          <div
+            className={`mt-1 ${addressError ? 'border border-red-500 rounded p-1' : ''}`}
+            aria-invalid={!!addressError}
+            aria-describedby={addressError ? 'address-error' : undefined}
+          >
             <AsyncSelect
-              id="address_id"
+              inputId="address_id"
               loadOptions={loadAddressOptions} // Set the async loader function
               onChange={handleAddressChange}
               placeholder="Type to search addresses..."
               isClearable
               styles={customStyles} // Reuse custom styles if desired
-              className="mt-1"
+              classNamePrefix="address-select"
+              className="mb-0"
               cacheOptions // Cache loaded options for performance
               defaultOptions // Show default options initially
             />
+          </div>
+          <div className="text-xs text-gray-500 mt-1">This field is required.</div>
+          {addressError && (
+            <div id="address-error" className="text-xs text-red-600 mt-1">{addressError}</div>
+          )}
         </div>
 
         {/* Assignee (Admin only) */}
@@ -301,15 +330,24 @@ export default function NewComplaint() {
         {/* Description Field */}
         <div className="mb-4">
           <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-            Description
+            Description <span className="text-red-600" aria-hidden> *</span>
           </label>
           <textarea
             id="description"
             name="description"
             value={formData.description}
             onChange={handleInputChange}
-            className="mt-1 block w-full shadow-sm border-gray-300 rounded-md"
+            onBlur={() => {
+              if (!isDescriptionValid) setDescError('Description is required.');
+            }}
+            aria-invalid={!!descError}
+            aria-describedby={descError ? 'description-error' : undefined}
+            className={`mt-1 block w-full shadow-sm rounded-md ${descError ? 'border-red-500 border' : 'border-gray-300'}`}
           ></textarea>
+          <div className="text-xs text-gray-500 mt-1">This field is required.</div>
+          {descError && (
+            <div id="description-error" className="text-xs text-red-600 mt-1">{descError}</div>
+          )}
         </div>
 
         {/* Attachments Field */}
@@ -371,7 +409,9 @@ export default function NewComplaint() {
         <div className="mt-6">
           <button
             type="submit"
-            className="w-full inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+            className="w-full inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60"
+            disabled={!isDescriptionValid || !isAddressValid}
+            aria-disabled={!isDescriptionValid || !isAddressValid}
           >
             Create New Complaint
           </button>

@@ -210,19 +210,26 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
     }
   };
 
+  // Determine selected codes source consistently (controlled vs uncontrolled)
+  const effectiveSelectedCodes = selectedCodesValue ?? selectedCodes;
+  const canSubmit = !!form.address_id && Array.isArray(effectiveSelectedCodes) && effectiveSelectedCodes.length > 0 && !loading;
+
   return (
     <div className="p-4 bg-white rounded shadow mt-4">
       <h2 className="text-lg font-bold mb-2">Add New Violation</h2>
       <form onSubmit={handleSubmit} className="space-y-2">
         {/* Address Search */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-          <div className={`${addressError ? 'border border-red-500 rounded' : ''} mb-2`}> 
+          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="nvf-address">
+            Address <span className="text-red-600" aria-hidden> *</span>
+          </label>
+          <div className={`${addressError ? 'border border-red-500 rounded' : ''} mb-2`} aria-invalid={!!addressError} aria-describedby={addressError ? 'nvf-address-error' : undefined}> 
             <AsyncSelect
               cacheOptions
               defaultOptions
               loadOptions={loadAddressOptions}
               onChange={handleAddressChange}
+              inputId="nvf-address"
               value={form.address_id ? { value: form.address_id, label: addressLabel } : null}
               placeholder="Type to search addresses..."
               isClearable
@@ -230,7 +237,8 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
               className="mb-0"
             />
           </div>
-          {addressError && <div className="text-xs text-red-600 mt-1">{addressError}</div>}
+          <div className="text-xs text-gray-500">This field is required.</div>
+          {addressError && <div id="nvf-address-error" className="text-xs text-red-600 mt-1">{addressError}</div>}
         </div>
         {/* Assignee (Admin only) */}
   {user?.role === 3 && (
@@ -265,22 +273,26 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
         </div>
         {/* Violation Code Selection (multi) */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Violation Codes</label>
-          <div className={`${codesError ? 'border border-red-500 rounded p-1' : ''}`}>
+          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="nvf-codes">
+            Violation Codes <span className="text-red-600" aria-hidden> *</span>
+          </label>
+          <div className={`${codesError ? 'border border-red-500 rounded p-1' : ''}`} aria-invalid={!!codesError} aria-describedby={codesError ? 'nvf-codes-error' : undefined}>
             <CodeSelect
               onChange={handleCodeChange}
-              value={selectedCodesValue ?? selectedCodes}
+              inputId="nvf-codes"
+              value={effectiveSelectedCodes}
               isMulti={true}
             />
           </div>
-          {codesError && <div className="text-xs text-red-600 mt-1">{codesError}</div>}
+          <div className="text-xs text-gray-500">Select one or more codes.</div>
+          {codesError && <div id="nvf-codes-error" className="text-xs text-red-600 mt-1">{codesError}</div>}
         </div>
         {/* Show selected code descriptions (truncated) */}
-        {selectedCodes.length > 0 && (
+        {Array.isArray(effectiveSelectedCodes) && effectiveSelectedCodes.length > 0 && (
           <div className="mb-2">
             <label className="block text-xs font-medium text-gray-500">Descriptions:</label>
             <ul className="list-disc ml-5 text-xs text-gray-700">
-              {selectedCodes.map((opt) => (
+              {effectiveSelectedCodes.map((opt) => (
                 <li key={opt.value} title={opt.code.description}>
                   {opt.code.description.length > 80 ? opt.code.description.slice(0, 80) + '...' : opt.code.description}
                 </li>
@@ -349,7 +361,9 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
         <button
           type="submit"
           className="w-full bg-blue-600 text-white py-2 rounded disabled:opacity-50"
-          disabled={loading}
+          disabled={!canSubmit}
+          aria-disabled={!canSubmit}
+          aria-describedby={!form.address_id ? 'nvf-address' : undefined}
         >
           {loading ? "Adding..." : "Add Violation"}
         </button>

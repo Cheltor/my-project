@@ -68,6 +68,18 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
       return;
     }
 
+    // Basic client validation: require addressId and at least one code
+    if (!addressId) {
+      setError('Address is required.');
+      setSubmitting(false);
+      return;
+    }
+    if (!Array.isArray(selectedCodes) || selectedCodes.length === 0) {
+      setError('Please select at least one violation code.');
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const violationData = {
         address_id: addressId ? parseInt(addressId, 10) : undefined,
@@ -158,13 +170,16 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Violation Codes</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Violation Codes <span className="text-red-600" aria-hidden> *</span>
+            </label>
             <CodeSelect
               onChange={opts => setSelectedCodes(opts || [])}
               value={selectedCodes}
               isMulti={true}
               isDisabled={submitting}
             />
+            <div className="text-xs text-gray-500 mt-1">Select one or more codes. This field is required.</div>
           </div>
           {selectedCodes.length > 0 && (
             <div className="mb-2">
@@ -236,9 +251,9 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
             <button
               type="submit"
               className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
-              disabled={submitting}
+              disabled={submitting || !addressId || !Array.isArray(selectedCodes) || selectedCodes.length === 0}
             >
-              {submitting ? 'Submitting...' : 'Add Violation'}
+              {submitting ? 'Submitting...' : (!addressId || selectedCodes.length === 0 ? 'Add Violation (Address + Codes required)' : 'Add Violation')}
             </button>
             <button
               type="button"

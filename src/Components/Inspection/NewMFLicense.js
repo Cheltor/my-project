@@ -21,6 +21,11 @@ export default function NewMFLicense() {
   // Admin assignment state
   const [onsUsers, setOnsUsers] = useState([]);
   const [assigneeId, setAssigneeId] = useState("");
+  // Validation state
+  const [addressError, setAddressError] = useState("");
+  const [contactError, setContactError] = useState("");
+  const isAddressValid = !!formData.address_id;
+  const isContactValid = !!formData.contact_id;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -64,16 +69,31 @@ export default function NewMFLicense() {
       setFormData({ ...formData, attachments: files });
     } else {
       setFormData({ ...formData, [name]: value });
+      if (name === 'contact_id' && value) {
+        setContactError("");
+      }
     }
   };
 
   const handleAddressChange = async (selectedOption) => {
     const addressId = selectedOption ? selectedOption.value : "";
     setFormData({ ...formData, address_id: addressId });
+    if (selectedOption) setAddressError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Client-side validation
+    let invalid = false;
+    if (!formData.address_id) {
+      setAddressError('Address is required.');
+      invalid = true;
+    }
+    if (!formData.contact_id) {
+      setContactError('Contact is required.');
+      invalid = true;
+    }
+    if (invalid) return;
     const inspectionData = new FormData();
 
     Object.keys(formData).forEach((key) => {
@@ -167,20 +187,27 @@ export default function NewMFLicense() {
         
         {/* Address Selection */}
         <div className="mb-4">
-          <label htmlFor="address_id" className="block text-sm font-medium text-gray-700">
-            Select Address*
+          <label htmlFor="mf-address" className="block text-sm font-medium text-gray-700">
+            Select Address <span className="text-red-600" aria-hidden> *</span>
           </label>
+          <div className={`mt-1 ${addressError ? 'border border-red-500 rounded p-1' : ''}`}
+               aria-invalid={!!addressError}
+               aria-describedby={addressError ? 'address-error' : undefined}
+          >
             <AsyncSelect
-              id="address_id"
+              inputId="mf-address"
               loadOptions={loadAddressOptions}
               onChange={handleAddressChange}
               placeholder="Type to search addresses..."
               isClearable
               styles={customStyles}
-              className="mt-1"
+              className="mb-0"
               cacheOptions
               defaultOptions
             />
+          </div>
+          <div className="text-xs text-gray-500 mt-1">This field is required.</div>
+          {addressError && <div id="address-error" className="text-xs text-red-600 mt-1">{addressError}</div>}
         </div>
 
         {/* Assignee (Admin only) */}
@@ -248,19 +275,28 @@ export default function NewMFLicense() {
           />
         </div>*/}
 
-        {/* Contact Selection */}
-        <ContactSelection
-          formData={formData}
-          setFormData={setFormData}
-          loadContactOptions={loadContactOptions}
-          onInputChange={handleInputChange}
-        />
+        {/* Contact Selection (Required) */}
+        <div className="mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Contact <span className="text-red-600" aria-hidden> *</span>
+          </label>
+          <ContactSelection
+            formData={formData}
+            setFormData={setFormData}
+            loadContactOptions={loadContactOptions}
+            onInputChange={handleInputChange}
+          />
+          <div className="text-xs text-gray-500 mt-1">This field is required.</div>
+          {contactError && <div className="text-xs text-red-600 mt-1">{contactError}</div>}
+        </div>
 
         {/* Submit Button */}
         <div className="mt-6">
           <button
             type="submit"
-            className="w-full inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+            className="w-full inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60"
+            disabled={!isAddressValid || !isContactValid}
+            aria-disabled={!isAddressValid || !isContactValid}
           >
             Create New Multifamily License
           </button>

@@ -21,6 +21,9 @@ export default function NewSFLicense() {
   // Admin assignment state
   const [onsUsers, setOnsUsers] = useState([]);
   const [assigneeId, setAssigneeId] = useState("");
+  // Validation state
+  const [addressError, setAddressError] = useState("");
+  const isAddressValid = !!formData.address_id;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -70,10 +73,16 @@ export default function NewSFLicense() {
   const handleAddressChange = async (selectedOption) => {
     const addressId = selectedOption ? selectedOption.value : "";
     setFormData({ ...formData, address_id: addressId });
+    if (selectedOption) setAddressError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Require address
+    if (!formData.address_id) {
+      setAddressError('Address is required.');
+      return;
+    }
     const inspectionData = new FormData();
 
     Object.keys(formData).forEach((key) => {
@@ -167,20 +176,27 @@ export default function NewSFLicense() {
         
         {/* Address Selection */}
         <div className="mb-4">
-          <label htmlFor="address_id" className="block text-sm font-medium text-gray-700">
-            Select Address*
+          <label htmlFor="sf-address" className="block text-sm font-medium text-gray-700">
+            Select Address <span className="text-red-600" aria-hidden> *</span>
           </label>
+          <div className={`mt-1 ${addressError ? 'border border-red-500 rounded p-1' : ''}`}
+               aria-invalid={!!addressError}
+               aria-describedby={addressError ? 'sf-address-error' : undefined}
+          >
             <AsyncSelect
-              id="address_id"
+              inputId="sf-address"
               loadOptions={loadAddressOptions}
               onChange={handleAddressChange}
               placeholder="Type to search addresses..."
               isClearable
               styles={customStyles}
-              className="mt-1"
+              className="mb-0"
               cacheOptions
               defaultOptions
             />
+          </div>
+          <div className="text-xs text-gray-500 mt-1">This field is required.</div>
+          {addressError && <div id="sf-address-error" className="text-xs text-red-600 mt-1">{addressError}</div>}
         </div>
 
         {/* Assignee (Admin only) */}
@@ -260,7 +276,9 @@ export default function NewSFLicense() {
         <div className="mt-6">
           <button
             type="submit"
-            className="w-full inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+            className="w-full inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60"
+            disabled={!isAddressValid}
+            aria-disabled={!isAddressValid}
           >
             Create New Single Family License
           </button>

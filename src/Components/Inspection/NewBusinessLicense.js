@@ -28,6 +28,9 @@ export default function NewBusinessLicense() {
   // Admin assignment state
   const [onsUsers, setOnsUsers] = useState([]);
   const [assigneeId, setAssigneeId] = useState("");
+  // Validation state for required address derived from business
+  const [addressError, setAddressError] = useState("");
+  const isAddressValid = !!formData.address_id;
 
   useEffect(() => {
     // Fetch initial data for contacts, addresses, and businesses
@@ -65,6 +68,11 @@ export default function NewBusinessLicense() {
     };
     if (user?.role === 3) loadOns();
   }, [user?.role]);
+
+  // Clear address error when an address becomes available
+  useEffect(() => {
+    if (formData.address_id) setAddressError("");
+  }, [formData.address_id]);
 
   // No unit fetching: unit_id will come directly from the selected business (if any)
 
@@ -109,7 +117,7 @@ export default function NewBusinessLicense() {
       }
     }
     if (!resolvedAddressId) {
-      alert("Please select a business with a valid address before submitting.");
+      setAddressError('Address is required. Select a business with a valid address.');
       return;
     }
 
@@ -176,12 +184,27 @@ export default function NewBusinessLicense() {
         
         {/* Business Selection */}
         <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Business <span className="text-red-600" aria-hidden> *</span>
+          </label>
+          <div className={`${addressError ? 'border border-red-500 rounded p-2' : ''}`}
+               aria-invalid={!!addressError}
+               aria-describedby={addressError ? 'biz-address-error' : undefined}
+          >
           <BusinessSelection
             businesses={businesses}
             formData={formData}
             handleInputChange={handleInputChange}
             setFormData={setFormData}
           />
+          </div>
+          <div className="text-xs text-gray-500 mt-1">Address is required. Select a business that has an address.</div>
+          {formData.address_id && (
+            <div className="text-xs text-gray-700 mt-1">Selected address ID: {String(formData.address_id)}</div>
+          )}
+          {addressError && (
+            <div id="biz-address-error" className="text-xs text-red-600 mt-1">{addressError}</div>
+          )}
           {/* Assignee (Admin only) */}
           {user?.role === 3 && (
             <div className="mt-4">
@@ -271,7 +294,9 @@ export default function NewBusinessLicense() {
         <div className="mt-6">
           <button
             type="submit"
-            className="w-full inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+            className="w-full inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60"
+            disabled={!isAddressValid}
+            aria-disabled={!isAddressValid}
           >
             Create New Business License Inspection
           </button>
