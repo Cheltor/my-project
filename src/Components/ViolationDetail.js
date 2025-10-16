@@ -785,8 +785,14 @@ const ViolationDetail = () => {
                           <div className="flex items-center justify-start gap-3">
                             <button
                               type="button"
-                              className="text-indigo-600 hover:underline text-xs font-medium"
-                              onClick={() => setSelectedPhotoUrl(commentAttachments[c.id][0].url || commentAttachments[c.id][0])}
+                              className="text-indigo-600 hover:underline text-xs font-medium disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed"
+                              onClick={() => {
+                                const firstImage = commentAttachments[c.id].find((att) => isImageAttachment(att));
+                                if (firstImage) {
+                                  setSelectedPhotoUrl(firstImage.url || firstImage);
+                                }
+                              }}
+                              disabled={!commentAttachments[c.id].some((att) => isImageAttachment(att))}
                             >
                               View attachments ({commentAttachments[c.id].length})
                             </button>
@@ -799,15 +805,45 @@ const ViolationDetail = () => {
                             </button>
                           </div>
                           <div className="flex flex-wrap gap-2 mt-1">
-                            {commentAttachments[c.id].map((att, idx) => (
-                              <img
-                                key={idx}
-                                src={att.url || att}
-                                alt={att.filename || `Comment attachment ${idx}`}
-                                className="w-16 h-16 object-cover rounded-md shadow cursor-pointer"
-                                onClick={() => setSelectedPhotoUrl(att.url || att)}
-                              />
-                            ))}
+                            {commentAttachments[c.id].map((att, idx) => {
+                              const url = att?.url || att;
+                              const filename = att?.filename || `Comment attachment ${idx + 1}`;
+                              const isImage = isImageAttachment(att);
+                              const extension = getAttachmentExtension(att);
+                              const extensionLabel = (extension || (att?.content_type || '').split('/').pop() || 'file').toUpperCase();
+
+                              return (
+                                <div key={idx} className="w-20 flex flex-col items-center">
+                                  {isImage ? (
+                                    <img
+                                      src={url}
+                                      alt={filename}
+                                      className="w-20 h-20 object-cover rounded-md shadow cursor-pointer"
+                                      onClick={() => setSelectedPhotoUrl(url)}
+                                    />
+                                  ) : (
+                                    <a
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="w-20 h-20 flex flex-col items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-gray-600 shadow hover:bg-gray-100 transition-colors"
+                                    >
+                                      <span className="text-2xl">📄</span>
+                                      <span className="mt-1 text-[10px] font-medium uppercase">{extensionLabel}</span>
+                                    </a>
+                                  )}
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-1 text-[10px] text-gray-600 text-center break-words hover:text-indigo-600"
+                                    title={filename}
+                                  >
+                                    {filename}
+                                  </a>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
