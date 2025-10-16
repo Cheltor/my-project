@@ -17,6 +17,7 @@ import Businesses from './Components/Businesses';
 import BusinessDetail from './Components/BusinessDetail';
 import Codes from './Components/Codes';
 import CodeDetail from './Components/CodeDetail';
+import CodeEdit from './Components/CodeEdit';
 import Licenses from './Components/Licenses';
 import LicenseDetail from './Components/LicenseDetail';
 import Permits from './Components/Permits';
@@ -130,6 +131,7 @@ function MainApp() {
             <Route path="/business/:id" element={<BusinessDetail />} />
             <Route path="/codes" element={<Codes />} />
             <Route path="/code/:id" element={<CodeDetail />} />
+            <Route path="/code/:id/edit" element={<CodeEdit />} />
             <Route path="/licenses" element={<Licenses />} />
             <Route path="/license/:id" element={<LicenseDetail />} />
             <Route path="/permits" element={<Permits />} />

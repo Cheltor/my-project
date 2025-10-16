@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 
 const CodeDetail = () => {
   const { id } = useParams(); // Extract the code ID from the URL
@@ -31,7 +31,15 @@ const CodeDetail = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-lg mt-10">
-      <h1 className="text-2xl font-semibold text-gray-800 mb-4">Code Details</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold text-gray-800">Code Details</h1>
+        <Link
+          to={`/code/${id}/edit`}
+          className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+        >
+          Edit
+        </Link>
+      </div>
       {code ? (
         <div className="space-y-4">
           <div className="border-b pb-4">
