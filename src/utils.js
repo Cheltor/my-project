@@ -81,3 +81,89 @@ export const toEasternLocaleTimeString = (value, locales, options) => {
     timeZone: EASTERN_TIME_ZONE
   });
 };
+
+const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'heic', 'heif', 'tif', 'tiff', 'svg']);
+
+const extractFilename = (value) => {
+  if (!value) return '';
+
+  if (typeof value === 'string') {
+    try {
+      const base = typeof window !== 'undefined' && window.location ? window.location.origin : 'http://example.com';
+      const url = new URL(value, base);
+      const lastSegment = url.pathname.split('/').pop() || '';
+      return decodeURIComponent(lastSegment);
+    } catch (e) {
+      const parts = value.split('/');
+      return decodeURIComponent(parts.pop() || value);
+    }
+  }
+
+  if (typeof value === 'object') {
+    if (value.filename) return value.filename;
+    if (value.name) return value.name;
+    if (value.url) return extractFilename(value.url);
+  }
+
+  return '';
+};
+
+const getNormalizedFilename = (attachment) => {
+  const raw = extractFilename(attachment);
+  return raw ? raw.toLowerCase() : '';
+};
+
+export const getAttachmentFilename = (attachment, fallbackLabel = '') => {
+  const filename = extractFilename(attachment);
+  if (filename) return filename;
+  return fallbackLabel;
+};
+
+export const getAttachmentExtension = (attachment) => {
+  const normalized = getNormalizedFilename(attachment);
+  if (!normalized.includes('.')) return '';
+  return normalized.split('.').pop() || '';
+};
+
+export const isImageAttachment = (attachment) => {
+  if (!attachment) return false;
+
+  const contentType = (attachment.content_type || '').toLowerCase();
+  if (contentType.startsWith('image/')) return true;
+
+  const extension = getAttachmentExtension(attachment);
+  if (!extension) return false;
+
+  return IMAGE_EXTENSIONS.has(extension);
+};
+
+const CONTENT_TYPE_LABELS = {
+  'application/pdf': 'PDF',
+  'application/msword': 'DOC',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
+  'application/vnd.ms-excel': 'XLS',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
+  'application/vnd.ms-powerpoint': 'PPT',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PPTX',
+  'text/plain': 'TXT',
+  'application/rtf': 'RTF'
+};
+
+export const getAttachmentDisplayLabel = (attachment) => {
+  const extension = getAttachmentExtension(attachment);
+  if (extension) return extension.toUpperCase();
+
+  const contentType = (attachment?.content_type || '').toLowerCase();
+  if (contentType) {
+    if (CONTENT_TYPE_LABELS[contentType]) {
+      return CONTENT_TYPE_LABELS[contentType];
+    }
+
+    const subtype = contentType.split('/').pop() || '';
+    if (subtype && subtype.length <= 6) {
+      return subtype.toUpperCase();
+    }
+  }
+
+  return 'FILE';
+};
