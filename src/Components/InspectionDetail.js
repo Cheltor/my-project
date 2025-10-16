@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { getAttachmentExtension, isImageAttachment, toEasternLocaleString } from '../utils';
+import {
+  getAttachmentDisplayLabel,
+  getAttachmentFilename,
+  isImageAttachment,
+  toEasternLocaleString
+} from '../utils';
 
 export default function InspectionDetail() {
   const { id } = useParams();
@@ -360,38 +365,37 @@ export default function InspectionDetail() {
               )}
               {attachments.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {attachments.map((attachment, idx) => {
-                const url = attachment?.url || attachment;
-                const filename = attachment?.filename || `attachment-${idx + 1}`;
-                const isImage = isImageAttachment(attachment);
-                const extension = getAttachmentExtension(attachment);
-                const extensionLabel = (extension || (attachment?.content_type || '').split('/').pop() || 'file').toUpperCase();
+                  {attachments.map((attachment, idx) => {
+                    const url = attachment?.url || attachment;
+                    const filename = getAttachmentFilename(attachment, `attachment-${idx + 1}`);
+                    const isImage = isImageAttachment(attachment);
+                    const extensionLabel = getAttachmentDisplayLabel(attachment);
 
-                return (
-                  <div key={idx} className="border rounded p-2 flex flex-col items-start gap-2">
-                    {isImage ? (
-                      <a href={url} target="_blank" rel="noopener noreferrer" className="block w-full">
-                        <img src={url} alt={filename} className="w-full h-32 object-cover rounded" />
-                      </a>
-                    ) : (
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block w-full"
-                      >
-                        <div className="w-full h-32 flex flex-col items-center justify-center rounded bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 transition-colors">
-                          <span className="text-3xl">📄</span>
-                          <span className="mt-1 text-xs font-medium uppercase">{extensionLabel}</span>
-                        </div>
-                      </a>
-                    )}
-                    <a href={url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 break-all text-xs">
-                      {filename}
-                    </a>
-                  </div>
-                );
-              })}
+                    return (
+                      <div key={idx} className="border rounded p-2 flex flex-col items-start gap-2">
+                        {isImage ? (
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="block w-full">
+                            <img src={url} alt={filename} className="w-full h-32 object-cover rounded" />
+                          </a>
+                        ) : (
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block w-full"
+                          >
+                            <div className="w-full h-32 flex flex-col items-center justify-center rounded bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 transition-colors">
+                              <span className="text-3xl">📄</span>
+                              <span className="mt-1 text-xs font-medium uppercase">{extensionLabel}</span>
+                            </div>
+                          </a>
+                        )}
+                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 break-all text-xs" title={filename}>
+                          {filename}
+                        </a>
+                      </div>
+                    );
+                  })}
             </div>
           )}
         </dd>

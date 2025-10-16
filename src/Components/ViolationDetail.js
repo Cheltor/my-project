@@ -4,7 +4,11 @@ import { useAuth } from "../AuthContext";
 import NewCitationForm from "./NewCitationForm";
 import CitationsList from "./CitationsList";
 import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
-import { getAttachmentExtension, isImageAttachment } from "../utils";
+import {
+  getAttachmentDisplayLabel,
+  getAttachmentFilename,
+  isImageAttachment
+} from "../utils";
 
 // Status mapping for display
 const statusMapping = {
@@ -644,10 +648,9 @@ const ViolationDetail = () => {
             <div className="flex flex-wrap gap-3 mt-2">
               {attachments.map((attachment, index) => {
                 const url = attachment?.url || attachment;
-                const filename = attachment?.filename || `Violation attachment ${index + 1}`;
+                const filename = getAttachmentFilename(attachment, `Violation attachment ${index + 1}`);
                 const isImage = isImageAttachment(attachment);
-                const extension = getAttachmentExtension(attachment);
-                const extensionLabel = (extension || (attachment?.content_type || '').split('/').pop() || 'file').toUpperCase();
+                const extensionLabel = getAttachmentDisplayLabel(attachment);
 
                 return (
                   <div key={index} className="w-24 flex flex-col items-center">
@@ -664,6 +667,7 @@ const ViolationDetail = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="w-24 h-24 flex flex-col items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-gray-600 shadow hover:bg-gray-100 transition-colors"
+                        title={filename}
                       >
                         <span className="text-2xl">📄</span>
                         <span className="mt-1 text-[10px] font-medium uppercase">{extensionLabel}</span>
@@ -807,10 +811,9 @@ const ViolationDetail = () => {
                           <div className="flex flex-wrap gap-2 mt-1">
                             {commentAttachments[c.id].map((att, idx) => {
                               const url = att?.url || att;
-                              const filename = att?.filename || `Comment attachment ${idx + 1}`;
+                              const filename = getAttachmentFilename(att, `Comment attachment ${idx + 1}`);
                               const isImage = isImageAttachment(att);
-                              const extension = getAttachmentExtension(att);
-                              const extensionLabel = (extension || (att?.content_type || '').split('/').pop() || 'file').toUpperCase();
+                              const extensionLabel = getAttachmentDisplayLabel(att);
 
                               return (
                                 <div key={idx} className="w-20 flex flex-col items-center">
@@ -827,6 +830,7 @@ const ViolationDetail = () => {
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="w-20 h-20 flex flex-col items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-gray-600 shadow hover:bg-gray-100 transition-colors"
+                                      title={filename}
                                     >
                                       <span className="text-2xl">📄</span>
                                       <span className="mt-1 text-[10px] font-medium uppercase">{extensionLabel}</span>
