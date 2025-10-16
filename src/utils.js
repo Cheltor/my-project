@@ -81,3 +81,38 @@ export const toEasternLocaleTimeString = (value, locales, options) => {
     timeZone: EASTERN_TIME_ZONE
   });
 };
+
+const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'heic', 'heif', 'tif', 'tiff', 'svg']);
+
+const getNormalizedFilename = (attachment) => {
+  if (!attachment) return '';
+  if (typeof attachment === 'string') {
+    try {
+      const base = typeof window !== 'undefined' && window.location ? window.location.origin : 'http://example.com';
+      const url = new URL(attachment, base);
+      return (url.pathname.split('/').pop() || '').toLowerCase();
+    } catch (e) {
+      return attachment.toLowerCase();
+    }
+  }
+
+  return (attachment.filename || '').toLowerCase();
+};
+
+export const getAttachmentExtension = (attachment) => {
+  const normalized = getNormalizedFilename(attachment);
+  if (!normalized.includes('.')) return '';
+  return normalized.split('.').pop() || '';
+};
+
+export const isImageAttachment = (attachment) => {
+  if (!attachment) return false;
+
+  const contentType = (attachment.content_type || '').toLowerCase();
+  if (contentType.startsWith('image/')) return true;
+
+  const extension = getAttachmentExtension(attachment);
+  if (!extension) return false;
+
+  return IMAGE_EXTENSIONS.has(extension);
+};
