@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import NewAddressComment from './NewAddressComment';
 import FullScreenPhotoViewer from '../FullScreenPhotoViewer';
-import { toEasternLocaleString } from '../../utils';
+import {
+  toEasternLocaleString,
+  getAttachmentFilename,
+  isImageAttachment,
+  getAttachmentDisplayLabel
+} from '../../utils';
 
 // Utility function to format the date
 const formatDate = (dateString) => {
@@ -318,53 +323,57 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
                       Download attachments ({comment.photos.length})
                     </button>
                   </div>
-                  <div className="flex space-x-2 mt-2">
-                    {comment.photos
-                      .filter((photo) => !photo.filename.endsWith('.docx'))
-                      .map((photo, index) => (
-                        <img
-                          key={index}
-                          src={photo.url}
-                          alt={photo.filename || `Comment photo ${index}`}
-                          className="w-24 h-24 object-cover rounded-md shadow cursor-pointer"
-                          onClick={() => setSelectedPhotoUrl(photo.url)}
-                        />
-                      ))}
+                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {comment.photos.map((attachment, index) => {
+                      const url = attachment?.url;
+                      if (!url) return null;
+
+                      const filename = getAttachmentFilename(attachment, `Attachment ${index + 1}`);
+                      const isImage = isImageAttachment(attachment);
+                      const extensionLabel = getAttachmentDisplayLabel(attachment);
+
+                      return (
+                        <div key={url || index} className="flex flex-col gap-2">
+                          {isImage ? (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedPhotoUrl(url)}
+                              className="block w-full"
+                            >
+                              <img
+                                src={url}
+                                alt={filename}
+                                className="w-full h-24 object-cover rounded-md shadow"
+                              />
+                            </button>
+                          ) : (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block w-full"
+                            >
+                              <div className="w-full h-24 flex flex-col items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors">
+                                <span className="text-3xl">📄</span>
+                                <span className="mt-1 text-xs font-semibold uppercase">{extensionLabel}</span>
+                              </div>
+                            </a>
+                          )}
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-indigo-600 hover:underline text-xs break-all"
+                            title={filename}
+                          >
+                            {filename}
+                          </a>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
-              {/* Display .docx files if available */}
-              {comment.photos &&
-                comment.photos
-                  .filter((photo) => photo.filename.endsWith('.docx'))
-                  .map((doc, index) => (
-                    <div key={index} className="mt-2">
-                      <a
-                        href={doc.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-blue-500 hover:underline"
-                      >
-                        {doc.filename}
-                      </a>
-                    </div>
-                  ))}
-              {/* Display PDF files if available */}
-              {comment.photos &&
-                comment.photos
-                  .filter((photo) => photo.filename.endsWith('.pdf'))
-                  .map((pdf, index) => (
-                    <div key={index} className="mt-2">
-                      <a
-                        href={pdf.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-blue-500 hover:underline"
-                      >
-                        {pdf.filename}
-                      </a>
-                    </div>
-                  ))}
             </li>
           ))
         ) : (
