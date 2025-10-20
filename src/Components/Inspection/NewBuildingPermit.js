@@ -4,14 +4,14 @@ import AsyncSelect from "react-select/async";
 import ContactSelection from "../Contact/ContactSelection";
 // import NewUnitForm from "../Unit/NewUnitForm"; // Commented out for now; may use in future
 
-export default function NewBuildingPermit() {
+export default function NewBuildingPermit({ defaultAddressId, defaultAddressLabel, onCreated }) {
   const { user, token } = useAuth();
   const [units, setUnits] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [addresses, setAddresses] = useState([]);
   const [showNewUnitForm, setShowNewUnitForm] = useState(false);
   const [formData, setFormData] = useState({
-    address_id: "",
+    address_id: defaultAddressId ? String(defaultAddressId) : "",
     source: "Building/Dumpster/POD permit",
     attachments: [],
     scheduled_datetime: "",
@@ -24,6 +24,7 @@ export default function NewBuildingPermit() {
   // Admin assignment state
   const [onsUsers, setOnsUsers] = useState([]);
   const [assigneeId, setAssigneeId] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   // Validation state
   const [addressError, setAddressError] = useState("");
   const isAddressValid = !!formData.address_id;
@@ -94,9 +95,12 @@ export default function NewBuildingPermit() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     // Basic required field validation
     if (!formData.address_id) {
       setAddressError('Address is required.');
+      setSubmitting(false);
       return;
     }
 
@@ -159,9 +163,15 @@ export default function NewBuildingPermit() {
         body: permitData,
       });
 
-      if (!response.ok) throw new Error("Failed to create permit");
+          if (!response.ok) throw new Error("Failed to create permit");
+          let created = null;
+          try {
+            created = await response.json();
+          } catch (_) {
+            // ignore JSON parse errors
+          }
 
-      alert("Permit inspection created successfully!");
+          if (onCreated) onCreated(created);
       // Optionally reset form
       setFormData((prev) => ({
         ...prev,
@@ -174,6 +184,8 @@ export default function NewBuildingPermit() {
     } catch (error) {
       console.error("Error creating permit:", error);
       alert("Error creating permit.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -250,6 +262,7 @@ export default function NewBuildingPermit() {
               className="mb-0"
               cacheOptions
               defaultOptions
+              defaultValue={defaultAddressId ? { value: defaultAddressId, label: defaultAddressLabel || String(defaultAddressId) } : undefined}
             />
           </div>
           <div className="text-xs text-gray-500 mt-1">This field is required.</div>
@@ -280,9 +293,16 @@ export default function NewBuildingPermit() {
    * {units.length > 0 && (
    *   <div className="mb-4">
    *     <label htmlFor="unit_id" className="block text-sm font-medium text-gray-700">
-   *       Select a Unit (optional)
+              if (!response.ok) throw new Error("Failed to create permit");
+              let created = null;
+              try {
+                created = await response.json();
+              } catch (_) {
+                // ignore parse error
+              }
    *     </label>
    *     <select
+              if (onCreated) onCreated(created);
    *       id="unit_id"
    *       name="unit_id"
    *       value={formData.unit_id}
@@ -381,10 +401,11 @@ export default function NewBuildingPermit() {
           <button
             type="submit"
             className="w-full inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60"
-            disabled={!isAddressValid}
-            aria-disabled={!isAddressValid}
+            disabled={!isAddressValid || submitting}
+            aria-disabled={!isAddressValid || submitting}
+            aria-busy={submitting}
           >
-            Create New Building/Dumpster/POD Permit
+            {submitting ? 'Creating…' : 'Create New Building/Dumpster/POD Permit'}
           </button>
         </div>
       </form>

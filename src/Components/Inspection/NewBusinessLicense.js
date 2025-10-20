@@ -5,7 +5,7 @@ import BusinessSelection from "../Business/BusinessSelection"; // Import the new
 import NewBusinessForm from "../Business/NewBusinessForm";
 import Select from "react-select"; // Import react-select
 
-export default function NewBusinessLicense() {
+export default function NewBusinessLicense({ defaultAddressId, defaultAddressLabel, onCreated }) {
   const { user, token } = useAuth();
   const [businesses, setBusinesses] = useState([]);
   const [contacts, setContacts] = useState([]);
@@ -13,7 +13,7 @@ export default function NewBusinessLicense() {
   // Removed New Unit form toggle
   const [showNewBusinessForm, setShowNewBusinessForm] = useState(false);
   const [formData, setFormData] = useState({
-  address_id: null,  // Populated from selected business
+  address_id: defaultAddressId ?? null,  // Populated from selected business or default
   unit_id: null,     // Populated from selected business if it has a unit
     source: "Business License",
     attachments: [],
@@ -28,6 +28,7 @@ export default function NewBusinessLicense() {
   // Admin assignment state
   const [onsUsers, setOnsUsers] = useState([]);
   const [assigneeId, setAssigneeId] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   // Validation state for required address derived from business
   const [addressError, setAddressError] = useState("");
   const isAddressValid = !!formData.address_id;
@@ -89,6 +90,8 @@ export default function NewBusinessLicense() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
 
     // Resolve address_id if missing by looking up the selected business
     let resolvedAddressId = formData.address_id;
@@ -186,11 +189,17 @@ export default function NewBusinessLicense() {
       });
 
       if (!response.ok) throw new Error("Failed to create inspection");
-
-      alert("Inspection created successfully!");
+      let created = null;
+      try {
+        created = await response.json();
+      } catch (_) {}
+      
+      if (onCreated) onCreated(created);
     } catch (error) {
       console.error("Error creating inspection:", error);
       alert("Error creating inspection.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -325,10 +334,11 @@ export default function NewBusinessLicense() {
           <button
             type="submit"
             className="w-full inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60"
-            disabled={!isAddressValid}
-            aria-disabled={!isAddressValid}
+            disabled={!isAddressValid || submitting}
+            aria-disabled={!isAddressValid || submitting}
+            aria-busy={submitting}
           >
-            Create New Business License Inspection
+            {submitting ? 'Creating…' : 'Create New Business License Inspection'}
           </button>
         </div>
       </form>

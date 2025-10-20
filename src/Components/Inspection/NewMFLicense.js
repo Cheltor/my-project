@@ -3,12 +3,12 @@ import { useAuth } from "../../AuthContext";
 import AsyncSelect from "react-select/async";
 import ContactSelection from "../Contact/ContactSelection";
 
-export default function NewMFLicense() {
+export default function NewMFLicense({ defaultAddressId, defaultAddressLabel, onCreated }) {
   const { user, token } = useAuth();
   const [contacts, setContacts] = useState([]);
   const [addresses, setAddresses] = useState([]);
   const [formData, setFormData] = useState({
-    address_id: "",
+    address_id: defaultAddressId ? String(defaultAddressId) : "",
     source: "Multifamily License",
     attachments: [],
     scheduled_datetime: "",
@@ -21,6 +21,7 @@ export default function NewMFLicense() {
   // Admin assignment state
   const [onsUsers, setOnsUsers] = useState([]);
   const [assigneeId, setAssigneeId] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   // Validation state
   const [addressError, setAddressError] = useState("");
   const [contactError, setContactError] = useState("");
@@ -83,9 +84,12 @@ export default function NewMFLicense() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     // Client-side validation (address required only)
     if (!formData.address_id) {
       setAddressError('Address is required.');
+      setSubmitting(false);
       return;
     }
 
@@ -150,11 +154,16 @@ export default function NewMFLicense() {
       });
 
       if (!response.ok) throw new Error("Failed to create inspection");
-
-      alert("Inspection created successfully!");
+      let created = null;
+      try {
+        created = await response.json();
+      } catch (_) {}
+      if (onCreated) onCreated(created);
     } catch (error) {
       console.error("Error creating inspection:", error);
       alert("Error creating inspection.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -231,12 +240,12 @@ export default function NewMFLicense() {
               className="mb-0"
               cacheOptions
               defaultOptions
+              defaultValue={defaultAddressId ? { value: defaultAddressId, label: defaultAddressLabel || String(defaultAddressId) } : undefined}
             />
           </div>
           <div className="text-xs text-gray-500 mt-1">This field is required.</div>
           {addressError && <div id="address-error" className="text-xs text-red-600 mt-1">{addressError}</div>}
         </div>
-
         {/* Assignee (Admin only) */}
         {user?.role === 3 && (
           <div className="mb-4">
@@ -322,10 +331,11 @@ export default function NewMFLicense() {
           <button
             type="submit"
             className="w-full inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60"
-            disabled={!isAddressValid}
-            aria-disabled={!isAddressValid}
+            disabled={!isAddressValid || submitting}
+            aria-disabled={!isAddressValid || submitting}
+            aria-busy={submitting}
           >
-            Create New Multifamily License
+            {submitting ? 'Creating…' : 'Create New Multifamily License'}
           </button>
         </div>
       </form>

@@ -11,6 +11,11 @@ import useUnitSearch from './Address/useUnitSearch';
 import AddressLicenses from './Address/AddressLicenses';
 import AddressPermits from './Address/AddressPermits';
 import NewUnit from './Inspection/NewUnit';  // Import NewUnit component
+// New Inspection creation forms
+import NewBuildingPermit from './Inspection/NewBuildingPermit';
+import NewBusinessLicense from './Inspection/NewBusinessLicense';
+import NewMFLicense from './Inspection/NewMFLicense';
+import NewSFLicense from './Inspection/NewSFLicense';
 
 // Utility function to titlize a string
 function titlize(str) {
@@ -143,6 +148,21 @@ const AddressDetails = () => {
   const { searchTerm, showDropdown, filteredUnits, handleSearchChange, handleDropdownSelect } = useUnitSearch(id);
   const [showNewUnitForm, setShowNewUnitForm] = useState(false);  // State to toggle NewUnit form
   const [isEditing, setIsEditing] = useState(false); // State to toggle edit mode
+  // New Inspection form state (within Inspections tab)
+  const [showAddInspectionForm, setShowAddInspectionForm] = useState(false);
+  const [inspectionFormType, setInspectionFormType] = useState('building_permit');
+  const [inspectionsRefreshKey, setInspectionsRefreshKey] = useState(0);
+  const [toast, setToast] = useState({ show: false, message: '' });
+
+  const handleInspectionCreated = (created) => {
+    // Close form, ensure Inspections tab is active, refresh list and update count optimistically
+    setShowAddInspectionForm(false);
+    setActiveTab('inspections');
+    setInspectionsRefreshKey((k) => k + 1);
+    setCounts((prev) => ({ ...prev, inspections: (prev.inspections || 0) + 1 }));
+    setToast({ show: true, message: 'Inspection created successfully.' });
+    window.setTimeout(() => setToast({ show: false, message: '' }), 3000);
+  };
   
   // Units sorted numerically for the sticky comment select
   const sortedUnitsForSelect = useMemo(() => {
@@ -425,6 +445,25 @@ const AddressDetails = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-5 pt-4 pb-36 sm:pb-6 bg-white shadow-md rounded-lg mt-6 space-y-8">
+      {toast.show && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+          <div className="flex items-center gap-2 rounded-md bg-emerald-600 text-white px-4 py-2 shadow-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+              <path d="M9 12l2 2 4-4" />
+              <circle cx="12" cy="12" r="9" />
+            </svg>
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button
+              type="button"
+              onClick={() => setToast({ show: false, message: '' })}
+              className="ml-2 text-white/80 hover:text-white"
+              aria-label="Close notification"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
       {/* Address Information */}
 
       <div className="mb-4">
@@ -1140,7 +1179,77 @@ const AddressDetails = () => {
           />
         )}
         {activeTab === 'violations' && <Violations addressId={id} />}
-        {activeTab === 'inspections' && <Inspections addressId={id} />}
+        {activeTab === 'inspections' && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-bold text-gray-700">Inspections</h2>
+              <button
+                type="button"
+                className="ml-4 px-3 py-1 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-500"
+                onClick={() => setShowAddInspectionForm((v) => !v)}
+                aria-expanded={showAddInspectionForm}
+              >
+                {showAddInspectionForm ? 'Cancel' : 'Add Inspection'}
+              </button>
+            </div>
+
+            {showAddInspectionForm && (
+              <div className="mb-6 p-4 bg-white border rounded shadow">
+                <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600">Inspection type</label>
+                    <select
+                      value={inspectionFormType}
+                      onChange={(e) => setInspectionFormType(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                    >
+                      <option value="building_permit">Building/Dumpster/POD Permit</option>
+                      <option value="business_license">Business License</option>
+                      <option value="single_family_license">Single Family License</option>
+                      <option value="multifamily_license">Multifamily License</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">Select the correct form, then complete and submit.</p>
+                  </div>
+                  {/* Optional: could prefill address into forms if supported */}
+                </div>
+
+                <div>
+                  {inspectionFormType === 'building_permit' && (
+                    <NewBuildingPermit
+                      defaultAddressId={Number(id)}
+                      defaultAddressLabel={address?.combadd || ''}
+                      onCreated={handleInspectionCreated}
+                    />
+                  )}
+                  {inspectionFormType === 'business_license' && (
+                    <NewBusinessLicense
+                      defaultAddressId={Number(id)}
+                      defaultAddressLabel={address?.combadd || ''}
+                      onCreated={handleInspectionCreated}
+                    />
+                  )}
+                  {inspectionFormType === 'single_family_license' && (
+                    <NewSFLicense
+                      defaultAddressId={Number(id)}
+                      defaultAddressLabel={address?.combadd || ''}
+                      onCreated={handleInspectionCreated}
+                    />
+                  )}
+                  {inspectionFormType === 'multifamily_license' && (
+                    <NewMFLicense
+                      defaultAddressId={Number(id)}
+                      defaultAddressLabel={address?.combadd || ''}
+                      onCreated={handleInspectionCreated}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Existing inspections list for this address */}
+            <Inspections key={`inspections-${inspectionsRefreshKey}`} addressId={id} />
+          </div>
+        )}
   {activeTab === 'complaints' && <Complaints addressId={id} />}
   {activeTab === 'licenses' && <AddressLicenses addressId={id} />}
   {activeTab === 'permits' && <AddressPermits addressId={id} />}
