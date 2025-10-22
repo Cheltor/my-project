@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { toEasternLocaleString } from '../utils';
+import FileUploadInput from './Common/FileUploadInput';
 
 const EXCLUDED_KEYS = new Set([
   'id',
@@ -248,21 +249,6 @@ const AdminCommentEditor = () => {
     }
   };
 
-  const handleFilesSelected = (event) => {
-    const picked = Array.from(event.target.files || []);
-    if (picked.length === 0) return;
-    setFileQueue((prev) => {
-      const next = [...prev];
-      picked.forEach((file) => {
-        if (!next.find((existing) => existing.name === file.name && existing.size === file.size && existing.lastModified === file.lastModified)) {
-          next.push(file);
-        }
-      });
-      return next;
-    });
-    event.target.value = '';
-  };
-
   const handleUpload = async () => {
     if (!fileQueue.length) return;
     setUploading(true);
@@ -461,17 +447,18 @@ const AdminCommentEditor = () => {
           <div className="rounded-lg bg-white shadow p-6">
             <h2 className="text-lg font-medium text-gray-900">Upload Attachments</h2>
             <p className="mt-1 text-sm text-gray-500">Attach additional documents or images to this comment.</p>
-            <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-3 sm:space-y-0">
-              <input
+            <div className="mt-4 flex flex-col gap-3">
+              <FileUploadInput
                 id="admin-comment-files"
-                type="file"
-                multiple
-                onChange={handleFilesSelected}
-                className="text-sm"
+                name="attachments"
+                files={fileQueue}
+                onChange={setFileQueue}
+                accept="image/*,application/pdf"
+                disabled={uploading}
+                label=""
+                addFilesLabel={fileQueue.length > 0 ? 'Add more files' : 'Choose files'}
+                emptyStateLabel="No files selected"
               />
-              {fileQueue.length > 0 && (
-                <span className="text-sm text-gray-600">{fileQueue.length} file{fileQueue.length > 1 ? 's' : ''} selected</span>
-              )}
               <button
                 type="button"
                 onClick={handleUpload}

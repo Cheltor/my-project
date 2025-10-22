@@ -1,7 +1,8 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../AuthContext';
 import CodeSelect from '../CodeSelect';
+import FileUploadInput from '../Common/FileUploadInput';
 
 const DEADLINE_OPTIONS = [
   'Immediate',
@@ -27,26 +28,17 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
   const [success, setSuccess] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [files, setFiles] = useState([]);
-  const fileInputRef = useRef(null);
-  const [fileInputKey, setFileInputKey] = useState(0);
 
+  // Helper to reset attachment state to avoid no-undef and keep logic centralized
   const resetAttachmentState = () => {
     setFiles([]);
-    if (fileInputRef.current) {
-      try {
-        fileInputRef.current.value = null;
-      } catch (err) {
-        // ignore reset errors
-      }
-    }
-    setFileInputKey((k) => k + 1);
   };
 
   const handleToggleForm = () => {
     setShowForm((prev) => {
       const next = !prev;
       if (!next) {
-        resetAttachmentState();
+        setFiles([]);
       }
       return next;
     });
@@ -207,45 +199,14 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
             </select>
           </div>
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700">Attachments</label>
-            <div className="mt-1 flex items-center">
-              <label className="bg-white text-gray-700 border border-gray-300 rounded-md shadow-sm px-4 py-2 cursor-pointer hover:bg-gray-50">
-                <span>Choose files</span>
-                <input
-                  type="file"
-                  name="attachments"
-                  multiple
-                  accept="image/*,application/pdf"
-                  className="sr-only"
-                  key={fileInputKey}
-                  ref={fileInputRef}
-                  onChange={(e) => setFiles(Array.from(e.target.files || []))}
-                  disabled={submitting}
-                />
-              </label>
-            </div>
-            {files.length > 0 && (
-              <div className="mt-2">
-                <div className="flex flex-wrap gap-2">
-                  {files.map((file, idx) => (
-                    <span
-                      key={idx}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded bg-indigo-50 text-indigo-700 text-xs border border-indigo-200"
-                    >
-                      <span className="truncate max-w-[12rem]" title={file.name}>{file.name}</span>
-                    </span>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className="mt-2 text-xs text-gray-600 hover:text-gray-900 underline"
-                  onClick={resetAttachmentState}
-                  disabled={submitting}
-                >
-                  Clear selection
-                </button>
-              </div>
-            )}
+            <FileUploadInput
+              label="Attachments"
+              name="attachments"
+              files={files}
+              onChange={setFiles}
+              accept="image/*,application/pdf"
+              disabled={submitting}
+            />
           </div>
           <div className="flex gap-3">
             <button
@@ -253,7 +214,7 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
               className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
               disabled={submitting || !addressId || !Array.isArray(selectedCodes) || selectedCodes.length === 0}
             >
-              {submitting ? 'Submitting...' : (!addressId || selectedCodes.length === 0 ? 'Add Violation (Address + Codes required)' : 'Add Violation')}
+              {submitting ? 'Submitting...' : (!addressId || selectedCodes.length === 0 ? 'Add Violation (Codes required)' : 'Add Violation')}
             </button>
             <button
               type="button"

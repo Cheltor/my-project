@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const FALLBACK_CENTER = {
-  lat: 37.7749,
-  lng: -122.4194,
+  lat: 38.9618936,
+  lng: -76.9281597,
 };
 
 const MESSAGE_CONTAINER_STYLE = {

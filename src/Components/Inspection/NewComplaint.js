@@ -5,6 +5,7 @@ import AsyncSelect from "react-select/async";
 import ContactSelection from "../Contact/ContactSelection";
 import BusinessSelection from "../Business/BusinessSelection"; // Import the new component
 import NewUnit from "../Inspection/NewUnit"; // Import NewUnit instead of NewUnitForm
+import FileUploadInput from "../Common/FileUploadInput";
 
 export default function NewComplaint() {
   const { user, token } = useAuth();
@@ -71,11 +72,9 @@ export default function NewComplaint() {
   }, [user?.role]);
 
   const handleInputChange = (e) => {
-    const { name, value, type, checked, files } = e.target;
+    const { name, value, type, checked } = e.target;
     if (type === "checkbox") {
       setFormData({ ...formData, [name]: checked });
-    } else if (type === "file") {
-      setPhotos(Array.from(files)); // Set selected files to the state
     } else {
       setFormData({ ...formData, [name]: value });
       if (name === 'description') {
@@ -83,6 +82,11 @@ export default function NewComplaint() {
         if ((value || '').trim().length > 0) setDescError("");
       }
     }
+  };
+
+  const handleAttachmentsChange = (files) => {
+    const next = Array.isArray(files) ? files : Array.from(files || []);
+    setPhotos(next);
   };
 
   const handleAddressChange = async (selectedOption) => {
@@ -387,31 +391,13 @@ export default function NewComplaint() {
 
         {/* Attachments Field */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">Application or Photos</label>
-          <div className="mt-1 flex items-center">
-            <label className="bg-white text-gray-700 border border-gray-300 rounded-md shadow-sm px-4 py-2 cursor-pointer hover:bg-gray-50">
-              <span>Choose files</span>
-              <input
-                type="file"
-                name="attachments"
-                multiple
-                accept="image/*,application/pdf"
-                onChange={handleInputChange}
-                className="sr-only"
-              />
-            </label>
-            <div className="ml-3 text-sm text-gray-500">
-              {photos.length > 0 ? (
-                <ul>
-                  {photos.map((file, index) => (
-                    <li key={index}>{file.name}</li>
-                  ))}
-                </ul>
-              ) : (
-                <span>No files selected</span>
-              )}
-            </div>
-          </div>
+          <FileUploadInput
+            label="Application or Photos"
+            name="attachments"
+            files={photos}
+            onChange={handleAttachmentsChange}
+            accept="image/*,application/pdf"
+          />
         </div>
 
         {/* Business Selection Toggle */}

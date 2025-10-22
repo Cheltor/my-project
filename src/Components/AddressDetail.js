@@ -327,6 +327,32 @@ const AddressDetails = () => {
           }
         });
 
+        // Include violation photo count in total photos (graceful fallbacks)
+        try {
+          let vRes = await fetch(`${base}/addresses/${id}/violations`);
+          let vList = [];
+          if (vRes.ok) {
+            vList = await vRes.json();
+          }
+          const vPhotoSettled = await Promise.allSettled(
+            (Array.isArray(vList) ? vList : []).map((v) =>
+              fetch(`${base}/violation/${v.id}/photos`)
+                .then((r) => (r.ok ? r.json() : []))
+                .catch(() => [])
+            )
+          );
+          const vPhotoCount = vPhotoSettled.reduce((sum, pr) => {
+            if (pr.status === 'fulfilled') {
+              const arr = pr.value;
+              return sum + (Array.isArray(arr) ? arr.length : 0);
+            }
+            return sum;
+          }, 0);
+          next.photos = (next.photos || 0) + vPhotoCount;
+        } catch {
+          // ignore
+        }
+
         // Permits count with graceful fallback similar to licenses
         let permitsLen = 0;
         try {

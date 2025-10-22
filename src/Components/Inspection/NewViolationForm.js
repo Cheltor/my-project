@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AsyncSelect from "react-select/async";
 import CodeSelect from "../CodeSelect";
 import { useAuth } from "../../AuthContext";
+import FileUploadInput from "../Common/FileUploadInput";
 
 export default function NewViolationForm({ onCreated, initialAddressId, initialAddressLabel, lockAddress = false, inspectionId, selectedCodesValue, onSelectedCodesChange }) {
   const { user } = useAuth();
@@ -12,10 +13,6 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
     address_id: initialAddressId || ""
   });
   const [files, setFiles] = useState([]);
-  // Keep a ref to the file input so we can reset it on submit/clear
-  const fileInputRef = React.useRef(null);
-  // Force re-mount the input to clear mobile file pickers that may cache selection
-  const [fileInputKey, setFileInputKey] = useState(0);
   const [selectedCodes, setSelectedCodes] = useState([]); // internal when uncontrolled
   const [addressLabel, setAddressLabel] = useState(initialAddressLabel || "");
   // Admin assignment state
@@ -192,12 +189,8 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
       setForm({ codes: [], address_id: "" });
       setSelectedCodes([]);
       if (onSelectedCodesChange) onSelectedCodesChange([]);
-      // Clear files state and reset the actual input element (mobile browsers can keep selection)
+      // Clear files state so the picker is reset for the next violation
       setFiles([]);
-      if (fileInputRef.current) {
-        try { fileInputRef.current.value = null; } catch {}
-      }
-      setFileInputKey((k) => k + 1);
       if (onCreated) onCreated(created);
       // Navigate to the created violation's detail page
       if (created?.id) {
@@ -315,48 +308,14 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
         </div>
         {/* Attachments */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">Attachments</label>
-          <div className="mt-1 flex items-center">
-            <label className="bg-white text-gray-700 border border-gray-300 rounded-md shadow-sm px-4 py-2 cursor-pointer hover:bg-gray-50">
-              <span>Choose files</span>
-              <input
-                type="file"
-                name="attachments"
-                multiple
-                accept="image/*,application/pdf"
-                className="sr-only"
-                key={fileInputKey}
-                ref={fileInputRef}
-                onChange={(e) => setFiles(Array.from(e.target.files || []))}
-              />
-            </label>
-            {/* Optionally, show selected file names here if you add state for them */}
-          </div>
-          {files.length > 0 && (
-            <div className="mt-2">
-              <div className="flex flex-wrap gap-2">
-                {files.map((f, idx) => (
-                  <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-indigo-50 text-indigo-700 text-xs border border-indigo-200">
-                    <span className="truncate max-w-[12rem]" title={f.name}>{f.name}</span>
-                  </span>
-                ))}
-              </div>
-              <button
-                type="button"
-                className="mt-2 text-xs text-gray-600 hover:text-gray-900 underline"
-                onClick={() => {
-                  setFiles([]);
-                  if (fileInputRef.current) {
-                    try { fileInputRef.current.value = null; } catch {}
-                  }
-                  setFileInputKey((k) => k + 1);
-                }}
-                disabled={loading}
-              >
-                Clear selection
-              </button>
-            </div>
-          )}
+          <FileUploadInput
+            label="Attachments"
+            name="attachments"
+            files={files}
+            onChange={setFiles}
+            accept="image/*,application/pdf"
+            disabled={loading}
+          />
         </div>
         <button
           type="submit"

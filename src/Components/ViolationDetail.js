@@ -4,6 +4,7 @@ import { useAuth } from "../AuthContext";
 import NewCitationForm from "./NewCitationForm";
 import CitationsList from "./CitationsList";
 import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
+import FileUploadInput from "./Common/FileUploadInput";
 import {
   getAttachmentDisplayLabel,
   getAttachmentFilename,
@@ -90,6 +91,10 @@ const ViolationDetail = () => {
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [commentFiles, setCommentFiles] = useState([]);
+  const handleCommentAttachmentsChange = (files) => {
+    const next = Array.isArray(files) ? files : Array.from(files || []);
+    setCommentFiles(next);
+  };
   const [commentAttachments, setCommentAttachments] = useState({}); // { [commentId]: Attachment[] }
   const [assignableUsers, setAssignableUsers] = useState([]);
   const [assigneeId, setAssigneeId] = useState('');
@@ -732,31 +737,17 @@ const ViolationDetail = () => {
                 placeholder="Add a comment..."
                 disabled={submitting}
               />
-              <div className="flex items-center gap-2">
-                <label className={`inline-flex items-center gap-2 px-3 py-1 rounded-md border shadow-sm text-xs font-medium transition-colors cursor-pointer ${submitting ? 'pointer-events-none opacity-60 bg-gray-100 text-gray-400 border-gray-200' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500'}`}>
-                  <span>Choose files</span>
-                  <input
-                    type="file"
-                    className="sr-only"
-                    multiple
-                    accept="image/*,application/pdf"
-                    onChange={(e) => setCommentFiles(Array.from(e.target.files || []))}
-                    disabled={submitting}
-                  />
-                </label>
-                {commentFiles.length > 0 && (
-                  <span className="text-xs text-gray-600">{commentFiles.length} file(s) selected</span>
-                )}
-                {commentFiles.length > 0 && (
-                  <button
-                    type="button"
-                    className="text-xs text-gray-600 hover:text-gray-900 underline"
-                    onClick={() => setCommentFiles([])}
-                    disabled={submitting}
-                  >
-                    Clear
-                  </button>
-                )}
+              <div className="flex flex-col gap-2 w-full sm:w-auto">
+                <FileUploadInput
+                  id="violation-comment-files"
+                  name="attachments"
+                  label=""
+                  files={commentFiles}
+                  onChange={handleCommentAttachmentsChange}
+                  accept="image/*,application/pdf"
+                  disabled={submitting}
+                  addFilesLabel={commentFiles.length > 0 ? 'Add files' : 'Choose files'}
+                />
               </div>
               <button
                 type="submit"

@@ -17,6 +17,7 @@ import {
   XMarkIcon,
   ArrowLeftIcon,
   BellIcon,
+  MapIcon,
 } from '@heroicons/react/24/outline';
 import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
 import { Link, useNavigate } from 'react-router-dom'; // Import Link and useNavigate
@@ -26,6 +27,8 @@ import { toEasternLocaleString } from '../utils';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon, current: false },
+  { name: 'Calendar', href: '/calendar', icon: CalendarIcon, current: false },
+  { name: 'Map', href: '/map', icon: MapIcon, current: false, roles: ['Admin'] },
   { name: 'Contacts', href: '/contacts', icon: UsersIcon, current: false },
   { name: 'Violations', href: '/violations', icon: BuildingOffice2Icon, current: false },
   { name: 'Citations', href: '/citations', icon: CalendarIcon, current: false },

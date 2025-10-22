@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../../AuthContext";
 import AsyncSelect from "react-select/async";
 import ContactSelection from "../Contact/ContactSelection";
+import FileUploadInput from "../Common/FileUploadInput";
 // import NewUnitForm from "../Unit/NewUnitForm"; // Commented out for now; may use in future
 
 export default function NewBuildingPermit({ defaultAddressId, defaultAddressLabel, onCreated }) {
@@ -64,14 +65,17 @@ export default function NewBuildingPermit({ defaultAddressId, defaultAddressLabe
   }, [user?.role]);
 
   const handleInputChange = (e) => {
-    const { name, value, type, checked, files } = e.target;
+    const { name, value, type, checked } = e.target;
     if (type === "checkbox") {
       setFormData({ ...formData, [name]: checked });
-    } else if (type === "file") {
-      setFormData({ ...formData, attachments: files });
     } else {
       setFormData({ ...formData, [name]: value });
     }
+  };
+
+  const handleAttachmentsChange = (files) => {
+    const next = Array.isArray(files) ? files : Array.from(files || []);
+    setFormData((prev) => ({ ...prev, attachments: next }));
   };
 
   const handleAddressChange = async (selectedOption) => {
@@ -347,30 +351,14 @@ export default function NewBuildingPermit({ defaultAddressId, defaultAddressLabe
 
         {/* Attachments Field */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">Application or Photos</label>
-          <div className="mt-1 flex items-center">
-            <label className="bg-white text-gray-700 border border-gray-300 rounded-md shadow-sm px-4 py-2 cursor-pointer hover:bg-gray-50">
-              <span>Choose files</span>
-              <input
-                type="file"
-                name="attachments"
-                multiple
-                onChange={handleInputChange}
-                className="sr-only"
-              />
-            </label>
-            <div className="ml-3 text-sm text-gray-500">
-              {formData.attachments.length > 0 ? (
-                <ul>
-                  {Array.from(formData.attachments).map((file, index) => (
-                    <li key={index}>{file.name}</li>
-                  ))}
-                </ul>
-              ) : (
-                <span>No files selected</span>
-              )}
-            </div>
-          </div>
+          <FileUploadInput
+            label="Application or Photos"
+            name="attachments"
+            files={formData.attachments}
+            onChange={handleAttachmentsChange}
+            accept="image/*,application/pdf"
+            disabled={submitting}
+          />
         </div>
 
         {/* Scheduled Date 

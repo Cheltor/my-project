@@ -4,6 +4,7 @@ import ContactSelection from "../Contact/ContactSelection";
 import BusinessSelection from "../Business/BusinessSelection"; // Import the new component
 import NewBusinessForm from "../Business/NewBusinessForm";
 import Select from "react-select"; // Import react-select
+import FileUploadInput from "../Common/FileUploadInput";
 
 export default function NewBusinessLicense({ defaultAddressId, defaultAddressLabel, onCreated }) {
   const { user, token } = useAuth();
@@ -78,14 +79,17 @@ export default function NewBusinessLicense({ defaultAddressId, defaultAddressLab
   // No unit fetching: unit_id will come directly from the selected business (if any)
 
   const handleInputChange = (e) => {
-    const { name, value, type, checked, files } = e.target;
+    const { name, value, type, checked } = e.target;
     if (type === "checkbox") {
       setFormData({ ...formData, [name]: checked });
-    } else if (type === "file") {
-      setFormData({ ...formData, attachments: files });
     } else {
       setFormData({ ...formData, [name]: value });
     }
+  };
+
+  const handleAttachmentsChange = (files) => {
+    const next = Array.isArray(files) ? files : Array.from(files || []);
+    setFormData((prev) => ({ ...prev, attachments: next }));
   };
 
   const handleSubmit = async (e) => {
@@ -295,30 +299,14 @@ export default function NewBusinessLicense({ defaultAddressId, defaultAddressLab
 
   {/* Attachments Field */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">Application or Photos</label>
-          <div className="mt-1 flex items-center">
-            <label className="bg-white text-gray-700 border border-gray-300 rounded-md shadow-sm px-4 py-2 cursor-pointer hover:bg-gray-50">
-              <span>Choose files</span>
-              <input
-                type="file"
-                name="attachments"
-                multiple
-                onChange={handleInputChange}
-                className="sr-only"
-              />
-            </label>
-            <div className="ml-3 text-sm text-gray-500">
-              {formData.attachments.length > 0 ? (
-                <ul>
-                  {Array.from(formData.attachments).map((file, index) => (
-                    <li key={index}>{file.name}</li>
-                  ))}
-                </ul>
-              ) : (
-                <span>No files selected</span>
-              )}
-            </div>
-          </div>
+          <FileUploadInput
+            label="Application or Photos"
+            name="attachments"
+            files={formData.attachments}
+            onChange={handleAttachmentsChange}
+            accept="image/*,application/pdf"
+            disabled={submitting}
+          />
         </div>
 
         {/* Contact Selection */}

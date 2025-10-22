@@ -4,6 +4,7 @@ import { useAuth } from "../AuthContext";
 import { toEasternLocaleString } from "../utils";
 import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
 import NewViolationForm from "./Inspection/NewViolationForm";
+import FileUploadInput from "./Common/FileUploadInput";
 
 const pickDescription = (payload) => {
   if (!payload || typeof payload !== 'object') return '';
@@ -174,9 +175,9 @@ export default function ComplaintDetail() {
 		return () => clearTimeout(t);
 	}, [contactSearch]);
 
-	const handleFilesChange = (e) => {
-		const files = Array.from(e.target.files || []);
-		setUploadFiles(files);
+	const handleAttachmentsChange = (files) => {
+		const next = Array.isArray(files) ? files : Array.from(files || []);
+		setUploadFiles(next);
 	};
 
 	const handleAssignContact = async (contactId) => {
@@ -575,28 +576,26 @@ export default function ComplaintDetail() {
 						)}
 
 						{/* Upload new attachments */}
-						<div className="mt-4 flex items-center gap-3">
-							<label className="bg-white text-gray-700 border border-gray-300 rounded-md shadow-sm px-4 py-2 cursor-pointer hover:bg-gray-50">
-								<span>Choose files</span>
-								<input
-									type="file"
-									multiple
-									accept="image/*,application/pdf"
-									className="sr-only"
-									onChange={handleFilesChange}
-								/>
-							</label>
-							<span className="text-sm text-gray-500">
-								{uploadFiles.length ? `${uploadFiles.length} file(s) selected` : "No files selected"}
-							</span>
-							<button
-								type="button"
-								onClick={handleUpload}
-								disabled={!uploadFiles.length || uploading}
-								className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-green-500"
-							>
-								{uploading ? "Uploading…" : "Upload"}
-							</button>
+						<div className="mt-4 flex flex-col gap-3">
+							<FileUploadInput
+								id="complaint-attachments"
+								name="attachments"
+								label="Upload new attachments"
+								files={uploadFiles}
+								onChange={handleAttachmentsChange}
+								accept="image/*,application/pdf"
+								disabled={uploading}
+							/>
+							<div>
+								<button
+									type="button"
+									onClick={handleUpload}
+									disabled={!uploadFiles.length || uploading}
+									className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-green-500"
+								>
+									{uploading ? "Uploading…" : "Upload"}
+								</button>
+							</div>
 						</div>
 						{uploadError && <p className="mt-2 text-sm text-red-600">{uploadError}</p>}
 					</div>

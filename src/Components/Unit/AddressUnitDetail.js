@@ -89,7 +89,7 @@ const AddressUnitDetail = () => {
               <button type="button" className="bg-gray-300 px-2 py-1 rounded" onClick={() => setEditing(false)}>Cancel</button>
             </form>
           ) : (
-            <>
+            <div>
               <span className="break-words">Unit {unit.number}</span>
               <button
                 className="ml-3 px-4 py-2 text-base bg-yellow-400 rounded hover:bg-yellow-500 font-semibold shadow"
@@ -98,7 +98,7 @@ const AddressUnitDetail = () => {
                   setEditing(true);
                 }}
               >Edit</button>
-            </>
+            </div>
           )}
         </h1>
       </div>
@@ -147,10 +147,10 @@ const AddressUnitDetail = () => {
       <div className="mb-4">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 flex flex-wrap items-center">
           {address.property_name && (
-            <>
+            <div className="inline-flex items-center">
               <span className="break-words">{address.property_name}</span>
               <span className="mx-2 hidden sm:inline">-</span>
-            </>
+            </div>
           )}
           <Link to={`/address/${address.id}`} className="break-words text-blue-500">
             {address.combadd}
@@ -160,12 +160,7 @@ const AddressUnitDetail = () => {
         <h2 className="text-2xl font-semibold text-gray-700">Owner Name</h2>
         <p className="text-lg text-gray-600">{address.ownername}</p>
 
-        {address.aka && (
-          <>
-            <h2 className="text-2xl font-semibold text-gray-700">AKA:</h2>
-            <p className="text-lg text-gray-600">{address.aka}</p>
-          </>
-        )}
+        {address.aka && null}
       </div>
 
       {/* Unit Comments */}

@@ -49,6 +49,8 @@ import AdminContactCommentEditor from './Components/AdminContactCommentEditor';
 import ChatWidget from './Components/ChatWidget';
 import AdminChat from './Components/AdminChat';
 import NotificationsPage from './Components/NotificationsPage';
+import ScheduleCalendar from './Components/ScheduleCalendar';
+import MapPage from './Components/MapPage';
 
 function App() {
   return (
@@ -129,6 +131,8 @@ function MainApp() {
             <Route path="/inspections" element={<Inspections />} />
             <Route path="/businesses" element={<Businesses />} />
             <Route path="/business/:id" element={<BusinessDetail />} />
+            <Route path="/calendar" element={<ScheduleCalendar />} />
+            <Route path="/map" element={<MapPage />} />
             <Route path="/codes" element={<Codes />} />
             <Route path="/code/:id" element={<CodeDetail />} />
             <Route path="/code/:id/edit" element={<CodeEdit />} />

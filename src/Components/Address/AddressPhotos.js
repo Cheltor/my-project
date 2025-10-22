@@ -13,21 +13,75 @@ const AddressPhotos = ({ addressId }) => {
   const photosPerPage = 6; // Define how many photos you want per page
 
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/addresses/${addressId}/photos`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch photos');
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const base = process.env.REACT_APP_API_URL;
+
+        // 1) Address comment photos (graceful on 404)
+        let addressPhotos = [];
+        try {
+          const r = await fetch(`${base}/addresses/${addressId}/photos`);
+          if (r.ok) {
+            addressPhotos = await r.json();
+          }
+        } catch (_) {
+          // ignore; treat as no address photos
         }
-        return response.json();
-      })
-      .then((data) => {
-        setPhotos(data);
-        setLoading(false);
-      })
-      .catch((error) => {
-        setError(error.message);
-        setLoading(false);
-      });
+
+        // 2) Violations for this address (graceful on 404)
+        let violations = [];
+        try {
+          const rv = await fetch(`${base}/addresses/${addressId}/violations`);
+          if (rv.ok) {
+            violations = await rv.json();
+          }
+        } catch (_) {
+          // ignore; treat as no violations
+        }
+
+        // 3) For each violation, fetch its photos
+        const vioPhotosArrays = await Promise.all(
+          (violations || []).map(async (v) => {
+            try {
+              const rp = await fetch(`${base}/violation/${v.id}/photos`);
+              if (rp.ok) return rp.json();
+            } catch (_) {
+              // ignore
+            }
+            return [];
+          })
+        );
+        const violationPhotos = vioPhotosArrays.flat();
+
+        // 4) Merge and sort by most recent (created_at desc); fallback to unsorted if timestamps missing
+        const toTs = (p) => {
+          const v = p?.created_at;
+          const t = v ? new Date(v).getTime() : NaN;
+          return Number.isNaN(t) ? 0 : t;
+        };
+        const merged = [
+          ...addressPhotos.map((p) => ({ ...p, _source: 'address' })),
+          ...violationPhotos.map((p) => ({ ...p, _source: 'violation' })),
+        ].sort((a, b) => toTs(b) - toTs(a));
+
+        if (!cancelled) {
+          setPhotos(merged);
+          setCurrentPage(1);
+          setLoadedImages([]);
+        }
+      } catch (e) {
+        if (!cancelled) setError('Failed to fetch photos');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, [addressId]);
 
   // Calculate total number of pages

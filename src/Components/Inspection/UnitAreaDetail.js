@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../../AuthContext';
 import CodeSelect from '../CodeSelect';
+import FileUploadInput from '../Common/FileUploadInput';
 
 export default function UnitAreaDetail() {
   const { id, areaId, unitId } = useParams(); // Extract the inspection ID, area ID, and unit ID from the URL parameters
@@ -164,12 +165,6 @@ export default function UnitAreaDetail() {
         console.error('Error creating observation:', error);
     }
 };
-
-  
-
-  const handlePhotoChange = (e) => {
-    setPhotos(Array.from(e.target.files)); // Set selected files to the state
-  };
 
   // Function to handle image click
   const handleImageClick = (url) => {
@@ -344,12 +339,16 @@ export default function UnitAreaDetail() {
               isMulti={true}
             />
           </div>
-                    <input
-            type="file"
-            multiple
-            onChange={handlePhotoChange}
-            className="mt-2"
-          />
+          <div className="mt-3">
+            <FileUploadInput
+              id="unit-observation-photos"
+              name="photos"
+              label="Photos"
+              files={photos}
+              onChange={setPhotos}
+              accept="image/*"
+            />
+          </div>
           <button
             type="submit"
             className="mt-2 bg-blue-600 text-white p-2 rounded hover:bg-blue-700"
