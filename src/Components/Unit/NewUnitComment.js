@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../AuthContext';
 import MentionsTextarea from '../MentionsTextarea';
+import FileUploadInput from '../Common/FileUploadInput';
 
 const NewUnitComment = ({ unitId, addressId, onCommentAdded }) => {
   const [newComment, setNewComment] = useState('');
