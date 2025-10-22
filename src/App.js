@@ -44,6 +44,7 @@ import NewAddressPage from './Components/Address/NewAddressPage';
 import VacancyStatusList from './Components/VacancyStatusList';
 import Review from './Components/Inspection/Review';
 import AdminDashboard from './Components/AdminDashboard';
+import AdminCodeSync from './Components/AdminCodeSync';
 import AdminCommentEditor from './Components/AdminCommentEditor';
 import AdminContactCommentEditor from './Components/AdminContactCommentEditor';
 import ChatWidget from './Components/ChatWidget';
@@ -161,6 +162,7 @@ function MainApp() {
             <Route path="/new-address" element={<NewAddressPage />} />
             <Route path="/vacancy-statuses" element={<VacancyStatusList />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/code-sync" element={<AdminCodeSync />} />
             <Route path="/admin/comments/:commentId/edit" element={<AdminCommentEditor />} />
             <Route path="/admin/contact-comments/:commentId/edit" element={<AdminContactCommentEditor />} />
             <Route path="/admin-chat" element={<AdminChat user={user} chatEnabled={chatEnabled} setChatEnabled={setChatEnabled} />} />

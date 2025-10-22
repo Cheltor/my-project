@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../AuthContext";
-import { toEasternLocaleString } from "../utils";
+import { toEasternLocaleString, formatPhoneNumber } from "../utils";
 import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
 import NewViolationForm from "./Inspection/NewViolationForm";
 import FileUploadInput from "./Common/FileUploadInput";
@@ -448,7 +448,7 @@ export default function ComplaintDetail() {
 											<span className="text-gray-500">N/A</span>
 										)}
 										<span className="text-gray-400">|</span>
-										<span>{complaint.contact.phone || "N/A"}</span>
+										<span>{complaint.contact.phone ? formatPhoneNumber(complaint.contact.phone) : "N/A"}</span>
 									</div>
 								) : (
 									<p className="text-gray-500">No contact information</p>
@@ -467,21 +467,28 @@ export default function ComplaintDetail() {
 								</div>
 								{contactResults.length > 0 && (
 									<ul className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
-										{contactResults.map((c) => (
-											<li key={c.id} className="flex items-center justify-between border rounded-md p-2">
-												<div className="text-sm">
-													<div className="font-medium text-gray-900">{c.name}</div>
-													<div className="text-gray-500 text-xs">{c.email || "—"} {c.phone ? ` | ${c.phone}` : ""}</div>
-												</div>
-												<button
-													onClick={() => handleAssignContact(c.id)}
-													disabled={assigningContact}
-													className="rounded-md bg-indigo-600 px-2 py-1 text-xs font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-indigo-500"
-												>
-													Assign
-												</button>
-											</li>
-										))}
+										{contactResults.map((c) => {
+											const formattedPhone = c.phone ? formatPhoneNumber(c.phone) : '';
+											const phoneLabel = formattedPhone !== 'N/A' ? formattedPhone : '';
+
+											return (
+												<li key={c.id} className="flex items-center justify-between border rounded-md p-2">
+													<div className="text-sm">
+														<div className="font-medium text-gray-900">{c.name}</div>
+														<div className="text-gray-500 text-xs">
+															{c.email || "—"}{phoneLabel ? ` | ${phoneLabel}` : ''}
+														</div>
+													</div>
+													<button
+														onClick={() => handleAssignContact(c.id)}
+														disabled={assigningContact}
+														className="rounded-md bg-indigo-600 px-2 py-1 text-xs font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-indigo-500"
+													>
+														Assign
+													</button>
+												</li>
+											);
+										})}
 									</ul>
 								)}
 

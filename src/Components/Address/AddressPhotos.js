@@ -7,8 +7,7 @@ const AddressPhotos = ({ addressId }) => {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(null); // Track the absolute index of the selected photo
   const [currentPage, setCurrentPage] = useState(1); // Current page state
   const [editingPage, setEditingPage] = useState(false); // Track whether the page number is being edited
-  const [inputPage, setInputPage] = useState(currentPage); // Hold the page input value
-  const [pageError, setPageError] = useState('');
+  const [pageInput, setPageInput] = useState(''); // Page input value (string)
   const [loadedImages, setLoadedImages] = useState([]); // Track loaded images
   const photosPerPage = 6; // Define how many photos you want per page
 
@@ -107,29 +106,18 @@ const AddressPhotos = ({ addressId }) => {
     }
   };
 
-  // Function to handle the page number input change
-  const handlePageInputChange = (e) => {
-    const value = e.target.value;
-    if (/^\d*$/.test(value)) { // Ensure the input is a number
-      setInputPage(value);
-    }
+  // Inline edit helpers (match Inspections.js behavior)
+  const startEditPage = () => {
+    setPageInput(String(currentPage));
+    setEditingPage(true);
   };
 
-  // Handle pressing "Enter" or blurring the input field
-  const handlePageSubmit = () => {
-    const pageNumber = parseInt(inputPage, 10);
-    if (Number.isNaN(pageNumber) || pageNumber < 1 || pageNumber > totalPages) {
-      setPageError(`Enter a number between 1 and ${totalPages}`);
-      return;
+  const applyPageInput = () => {
+    const n = parseInt(pageInput, 10);
+    if (!Number.isNaN(n) && n >= 1 && n <= totalPages) {
+      setCurrentPage(n);
     }
-    setCurrentPage(pageNumber); // Set to the desired page if it's valid
-    setEditingPage(false); // Exit edit mode
-    setPageError('');
-  };
-
-  // Handle when the user clicks outside the input field
-  const handlePageBlur = () => {
-    handlePageSubmit();
+    setEditingPage(false);
   };
 
   // Function to close the modal when clicking outside
@@ -195,8 +183,8 @@ const AddressPhotos = ({ addressId }) => {
         ))}
       </div>
 
-      {/* Pagination controls */}
-      <div className="flex justify-between items-center mt-4">
+      {/* Pagination controls (consistent with Inspections.js) */}
+      <div className="mt-4 flex justify-between items-center">
         <button
           onClick={handlePreviousPage}
           className={`px-4 py-2 bg-blue-500 text-white rounded ${currentPage === 1 && 'opacity-50 cursor-not-allowed'}`}
@@ -205,28 +193,27 @@ const AddressPhotos = ({ addressId }) => {
           Previous
         </button>
 
-        {/* Page number with editable input */}
-        <div className="text-gray-700">
+        <div className="text-sm text-gray-700">
           {editingPage ? (
-            <div>
-              <input
-                type="number"
-                min={1}
-                max={totalPages}
-                value={inputPage}
-                onChange={(e) => { setInputPage(e.target.value); setPageError(''); }}
-                onBlur={handlePageBlur}
-                onKeyDown={(e) => e.key === 'Enter' && handlePageSubmit()}
-                className={`border px-2 py-1 w-16 text-center ${pageError ? 'border-red-500' : ''}`}
-                autoFocus
-              />
-              {pageError && <div className="text-xs text-red-600 mt-1">{pageError}</div>}
-            </div>
+            <input
+              type="number"
+              min={1}
+              max={totalPages}
+              value={pageInput}
+              onChange={(e) => setPageInput(e.target.value)}
+              onBlur={applyPageInput}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') applyPageInput();
+                if (e.key === 'Escape') setEditingPage(false);
+              }}
+              className="w-20 px-2 py-1 border rounded text-center"
+              autoFocus
+            />
           ) : (
-            <span onClick={() => { setEditingPage(true); setInputPage(currentPage); }} className="cursor-pointer">
-              Page {currentPage}
-            </span>
-          )} of {totalPages}
+            <button onClick={startEditPage} className="underline">
+              Page {currentPage} of {totalPages}
+            </button>
+          )}
         </div>
 
         <button

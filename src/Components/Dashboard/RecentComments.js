@@ -18,8 +18,8 @@ const RecentComments = ({ limit = 10, className = '', startExpanded = false }) =
   const [availableUsers, setAvailableUsers] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState(null);
 
-  const addressCacheRef = useRef(new Map());
-  const unitCacheRef = useRef(new Map());
+  // We no longer fetch address/unit details per item; rely on comment.combadd and unit_id
+  const mentionsCacheRef = useRef(new Map()); // commentId -> [User]
 
   const applyFilters = useCallback((items) => {
     let result = items;
@@ -34,43 +34,33 @@ const RecentComments = ({ limit = 10, className = '', startExpanded = false }) =
   }, [mineOnly, selectedUserId, user]);
 
   const enrichItems = useCallback(async (items) => {
-    const addressCache = addressCacheRef.current;
-    const unitCache = unitCacheRef.current;
+    const mentionsCache = mentionsCacheRef.current;
 
-    const missingAddressIds = Array.from(new Set(
+    // Fetch mentions only when not already present from API and not cached
+    await Promise.all(
       items
-        .map((c) => c.address_id)
-        .filter((id) => id && !addressCache.has(id))
-    ));
-    const missingUnitIds = Array.from(new Set(
-      items
-        .map((c) => c.unit_id)
-        .filter((id) => id && !unitCache.has(id))
-    ));
-
-    await Promise.all([
-      Promise.all(missingAddressIds.map(async (id) => {
-        try {
-          const resp = await fetch((process.env.REACT_APP_API_URL || '') + '/addresses/' + id);
-          if (resp.ok) addressCache.set(id, await resp.json());
-        } catch {
-          // ignore individual failures
-        }
-      })),
-      Promise.all(missingUnitIds.map(async (id) => {
-        try {
-          const resp = await fetch((process.env.REACT_APP_API_URL || '') + '/units/' + id);
-          if (resp.ok) unitCache.set(id, await resp.json());
-        } catch {
-          // ignore individual failures
-        }
-      })),
-    ]);
+        .filter((c) => !Array.isArray(c.mentions))
+        .map((c) => c.id)
+        .filter((id) => id && !mentionsCache.has(id))
+        .map(async (id) => {
+          try {
+            const resp = await fetch((process.env.REACT_APP_API_URL || '') + `/comments/${id}/mentions`);
+            if (resp.ok) {
+              const users = await resp.json();
+              mentionsCache.set(id, Array.isArray(users) ? users : []);
+            } else {
+              mentionsCache.set(id, []);
+            }
+          } catch {
+            mentionsCache.set(id, []);
+          }
+        })
+    );
 
     return items.map((c) => ({
       ...c,
-      address: addressCache.get(c.address_id) || null,
-      unit: c.unit_id ? (unitCache.get(c.unit_id) || null) : null,
+      // Use mentions from API if present, otherwise from cache
+      mentions: Array.isArray(c.mentions) ? c.mentions : (mentionsCache.get(c.id) || []),
     }));
   }, []);
 
@@ -196,16 +186,19 @@ const RecentComments = ({ limit = 10, className = '', startExpanded = false }) =
             const commentUserName = (comment.user && (comment.user.name || comment.user.email)) || 'Unknown user';
             const unitLink = comment.unit_id ? '/address/' + comment.address_id + '/unit/' + comment.unit_id : null;
             const addressLink = '/address/' + comment.address_id;
+            const addressLabel = comment.combadd
+              || (comment.address && comment.address.combadd)
+              || ('Address #' + comment.address_id);
 
             return (
               <li key={comment.id} className="py-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 text-xs text-gray-600">
-                      {comment.unit_id && comment.unit ? (
+                      {comment.unit_id ? (
                         <>
                           <Link to={addressLink} className="text-indigo-700 hover:underline">
-                            {comment.address && comment.address.combadd ? comment.address.combadd : 'Address #' + comment.address_id}
+                            {addressLabel}
                           </Link>
                           <span className="mx-1">•</span>
                           <Link to={unitLink} className="text-indigo-700 hover:underline">
@@ -214,11 +207,25 @@ const RecentComments = ({ limit = 10, className = '', startExpanded = false }) =
                         </>
                       ) : (
                         <Link to={addressLink} className="text-indigo-700 hover:underline">
-                          {comment.address && comment.address.combadd ? comment.address.combadd : 'Address #' + comment.address_id}
+                          {addressLabel}
                         </Link>
                       )}
                     </div>
                     <p className="text-sm text-gray-900 whitespace-pre-line">{contentPreview}</p>
+                    {Array.isArray(comment.mentions) && comment.mentions.length > 0 && (
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        <span className="text-[11px] uppercase tracking-wide text-gray-500">Mentions:</span>
+                        {comment.mentions.map((m) => (
+                          <span
+                            key={m.id}
+                            className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10"
+                            title={m.email}
+                          >
+                            @{m.name || m.email || `user-${m.id}`}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <p className="mt-1 text-xs text-gray-500">
                       {commentUserName} • {formatDateTime(comment.created_at)}
                     </p>

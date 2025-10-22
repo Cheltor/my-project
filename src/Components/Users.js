@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom'; // Import Link for navigation
-import { getRoleName } from './../utils'; // Import the utility function
+import { getRoleName, formatPhoneNumber } from './../utils'; // Import utility functions
 
 const Users = () => {
   const [users, setUsers] = useState([]); // State to store all users
@@ -175,9 +175,13 @@ const Users = () => {
                         'whitespace-nowrap px-3 py-4 text-sm text-gray-500',
                       )}
                     >
-                      <a href={`tel:${user.phone}`} className="text-indigo-600 hover:text-indigo-900">
-                        {user.phone || 'N/A'}
-                      </a>
+                      {user.phone ? (
+                        <a href={`tel:${user.phone}`} className="text-indigo-600 hover:text-indigo-900">
+                          {formatPhoneNumber(user.phone)}
+                        </a>
+                      ) : (
+                        <span>N/A</span>
+                      )}
                     </td>
                     <td
                       className={classNames(

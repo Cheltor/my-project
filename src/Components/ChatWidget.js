@@ -185,7 +185,11 @@ export default function ChatWidget() {
                     skipHtml
                     components={{
                       p: ({ node, ...props }) => <p {...props} />,
-                      a: ({ node, ...props }) => <a target="_blank" rel="noopener noreferrer" {...props} />,
+                      a: ({ node, children, ...props }) => (
+                        <a target="_blank" rel="noopener noreferrer" {...props}>
+                          {children}
+                        </a>
+                      ),
                     }}
                   >
                     {String(message.content ?? '')}

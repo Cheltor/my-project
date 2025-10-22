@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { toEasternLocaleString } from '../utils';
+import { toEasternLocaleString, formatPhoneNumber } from '../utils';
 
 const RESOURCE_CONFIG = [
   {
@@ -135,7 +135,13 @@ const normalizeValue = (value) => {
   if (value instanceof Date) return toEasternLocaleString(value);
   if (typeof value === 'string') {
     const trimmed = value.trim();
-    return trimmed.length ? trimmed : '—';
+    if (!trimmed.length) return '—';
+    const digits = trimmed.replace(/\D/g, '');
+    if (digits.length === 10) {
+      const formatted = formatPhoneNumber(trimmed);
+      if (formatted !== 'N/A') return formatted;
+    }
+    return trimmed;
   }
   if (Array.isArray(value)) {
     if (!value.length) return '—';
@@ -158,7 +164,7 @@ const normalizeValue = (value) => {
     if (value.title) return value.title;
     if (value.combadd) return value.combadd;
     if (value.email) return value.email;
-    if (value.phone) return value.phone;
+    if (value.phone) return formatPhoneNumber(value.phone);
     return JSON.stringify(value);
   }
   return value;

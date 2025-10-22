@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { formatPhoneNumber } from '../utils';
 
 
 const BusinessDetails = () => {
@@ -277,7 +278,7 @@ const BusinessDetails = () => {
                     <div className="space-y-1 mt-4">
                       <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Business Name:</span> {business.name || 'N/A'}</p>
                       <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Email:</span> {business.email ? (<a href={`mailto:${business.email}`} className="text-indigo-600 hover:text-indigo-700">{business.email}</a>) : 'N/A'}</p>
-                      <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Phone:</span> {business.phone || 'N/A'}</p>
+                      <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Phone:</span> {business.phone ? formatPhoneNumber(business.phone) : 'N/A'}</p>
                       <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Website:</span> {business.website ? (<a href={business.website} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-700">{business.website}</a>) : 'N/A'}</p>
                       <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Trading As:</span> {business.trading_as || 'N/A'}</p>
                       {business.unit_id && units.length > 0 ? (
@@ -440,10 +441,10 @@ const BusinessDetails = () => {
                         <a
                           href={`tel:${contact.phone}`}
                           className="ml-2 inline-flex items-center rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
-                          title={`Call ${contact.phone}`}
+                          title={`Call ${formatPhoneNumber(contact.phone)}`}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm0 10a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2zm10-10a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zm0 10a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
-                          {contact.phone}
+                          {formatPhoneNumber(contact.phone)}
                         </a>
                       )}
                     </div>

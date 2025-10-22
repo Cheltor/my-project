@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { getRoleName, roles } from './../utils'; // Import the utility function and roles
+import { getRoleName, roles, formatPhoneNumber } from './../utils'; // Import the utility function and roles
 
 const UserDetail = () => {
   const { id } = useParams(); // Extract the user ID from the URL
@@ -107,10 +107,12 @@ const UserDetail = () => {
                   onChange={handleInputChange}
                   className="ml-2 border border-gray-300 rounded-md p-1"
                 />
-              ) : (
+              ) : user.phone ? (
                 <a href={`tel:${user.phone}`} className="ml-2 text-indigo-600 hover:text-indigo-900">
-                  {user.phone || 'N/A'}
+                  {formatPhoneNumber(user.phone)}
                 </a>
+              ) : (
+                <span className="ml-2">N/A</span>
               )}
             </div>
             <div className="text-sm text-gray-600">

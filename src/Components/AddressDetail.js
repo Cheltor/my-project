@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { formatPhoneNumber } from '../utils';
 import AddressPhotos from './Address/AddressPhotos'; // Update the import statement
 import Citations from './Address/AddressCitations';
 import Violations from './Address/AddressViolations';
@@ -985,10 +986,10 @@ const AddressDetails = () => {
                       <a
                         href={`tel:${contact.phone}`}
                         className="ml-2 inline-flex items-center px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors text-xs font-medium"
-                        title={`Call ${contact.phone}`}
+                        title={`Call ${formatPhoneNumber(contact.phone)}`}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm0 10a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2zm10-10a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zm0 10a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
-                        {contact.phone}
+                        {formatPhoneNumber(contact.phone)}
                       </a>
                     )}
                   </div>
@@ -1174,22 +1175,28 @@ const AddressDetails = () => {
               <p className="text-gray-500">No businesses associated with this address.</p>
             ) : (
               <ul className="divide-y divide-gray-200 border border-gray-200 rounded-md">
-                {businesses.map((b) => (
-                  <li key={b.id} className="p-3 flex items-center justify-between">
-                    <div>
-                      <Link to={`/business/${b.id}`} className="font-semibold text-blue-700 hover:underline hover:text-blue-900">
-                        {b.name || 'Untitled Business'}
-                      </Link>
-                      {b.trading_as && (
-                        <div className="text-xs text-gray-500">Trading as: {b.trading_as}</div>
-                      )}
-                      <div className="text-xs text-gray-500">{b.phone || b.email || b.website || ''}</div>
-                    </div>
-                    <span className={`text-xs px-2 py-1 rounded ${b.is_closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                      {b.is_closed ? 'Closed' : 'Open'}
-                    </span>
-                  </li>
-                ))}
+                {businesses.map((b) => {
+                  const formattedPhone = b.phone ? formatPhoneNumber(b.phone) : '';
+                  const phoneLabel = formattedPhone !== 'N/A' ? formattedPhone : '';
+                  const contactInfo = phoneLabel || b.email || b.website || '';
+
+                  return (
+                    <li key={b.id} className="p-3 flex items-center justify-between">
+                      <div>
+                        <Link to={`/business/${b.id}`} className="font-semibold text-blue-700 hover:underline hover:text-blue-900">
+                          {b.name || 'Untitled Business'}
+                        </Link>
+                        {b.trading_as && (
+                          <div className="text-xs text-gray-500">Trading as: {b.trading_as}</div>
+                        )}
+                        <div className="text-xs text-gray-500">{contactInfo}</div>
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded ${b.is_closed ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                        {b.is_closed ? 'Closed' : 'Open'}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

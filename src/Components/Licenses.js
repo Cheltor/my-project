@@ -260,8 +260,8 @@ export default function Licenses() {
         </table>
       </div>
 
-      {/* Pagination Controls */}
-      <div className="mt-4 flex justify-between">
+      {/* Pagination Controls (match Inspections.js style) */}
+      <div className="mt-4 flex justify-between items-center">
         <button
           onClick={() => paginate(currentPage - 1)}
           disabled={currentPage === 1}
@@ -269,9 +269,28 @@ export default function Licenses() {
         >
           Previous
         </button>
-        <p className="text-sm text-gray-700">
-          Page {currentPage} of {totalPages}
-        </p>
+        <div className="text-sm text-gray-700">
+          {editingPage ? (
+            <input
+              type="number"
+              min={1}
+              max={totalPages}
+              value={pageInput}
+              onChange={(e) => setPageInput(e.target.value)}
+              onBlur={applyPageInput}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') applyPageInput();
+                if (e.key === 'Escape') setEditingPage(false);
+              }}
+              className="w-20 px-2 py-1 border rounded"
+              autoFocus
+            />
+          ) : (
+            <button onClick={startEditPage} className="underline">
+              Page {currentPage} of {totalPages}
+            </button>
+          )}
+        </div>
         <button
           onClick={() => paginate(currentPage + 1)}
           disabled={currentPage === totalPages}

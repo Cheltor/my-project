@@ -5,7 +5,8 @@ import {
   getAttachmentDisplayLabel,
   getAttachmentFilename,
   isImageAttachment,
-  toEasternLocaleString
+  toEasternLocaleString,
+  formatPhoneNumber
 } from '../utils';
 
 export default function InspectionDetail() {
@@ -263,7 +264,7 @@ export default function InspectionDetail() {
                 <a href={`mailto:${inspection.inspector.email}`} className="text-indigo-600 hover:text-indigo-900">
                   {inspection.inspector.email}
                 </a>
-              ) : "N/A"} | {inspection.inspector?.phone || "N/A"}
+              ) : "N/A"} | {inspection.inspector?.phone ? formatPhoneNumber(inspection.inspector.phone) : "N/A"}
             </dd>
           </div>*/}
 
@@ -412,7 +413,7 @@ export default function InspectionDetail() {
                   </Link> | 
                   <a href={`mailto:${inspection.contact.email}`} className="text-indigo-600 hover:text-indigo-900">
                     {inspection.contact.email}
-                  </a> | {inspection.contact.phone || "N/A"}
+                  </a> | {inspection.contact.phone ? formatPhoneNumber(inspection.contact.phone) : "N/A"}
                 </>
               ) : "No contact information available"}
             </dd>
