@@ -192,7 +192,8 @@ const AddressDetails = () => {
   const [showAddInspectionForm, setShowAddInspectionForm] = useState(false);
   const [inspectionFormType, setInspectionFormType] = useState('building_permit');
   const [inspectionsRefreshKey, setInspectionsRefreshKey] = useState(0);
-  const [toast, setToast] = useState({ show: false, message: '' });
+  const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
+  const [isSyncingOwner, setIsSyncingOwner] = useState(false);
 
   const handleInspectionCreated = (created) => {
     // Close form, ensure Inspections tab is active, refresh list and update count optimistically
@@ -200,8 +201,8 @@ const AddressDetails = () => {
     setActiveTab('inspections');
     setInspectionsRefreshKey((k) => k + 1);
     setCounts((prev) => ({ ...prev, inspections: (prev.inspections || 0) + 1 }));
-    setToast({ show: true, message: 'Inspection created successfully.' });
-    window.setTimeout(() => setToast({ show: false, message: '' }), 3000);
+    setToast({ show: true, message: 'Inspection created successfully.', variant: 'success' });
+    window.setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
   };
   
   // Units sorted numerically for the sticky comment select
@@ -230,6 +231,11 @@ const AddressDetails = () => {
       : [];
     return [{ id: '', label: 'No unit attached' }, ...baseOptions];
   }, [sortedUnitsForSelect]);
+  const canSyncOwner = useMemo(() => {
+    const account = String(address?.property_id || address?.pid || '').trim();
+    const districtVal = String(address?.district || '').trim();
+    return Boolean(account && districtVal);
+  }, [address]);
 
   // Filter units for the Units tab display using the search term (matches name or number)
   const filteredUnitsForList = useMemo(() => {
@@ -542,6 +548,38 @@ const AddressDetails = () => {
     if (diffMonths < 12) return `${diffMonths}mo ago`;
     const diffYears = Math.floor(diffMonths / 12);
     return `${diffYears}y ago`;
+  const handleRefreshOwner = async () => {
+    if (!canSyncOwner) {
+      setToast({ show: true, message: 'SDAT sync needs both a district and account number.', variant: 'error' });
+      window.setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 4000);
+      return;
+    }
+    setIsSyncingOwner(true);
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${id}/refresh-owner`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.detail || 'Failed to refresh owner information.');
+      }
+      if (data?.address) {
+        setAddress(data.address);
+      }
+      const updatedFields = Array.isArray(data?.updated_fields) ? data.updated_fields : [];
+      const msg = updatedFields.length
+        ? `Updated ${updatedFields.join(', ')} from SDAT.`
+        : 'SDAT owner information already matches this record.';
+      setToast({ show: true, message: msg, variant: 'success' });
+      window.setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3500);
+    } catch (err) {
+      setToast({ show: true, message: err.message || 'Unable to refresh owner information.', variant: 'error' });
+      window.setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 4500);
+    } finally {
+      setIsSyncingOwner(false);
+    }
   };
 
   if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
@@ -560,6 +598,7 @@ const AddressDetails = () => {
     2: 'Single Family License',
     3: 'Multifamily License',
   };
+  const toastBgClass = toast.variant === 'error' ? 'bg-red-600' : 'bg-emerald-600';
 
   const totalRecords = Object.values(counts || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
   const vacancyStatusLabel = address.vacancy_status ? titlize(address.vacancy_status) : 'Unknown';
@@ -618,10 +657,24 @@ const AddressDetails = () => {
               <path d="M9 12l2 2 4-4" />
               <circle cx="12" cy="12" r="9" />
             </svg>
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+          <div className={`flex items-center gap-2 rounded-md ${toastBgClass} text-white px-4 py-2 shadow-lg`}>
+            {toast.variant === 'error' ? (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                <circle cx="12" cy="12" r="9" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                <path d="M9 12l2 2 4-4" />
+                <circle cx="12" cy="12" r="9" />
+              </svg>
+            )}
             <span className="text-sm font-medium">{toast.message}</span>
-            <button
-              type="button"
-              onClick={() => setToast({ show: false, message: '' })}
+          <button
+            type="button"
+            onClick={() => setToast((prev) => ({ ...prev, show: false }))}
               className="ml-2 text-white/80 hover:text-white"
               aria-label="Close notification"
             >
@@ -888,6 +941,270 @@ const AddressDetails = () => {
                         type="button"
                         onClick={() => setIsEditing(false)}
                         className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+          {address.aka && (
+            <p className="mt-2 text-xs text-gray-500 italic">AKA: {address.aka}</p>
+          )}
+        </div>
+      </div>
+
+  {/* External Links: Google Maps + SDAT (if available) + Quick tabs */}
+  <div className="flex flex-wrap items-center gap-2 mt-2">
+        <button
+          type="button"
+          aria-label="Open address in Google Maps"
+          onClick={() => {
+            const parts = [address.streetnumb, address.streetname, address.ownerstate, address.ownerzip].filter(Boolean).join(' ');
+            const query = encodeURIComponent(parts || address.combadd || '');
+            window.open(`https://www.google.com/maps/search/?api=1&query=${query}`,'_blank','noopener');
+          }}
+          className="group inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-emerald-500 to-green-600 px-4 py-2 text-sm font-medium text-white shadow transition-all hover:from-emerald-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 active:scale-[.97]"
+       >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-5 w-5 text-white drop-shadow-sm"
+          >
+            <path d="M12 21s6-5.686 6-11a6 6 0 1 0-12 0c0 5.314 6 11 6 11z" />
+            <circle cx="12" cy="10" r="2.6" />
+          </svg>
+          <span className="whitespace-nowrap">Open in Google Maps</span>
+        </button>
+
+        {(() => {
+          const district = (address.district || '').trim();
+          const propertyId = (address.property_id || '').trim();
+          if (!district || !propertyId) return null;
+          const sdatUrl = `https://sdat.dat.maryland.gov/RealProperty/Pages/viewdetails.aspx?County=17&SearchType=ACCT&District=${encodeURIComponent(district)}&AccountNumber=${encodeURIComponent(propertyId)}`;
+          return (
+            <a
+              href={sdatUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-2 text-sm font-medium text-white shadow transition-all hover:from-amber-600 hover:to-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 active:scale-[.97]"
+              title={`Open SDAT for District ${district}, Account ${propertyId}`}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-5 w-5 text-white drop-shadow-sm"
+              >
+                <path d="M3 7a2 2 0 0 1 2-2h6l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+                <path d="M14 12h6" />
+              </svg>
+              <span className="whitespace-nowrap">Open SDAT</span>
+            </a>
+          );
+        })()}
+
+        <button
+          type="button"
+          onClick={handleRefreshOwner}
+          disabled={isSyncingOwner || !canSyncOwner}
+          className={`group inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-2 text-sm font-medium text-white shadow transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 active:scale-[.97] ${isSyncingOwner || !canSyncOwner ? 'cursor-not-allowed opacity-60' : 'hover:from-indigo-600 hover:to-purple-700'}`}
+          title={canSyncOwner ? 'Sync owner info from SDAT' : 'Provide district and account number to enable sync'}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`h-5 w-5 text-white drop-shadow-sm ${isSyncingOwner ? 'animate-spin' : ''}`}
+          >
+            <path d="M21 2v6h-6" />
+            <path d="M3 12a9 9 0 0 1 15.48-5.94L21 8" />
+            <path d="M3 22v-6h6" />
+            <path d="M21 12a9 9 0 0 1-15.48 5.94L3 16" />
+          </svg>
+          <span className="whitespace-nowrap">
+            {isSyncingOwner ? 'Syncing…' : 'Sync Owner from SDAT'}
+          </span>
+        </button>
+
+        {/* Quick access: Contacts */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('contacts')}
+          aria-pressed={activeTab === 'contacts'}
+          className={`${tabBtnBase} ${activeTab === 'contacts' ? tabBtnActive : tabBtnInactive}`}
+          title="View Contacts"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="3" />
+          </svg>
+          <span>Contacts ({counts.contacts || 0})</span>
+        </button>
+
+        {/* Quick access: Businesses */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('businesses')}
+          aria-pressed={activeTab === 'businesses'}
+          className={`${tabBtnBase} ${activeTab === 'businesses' ? tabBtnActive : tabBtnInactive}`}
+          title="View Businesses"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M3 21V7a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2v14" />
+            <path d="M3 10h18" />
+          </svg>
+          <span>Businesses ({Array.isArray(businesses) ? businesses.length : 0})</span>
+        </button>
+
+        {/* Main tabs: Units → Permits (same row styling) */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('units')}
+          aria-pressed={activeTab === 'units'}
+          className={`${tabBtnBase} ${activeTab === 'units' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M3 21V7a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2v14" />
+            <path d="M3 10h18" />
+            <path d="M7 14h2M11 14h2M15 14h2M7 18h2M11 18h2M15 18h2" />
+          </svg>
+          <span>Units ({Array.isArray(units) ? units.length : 0})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('comments')}
+          aria-pressed={activeTab === 'comments'}
+          className={`${tabBtnBase} ${activeTab === 'comments' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M21 15a4 4 0 0 1-4 4H8l-4 3V7a4 4 0 0 1 4-4h9a4 4 0 0 1 4 4z" />
+            <path d="M8 9h8M8 12h5" />
+          </svg>
+          <span>Comments ({counts.comments || 0})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('violations')}
+          aria-pressed={activeTab === 'violations'}
+          className={`${tabBtnBase} ${activeTab === 'violations' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M12 9v4" />
+            <path d="M12 17h.01" />
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          </svg>
+          <span>Violations ({counts.violations || 0})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('photos')}
+          aria-pressed={activeTab === 'photos'}
+          className={`${tabBtnBase} ${activeTab === 'photos' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M4 7h3l2-3h6l2 3h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" />
+            <circle cx="12" cy="13" r="3" />
+          </svg>
+          <span>Photos ({counts.photos || 0})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('citations')}
+          aria-pressed={activeTab === 'citations'}
+          className={`${tabBtnBase} ${activeTab === 'citations' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <path d="M14 2v6h6" />
+            <path d="M16 13H8M16 17H8M10 9H8" />
+          </svg>
+          <span>Citations ({counts.citations || 0})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('inspections')}
+          aria-pressed={activeTab === 'inspections'}
+          className={`${tabBtnBase} ${activeTab === 'inspections' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M21 21l-3.5-3.5" />
+          </svg>
+          <span>Inspections ({counts.inspections || 0})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('complaints')}
+          aria-pressed={activeTab === 'complaints'}
+          className={`${tabBtnBase} ${activeTab === 'complaints' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+          </svg>
+          <span>Complaints ({counts.complaints || 0})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('licenses')}
+          aria-pressed={activeTab === 'licenses'}
+          className={`${tabBtnBase} ${activeTab === 'licenses' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <circle cx="8" cy="12" r="2" />
+            <path d="M12 12h6M12 16h6" />
+          </svg>
+          <span>Licenses ({counts.licenses || 0})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('permits')}
+          aria-pressed={activeTab === 'permits'}
+          className={`${tabBtnBase} ${activeTab === 'permits' ? tabBtnActive : tabBtnInactive}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+            <path d="M9 3h6a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1V5a2 2 0 0 1 2-2z" />
+            <path d="M9 5h6" />
+            <path d="M9 14l2 2 4-4" />
+          </svg>
+          <span>Permits ({counts.permits || 0})</span>
+        </button>
+      </div>
+
+      {/* Units Tab Content */}
+      {activeTab === 'units' && (
+        <div className="mb-6">
+          {/* Unit Search Input with Dropdown */}
+          {units.length > 5 && (
+            <div className="relative mb-4">
+              <label htmlFor="unit-search" className="block text-lg font-semibold text-gray-700">
+                Search Units by Number:
+              </label>
+              <input
+                type="text"
+                id="unit-search"
+                placeholder="Enter unit number..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              />
+              {showDropdown && (
+                <div className="absolute w-full bg-white shadow-md rounded-md z-50 mt-1 max-h-60 overflow-auto">
+                  <ul>
+                    {filteredUnits.map((unit) => (
+                      <li
+                        key={unit.id}
+                        onMouseDown={() => handleUnitSelect(unit.id)}
+                        className="cursor-pointer p-2 hover:bg-gray-200"
                       >
                         Cancel
                       </button>

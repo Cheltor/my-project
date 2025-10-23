@@ -10,7 +10,9 @@ const RESOURCE_CONFIG = [
     listEndpoint: '/addresses/',
     deleteEndpoint: (id) => `/addresses/${id}`,
     viewRoute: (id) => `/address/${id}`,
-    fields: ['id', 'combadd', 'city', 'zip', 'status'],
+    fields: ['id', 'pid', 'combadd', 'city', 'zip', 'status'],
+    // Enable searching by parcel ID (pid) without adding a new column
+    searchFields: ['id', 'combadd', 'city', 'zip', 'status', 'pid'],
   },
   {
     key: 'contacts',
@@ -295,7 +297,8 @@ const AdminDashboard = () => {
     if (!searchTerm.trim()) return items;
     const query = searchTerm.trim().toLowerCase();
     return items.filter((item) => {
-      const values = resource.fields || Object.keys(item);
+      // Prefer explicit search fields, then display fields, then all keys
+      const values = resource.searchFields || resource.fields || Object.keys(item);
       return values.some((field) => {
         const value = getNestedValue(item, field);
         if (value === undefined || value === null) return false;
