@@ -153,7 +153,8 @@ const AddressDetails = () => {
   const [showAddInspectionForm, setShowAddInspectionForm] = useState(false);
   const [inspectionFormType, setInspectionFormType] = useState('building_permit');
   const [inspectionsRefreshKey, setInspectionsRefreshKey] = useState(0);
-  const [toast, setToast] = useState({ show: false, message: '' });
+  const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
+  const [isSyncingOwner, setIsSyncingOwner] = useState(false);
 
   const handleInspectionCreated = (created) => {
     // Close form, ensure Inspections tab is active, refresh list and update count optimistically
@@ -161,8 +162,8 @@ const AddressDetails = () => {
     setActiveTab('inspections');
     setInspectionsRefreshKey((k) => k + 1);
     setCounts((prev) => ({ ...prev, inspections: (prev.inspections || 0) + 1 }));
-    setToast({ show: true, message: 'Inspection created successfully.' });
-    window.setTimeout(() => setToast({ show: false, message: '' }), 3000);
+    setToast({ show: true, message: 'Inspection created successfully.', variant: 'success' });
+    window.setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
   };
   
   // Units sorted numerically for the sticky comment select
@@ -181,6 +182,12 @@ const AddressDetails = () => {
     });
     return arr;
   }, [units]);
+
+  const canSyncOwner = useMemo(() => {
+    const account = String(address?.property_id || address?.pid || '').trim();
+    const districtVal = String(address?.district || '').trim();
+    return Boolean(account && districtVal);
+  }, [address]);
 
   // Filter units for the Units tab display using the search term (matches name or number)
   const filteredUnitsForList = useMemo(() => {
@@ -451,6 +458,40 @@ const AddressDetails = () => {
     }
   };
 
+  const handleRefreshOwner = async () => {
+    if (!canSyncOwner) {
+      setToast({ show: true, message: 'SDAT sync needs both a district and account number.', variant: 'error' });
+      window.setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 4000);
+      return;
+    }
+    setIsSyncingOwner(true);
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${id}/refresh-owner`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.detail || 'Failed to refresh owner information.');
+      }
+      if (data?.address) {
+        setAddress(data.address);
+      }
+      const updatedFields = Array.isArray(data?.updated_fields) ? data.updated_fields : [];
+      const msg = updatedFields.length
+        ? `Updated ${updatedFields.join(', ')} from SDAT.`
+        : 'SDAT owner information already matches this record.';
+      setToast({ show: true, message: msg, variant: 'success' });
+      window.setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3500);
+    } catch (err) {
+      setToast({ show: true, message: err.message || 'Unable to refresh owner information.', variant: 'error' });
+      window.setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 4500);
+    } finally {
+      setIsSyncingOwner(false);
+    }
+  };
+
   if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
   if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
   if (!address) return <div className="text-center mt-10">No address details available.</div>;
@@ -469,20 +510,29 @@ const AddressDetails = () => {
     2: 'Single Family License',
     3: 'Multifamily License',
   };
+  const toastBgClass = toast.variant === 'error' ? 'bg-red-600' : 'bg-emerald-600';
 
   return (
     <div className="max-w-4xl mx-auto px-5 pt-4 pb-36 sm:pb-6 bg-white shadow-md rounded-lg mt-6 space-y-8">
       {toast.show && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
-          <div className="flex items-center gap-2 rounded-md bg-emerald-600 text-white px-4 py-2 shadow-lg">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-              <path d="M9 12l2 2 4-4" />
-              <circle cx="12" cy="12" r="9" />
-            </svg>
+          <div className={`flex items-center gap-2 rounded-md ${toastBgClass} text-white px-4 py-2 shadow-lg`}>
+            {toast.variant === 'error' ? (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                <circle cx="12" cy="12" r="9" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                <path d="M9 12l2 2 4-4" />
+                <circle cx="12" cy="12" r="9" />
+              </svg>
+            )}
             <span className="text-sm font-medium">{toast.message}</span>
-            <button
-              type="button"
-              onClick={() => setToast({ show: false, message: '' })}
+          <button
+            type="button"
+            onClick={() => setToast((prev) => ({ ...prev, show: false }))}
               className="ml-2 text-white/80 hover:text-white"
               aria-label="Close notification"
             >
@@ -727,6 +777,33 @@ const AddressDetails = () => {
             </a>
           );
         })()}
+
+        <button
+          type="button"
+          onClick={handleRefreshOwner}
+          disabled={isSyncingOwner || !canSyncOwner}
+          className={`group inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-2 text-sm font-medium text-white shadow transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 active:scale-[.97] ${isSyncingOwner || !canSyncOwner ? 'cursor-not-allowed opacity-60' : 'hover:from-indigo-600 hover:to-purple-700'}`}
+          title={canSyncOwner ? 'Sync owner info from SDAT' : 'Provide district and account number to enable sync'}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`h-5 w-5 text-white drop-shadow-sm ${isSyncingOwner ? 'animate-spin' : ''}`}
+          >
+            <path d="M21 2v6h-6" />
+            <path d="M3 12a9 9 0 0 1 15.48-5.94L21 8" />
+            <path d="M3 22v-6h6" />
+            <path d="M21 12a9 9 0 0 1-15.48 5.94L3 16" />
+          </svg>
+          <span className="whitespace-nowrap">
+            {isSyncingOwner ? 'Syncing…' : 'Sync Owner from SDAT'}
+          </span>
+        </button>
 
         {/* Quick access: Contacts */}
         <button
