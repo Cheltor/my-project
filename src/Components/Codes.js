@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom'; // Import Link for navigation
 import { useAuth } from '../AuthContext';
 import AddCodeModal from './AddCodeModal';
+import CodeLink from './CodeLink';
 
 const Codes = () => {
   const { user, token } = useAuth();
@@ -242,9 +242,9 @@ const Codes = () => {
                         )}
                       >
                         {/* Link to the CodeDetail component */}
-                        <Link to={`/code/${code.id}`} className="text-indigo-600 hover:text-indigo-900">
+                        <CodeLink codeId={code.id} className="text-indigo-600 hover:text-indigo-900">
                           {code.name}
-                        </Link>
+                        </CodeLink>
                       </td>
                       <td
                         className={classNames(
