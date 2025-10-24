@@ -101,6 +101,10 @@ const ViolationDetail = () => {
   const [assignSaving, setAssignSaving] = useState(false);
   const [assignError, setAssignError] = useState(null);
   const [assignSuccess, setAssignSuccess] = useState('');
+  const [showComplianceModal, setShowComplianceModal] = useState(false);
+  const [isGeneratingCompliance, setIsGeneratingCompliance] = useState(false);
+  const [abatingViolation, setAbatingViolation] = useState(false);
+  const [isDownloadingNotice, setIsDownloadingNotice] = useState(false);
 
   useEffect(() => {
     const prefetchCommentAttachments = async (comments) => {
@@ -300,6 +304,12 @@ const ViolationDetail = () => {
     }
     return base;
   }, [assignableUsers, violation?.user_id, violation?.user]);
+  const isFormalNotice = useMemo(() => {
+    const type = typeof violation?.violation_type === 'string'
+      ? violation.violation_type.trim().toLowerCase()
+      : '';
+    return type === 'formal notice';
+  }, [violation?.violation_type]);
 
   if (loading) {
     return <p>Loading violation...</p>;
@@ -313,9 +323,47 @@ const ViolationDetail = () => {
     return <p>No violation available.</p>;
   }
 
-  // Add this handler function inside the ViolationDetail component
-  const handleDownloadNotice = async () => {
+  const handleDownloadComplianceLetter = async (closeModal = false) => {
     try {
+      setIsGeneratingCompliance(true);
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/violation/${id}/compliance-letter`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (!response.ok) throw new Error("Failed to download compliance letter");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const combadd = violation && violation.combadd ? String(violation.combadd) : `violation_${id}`;
+      const sanitize = (s) => s.replace(/[^a-zA-Z0-9]+/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+      const safeAdd = sanitize(combadd) || `violation_${id}`;
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const yy = String(now.getFullYear()).slice(-2);
+      a.download = `${safeAdd}_compliance_${mm}_${dd}_${yy}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      if (closeModal) {
+        setShowComplianceModal(false);
+      }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setIsGeneratingCompliance(false);
+    }
+  };
+
+  const handleDownloadViolationNotice = async () => {
+    try {
+      setIsDownloadingNotice(true);
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/violation/${id}/notice`,
         {
@@ -329,9 +377,7 @@ const ViolationDetail = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      // Build a filename from the violation address (combadd) and current date
       const combadd = violation && violation.combadd ? String(violation.combadd) : `violation_${id}`;
-      // sanitize combadd: replace non-alphanum with underscore, collapse multiple underscores
       const sanitize = (s) => s.replace(/[^a-zA-Z0-9]+/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
       const safeAdd = sanitize(combadd) || `violation_${id}`;
       const now = new Date();
@@ -345,6 +391,8 @@ const ViolationDetail = () => {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       alert(err.message);
+    } finally {
+      setIsDownloadingNotice(false);
     }
   };
 
@@ -401,6 +449,7 @@ const ViolationDetail = () => {
   const handleMarkAbated = async () => {
     if (!window.confirm("Are you sure you want to mark this violation as abated (closed)?")) return;
     try {
+      setAbatingViolation(true);
       const response = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/abate`, {
         method: "POST",
         headers: {
@@ -413,8 +462,11 @@ const ViolationDetail = () => {
       // Refetch violation to update UI
       const updated = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}`);
       setViolation(await updated.json());
+      setShowComplianceModal(true);
     } catch (err) {
       alert(err.message);
+    } finally {
+      setAbatingViolation(false);
     }
   };
 
@@ -441,6 +493,34 @@ const ViolationDetail = () => {
 
   return (
     <div className="border-b pb-4">
+      {showComplianceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 px-4">
+          <div className="bg-white w-full max-w-md rounded-lg shadow-xl p-6">
+            <h3 className="text-lg font-semibold text-gray-800">Print Compliance Letter</h3>
+            <p className="mt-3 text-sm text-gray-600">
+              This violation is now marked as abated. Would you like to generate a compliance letter to thank the property owner for resolving the issue?
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowComplianceModal(false)}
+                disabled={isGeneratingCompliance}
+                className="px-4 py-2 rounded border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-60"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDownloadComplianceLetter(true)}
+                disabled={isGeneratingCompliance}
+                className="px-4 py-2 rounded bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 disabled:bg-indigo-300"
+              >
+                {isGeneratingCompliance ? "Generating..." : "Print Letter"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <h2 className="text-2xl font-semibold text-gray-700">Violation Details</h2>
       <div className="bg-gray-100 p-4 rounded-lg shadow mt-4 relative">
         {selectedPhotoUrl && (
@@ -598,9 +678,10 @@ const ViolationDetail = () => {
             {violation.status === 0 && user && (
               <button
                 onClick={handleMarkAbated}
-                className="mt-2 px-4 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-semibold"
+                disabled={abatingViolation}
+                className="mt-2 px-4 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed text-xs font-semibold"
               >
-                Mark as Abated
+                {abatingViolation ? 'Marking...' : 'Mark as Abated'}
               </button>
             )}
             {/* Reopen button, only show if status is Resolved (1) and user is logged in */}
@@ -703,15 +784,27 @@ const ViolationDetail = () => {
           )}
         </div>
       </div>
-      {/* Download buttons above Violation Comments, only if status is Current (0) */}
-      {violation.status === 0 && (
+      {/* Download buttons above Violation Comments */}
+      {((violation.status === 0 || violation.status === 1) || attachments.length > 0) && (
         <div className="mt-2 mb-4 flex items-center gap-2">
-          <button
-            className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-blue-800 text-xs font-semibold"
-            onClick={handleDownloadNotice}
-          >
-            Download Violation Notice
-          </button>
+          {violation.status === 0 && isFormalNotice && (
+            <button
+              className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-blue-800 disabled:bg-gray-400 text-xs font-semibold"
+              onClick={handleDownloadViolationNotice}
+              disabled={isDownloadingNotice}
+            >
+              {isDownloadingNotice ? 'Preparing...' : 'Download Violation Notice'}
+            </button>
+          )}
+          {violation.status === 1 && (
+            <button
+              className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-blue-800 disabled:bg-gray-400 text-xs font-semibold"
+              onClick={() => handleDownloadComplianceLetter()}
+              disabled={isGeneratingCompliance}
+            >
+              {isGeneratingCompliance ? 'Generating...' : 'Download Compliance Letter'}
+            </button>
+          )}
           {attachments.length > 0 && (
             <button
               type="button"
