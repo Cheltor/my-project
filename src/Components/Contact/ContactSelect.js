@@ -1,7 +1,7 @@
 import React from "react";
 import AsyncSelect from "react-select/async";
 
-export default function ContactSelect({ loadContactOptions, onSelectContact }) {
+export default function ContactSelect({ loadContactOptions, onSelectContact, placeholder }) {
   return (
     <div className="mb-4">
       <label htmlFor="contact_id" className="block text-sm font-medium text-gray-700">
@@ -10,7 +10,7 @@ export default function ContactSelect({ loadContactOptions, onSelectContact }) {
       <AsyncSelect
         cacheOptions
         loadOptions={loadContactOptions}
-        placeholder="Type to search contacts by name or email..."
+        placeholder={placeholder || "Type to search contacts by name or email..."}
         isClearable
         onChange={onSelectContact}
         className="mt-1"

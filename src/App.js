@@ -52,6 +52,7 @@ import AdminChat from './Components/AdminChat';
 import NotificationsPage from './Components/NotificationsPage';
 import ScheduleCalendar from './Components/ScheduleCalendar';
 import MapPage from './Components/MapPage';
+import ResidentConcernPage from './Components/Public/ResidentConcernPage';
 
 function App() {
   return (
@@ -145,6 +146,7 @@ function MainApp() {
             <Route path="/complaint/:id" element={<ComplaintDetail />} />
             <Route path="/citations" element={<Citations />} />
             <Route path="/citation/:id" element={<CitationDetailsPage />} />
+            <Route path="/resident-concern" element={<ResidentConcernPage standalone={false} />} />
             <Route path="/violation/:id" element={<ViolationDetail />} />
             <Route path="/inspection/:id" element={<InspectionDetail />} />
             <Route path="/inspections/:id/conduct" element={<Conduct />} />
@@ -175,6 +177,7 @@ function MainApp() {
         // If the user is not logged in, show the Login page
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/resident-concern" element={<ResidentConcernPage />} />
           <Route path="*" element={<Login />} /> {/* Redirect any other route to login if not authenticated */}
         </Routes>
       )}

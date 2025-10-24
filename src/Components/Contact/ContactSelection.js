@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import ContactSelect from "./ContactSelect";
 import NewContactForm from "./NewContactForm";
 
-export default function ContactSelection({ formData, setFormData, loadContactOptions, onInputChange }) {
+export default function ContactSelection({ formData, setFormData, loadContactOptions, onInputChange, existingContactPlaceholder }) {
   const [useExistingContact, setUseExistingContact] = useState(true);
 
   const toggleContactOption = () => {
@@ -16,6 +16,7 @@ export default function ContactSelection({ formData, setFormData, loadContactOpt
         <ContactSelect
           loadContactOptions={loadContactOptions}
           onSelectContact={(selected) => setFormData({ ...formData, contact_id: selected ? selected.value : "" })}
+          placeholder={existingContactPlaceholder}
         />
       ) : (
         <NewContactForm formData={formData} onInputChange={onInputChange} />
