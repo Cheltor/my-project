@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import NewAddressViolation from './NewAddressViolation';
+import CodeDrawerLink from "../Codes/CodeDrawerLink";
 
 // Utility function to format the date
 const formatDate = (dateString) => {
@@ -155,13 +156,19 @@ const AddressViolations = ({ addressId }) => {
                   <ul className="list-disc ml-6">
                     {violation.codes.map((code) => (
                       <li key={code.id} title={code.description}>
-                        <Link
-                          to={`/code/${code.id}`}
-                          className="font-semibold text-blue-700 hover:underline"
+                        <CodeDrawerLink
+                          codeId={code.id}
+                          title={code.description || code.name}
                         >
                           {code.chapter}{code.section ? `.${code.section}` : ''}: {code.name}
-                        </Link>
-                        {code.description ? ` — ${code.description.length > 80 ? code.description.slice(0, 80) + '...' : code.description}` : ''}
+                        </CodeDrawerLink>
+                        {code.description
+                          ? ` - ${
+                              code.description.length > 80
+                                ? code.description.slice(0, 80) + "..."
+                                : code.description
+                            }`
+                          : ''}
                       </li>
                     ))}
                   </ul>

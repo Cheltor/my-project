@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import NewCitationForm from "./NewCitationForm";
 import CitationsList from "./CitationsList";
+import CodeDrawerLink from "./Codes/CodeDrawerLink";
 import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
 import FileUploadInput from "./Common/FileUploadInput";
 import {
@@ -186,7 +187,7 @@ const ViolationDetail = () => {
   useEffect(() => {
     if (!violation) return;
     setAssigneeId(violation.user_id ? String(violation.user_id) : '');
-  }, [violation?.user_id]);
+  }, [violation]);
 
   useEffect(() => {
     if (user?.role !== 3) return;
@@ -245,7 +246,6 @@ const ViolationDetail = () => {
   try { window.dispatchEvent(new CustomEvent('notifications:refresh')); } catch (_) {}
       if (updatedData && Array.isArray(updatedData.violation_comments)) {
         // Refresh per-comment attachments too
-        const last = updatedData.violation_comments[0]; // newest first if backend returns so; otherwise still fetch all
         // Fetch all to keep counts correct
         const entries = await Promise.all(
           updatedData.violation_comments.map(async (c) => {
@@ -702,13 +702,19 @@ const ViolationDetail = () => {
             <ul className="list-disc ml-6">
               {violation.codes.map((code) => (
                 <li key={code.id} title={code.description}>
-                  <Link
-                    to={`/code/${code.id}`}
-                    className="font-semibold text-blue-700 hover:underline"
+                  <CodeDrawerLink
+                    codeId={code.id}
+                    title={code.description || code.name}
                   >
                     {code.chapter}{code.section ? `.${code.section}` : ''}: {code.name}
-                  </Link>
-                  {code.description ? ` — ${code.description.length > 80 ? code.description.slice(0, 80) + '...' : code.description}` : ''}
+                  </CodeDrawerLink>
+                  {code.description
+                    ? ` - ${
+                        code.description.length > 80
+                          ? code.description.slice(0, 80) + "..."
+                          : code.description
+                      }`
+                    : ''}
                 </li>
               ))}
             </ul>

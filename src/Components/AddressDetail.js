@@ -146,7 +146,7 @@ const AddressDetails = () => {
       alert('Could not remove contact.');
     }
   };
-  const { searchTerm, showDropdown, filteredUnits, handleSearchChange, handleDropdownSelect } = useUnitSearch(id);
+  const { searchTerm, showDropdown, filteredUnits, handleSearchChange } = useUnitSearch(id);
   const [showNewUnitForm, setShowNewUnitForm] = useState(false);  // State to toggle NewUnit form
   const [isEditing, setIsEditing] = useState(false); // State to toggle edit mode
   // New Inspection form state (within Inspections tab)

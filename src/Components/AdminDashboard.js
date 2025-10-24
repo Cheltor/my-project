@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { toEasternLocaleString, formatPhoneNumber } from '../utils';
+import CodeDrawerLink from './Codes/CodeDrawerLink';
 
 const RESOURCE_CONFIG = [
   {
@@ -219,20 +220,6 @@ const AdminDashboard = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
-  const [editingPage, setEditingPage] = useState(false);
-  const [pageInput, setPageInput] = useState('');
-  const [pageError, setPageError] = useState('');
-
-  const startEditPage = () => { setPageInput(String(currentPage)); setPageError(''); setEditingPage(true); };
-  const applyPageInput = () => {
-    const n = parseInt(pageInput, 10);
-    if (Number.isNaN(n) || n < 1 || n > totalPages) {
-      setPageError(`Enter a number between 1 and ${totalPages}`);
-      return;
-    }
-    setPage(n);
-    setEditingPage(false);
-  };
   const [statusMessage, setStatusMessage] = useState('');
 
   const resource = useMemo(
@@ -305,7 +292,7 @@ const AdminDashboard = () => {
         return String(normalizeValue(value)).toLowerCase().includes(query);
       });
     });
-  }, [items, searchTerm, resource.fields]);
+  }, [items, searchTerm, resource.fields, resource.searchFields]);
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -462,12 +449,21 @@ const AdminDashboard = () => {
                     })}
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
                       <div className="flex items-center gap-3">
-                        <Link
-                          to={resource.viewRoute ? resource.viewRoute(item.id) : '#'}
-                          className="text-indigo-600 hover:text-indigo-900"
-                        >
-                          View & Edit
-                        </Link>
+                        {resource.key === 'codes' ? (
+                          <CodeDrawerLink
+                            codeId={item.id}
+                            className="text-indigo-600 hover:text-indigo-900"
+                          >
+                            View & Edit
+                          </CodeDrawerLink>
+                        ) : (
+                          <Link
+                            to={resource.viewRoute ? resource.viewRoute(item.id) : '#'}
+                            className="text-indigo-600 hover:text-indigo-900"
+                          >
+                            View & Edit
+                          </Link>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleDelete(item.id)}

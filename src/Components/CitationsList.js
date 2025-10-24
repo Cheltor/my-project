@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import CodeDrawerLink from "./Codes/CodeDrawerLink";
 
 const statusOptions = [
   { value: 0, label: "Unpaid" },
@@ -107,14 +107,19 @@ function CitationsList({ citations, submitting, refreshCitations }) {
                 )}
                 <p className="text-gray-700 mb-2">
                   <span className="font-medium">Code:</span>{' '}
-                  <Link
-                    to={`/code/${citation.code_id}`}
-                    className="font-semibold text-blue-700 hover:underline"
+                  <CodeDrawerLink
+                    codeId={citation.code_id}
                     title={citation.code_description || citation.code_name}
                   >
                     {citation.code_name}
-                  </Link>
-                  {citation.code_description ? ` — ${citation.code_description.length > 80 ? citation.code_description.slice(0, 80) + '...' : citation.code_description}` : ''}
+                  </CodeDrawerLink>
+                  {citation.code_description
+                    ? ` - ${
+                        citation.code_description.length > 80
+                          ? citation.code_description.slice(0, 80) + "..."
+                          : citation.code_description
+                      }`
+                    : ""}
                 </p>
               </div>
               <div className="flex flex-col items-end justify-end min-w-[160px]">
