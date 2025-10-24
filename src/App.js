@@ -1,7 +1,7 @@
 // src/App.js
 import React, { useEffect } from 'react';
 import { AuthProvider, useAuth } from './AuthContext';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import Sidebar from './Layouts/Sidebar';  // Adjust path based on your project structure
 import Home from './Components/Home';
@@ -52,6 +52,8 @@ import AdminChat from './Components/AdminChat';
 import NotificationsPage from './Components/NotificationsPage';
 import ScheduleCalendar from './Components/ScheduleCalendar';
 import MapPage from './Components/MapPage';
+import ResidentConcern from './Components/ResidentConcern';
+import LandingPage from './Components/LandingPage';
 
 function App() {
   return (
@@ -167,6 +169,8 @@ function MainApp() {
             <Route path="/admin/contact-comments/:commentId/edit" element={<AdminContactCommentEditor />} />
             <Route path="/admin-chat" element={<AdminChat user={user} chatEnabled={chatEnabled} setChatEnabled={setChatEnabled} />} />
             <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/resident-concern" element={<ResidentConcern />} />
+            <Route path="/login" element={<Navigate to="/" replace />} />
             {/* Add more routes as needed */}
           </Routes>
         </Sidebar>
@@ -174,8 +178,10 @@ function MainApp() {
       ) : (
         // If the user is not logged in, show the Login page
         <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/resident-concern" element={<ResidentConcern />} />
           <Route path="/login" element={<Login />} />
-          <Route path="*" element={<Login />} /> {/* Redirect any other route to login if not authenticated */}
+          <Route path="*" element={<LandingPage />} /> {/* Redirect any other route to landing if not authenticated */}
         </Routes>
       )}
     </Router>
