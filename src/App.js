@@ -1,6 +1,7 @@
 // src/App.js
 import React, { useEffect } from 'react';
 import { AuthProvider, useAuth } from './AuthContext';
+import { CodeDrawerProvider } from './CodeDrawerContext';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import Sidebar from './Layouts/Sidebar';  // Adjust path based on your project structure
@@ -54,11 +55,14 @@ import ScheduleCalendar from './Components/ScheduleCalendar';
 import MapPage from './Components/MapPage';
 import ResidentConcern from './Components/ResidentConcern';
 import LandingPage from './Components/LandingPage';
+import CodeDrawer from './Components/CodeDrawer';
 
 function App() {
   return (
     <AuthProvider>
-      <MainApp />
+      <CodeDrawerProvider>
+        <MainApp />
+      </CodeDrawerProvider>
     </AuthProvider>
   );
 }
@@ -122,7 +126,7 @@ function MainApp() {
           {chatEnabled && <ChatWidget />}
           {/* If the user is logged in, show the Sidebar and main content */}
           <Sidebar>
-          <Routes>
+            <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
             <Route path="/due-list" element={<DueList />} />
@@ -172,8 +176,9 @@ function MainApp() {
             <Route path="/resident-concern" element={<ResidentConcern />} />
             <Route path="/login" element={<Navigate to="/" replace />} />
             {/* Add more routes as needed */}
-          </Routes>
-        </Sidebar>
+            </Routes>
+          </Sidebar>
+          <CodeDrawer />
         </>
       ) : (
         // If the user is not logged in, show the Login page

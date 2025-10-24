@@ -5,6 +5,7 @@ import NewCitationForm from "./NewCitationForm";
 import CitationsList from "./CitationsList";
 import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
 import FileUploadInput from "./Common/FileUploadInput";
+import CodeLink from "./CodeLink";
 import {
   getAttachmentDisplayLabel,
   getAttachmentFilename,
@@ -702,12 +703,12 @@ const ViolationDetail = () => {
             <ul className="list-disc ml-6">
               {violation.codes.map((code) => (
                 <li key={code.id} title={code.description}>
-                  <Link
-                    to={`/code/${code.id}`}
+                  <CodeLink
+                    codeId={code.id}
                     className="font-semibold text-blue-700 hover:underline"
                   >
                     {code.chapter}{code.section ? `.${code.section}` : ''}: {code.name}
-                  </Link>
+                  </CodeLink>
                   {code.description ? ` — ${code.description.length > 80 ? code.description.slice(0, 80) + '...' : code.description}` : ''}
                 </li>
               ))}

@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import CodeLink from "./CodeLink";
 
 const statusOptions = [
   { value: 0, label: "Unpaid" },
@@ -93,12 +93,12 @@ function CitationDetails({ citation, onStatusChange, submitting }) {
         <p className="text-gray-700 mb-2">
           <span className="font-medium">Code:</span>{' '}
           {citation.code_id && citation.code_name ? (
-            <Link
-              to={`/code/${citation.code_id}`}
+            <CodeLink
+              codeId={citation.code_id}
               className="font-semibold text-blue-700 hover:underline"
             >
               {citation.code_name}
-            </Link>
+            </CodeLink>
           ) : (
             <span className="font-semibold text-gray-800">N/A</span>
           )}
