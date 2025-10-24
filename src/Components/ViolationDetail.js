@@ -101,6 +101,9 @@ const ViolationDetail = () => {
   const [assignSaving, setAssignSaving] = useState(false);
   const [assignError, setAssignError] = useState(null);
   const [assignSuccess, setAssignSuccess] = useState('');
+  const [showCompliancePrompt, setShowCompliancePrompt] = useState(false);
+  const [downloadingCompliance, setDownloadingCompliance] = useState(false);
+  const [complianceError, setComplianceError] = useState(null);
 
   useEffect(() => {
     const prefetchCommentAttachments = async (comments) => {
@@ -313,39 +316,60 @@ const ViolationDetail = () => {
     return <p>No violation available.</p>;
   }
 
-  // Add this handler function inside the ViolationDetail component
-  const handleDownloadNotice = async () => {
+  const downloadComplianceLetter = async () => {
     try {
+      setComplianceError(null);
+      setDownloadingCompliance(true);
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/violation/${id}/notice`,
+        `${process.env.REACT_APP_API_URL}/violation/${id}/compliance-letter`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         }
       );
-      if (!response.ok) throw new Error("Failed to download notice");
+      if (!response.ok) {
+        throw new Error("Failed to download compliance letter");
+      }
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      // Build a filename from the violation address (combadd) and current date
       const combadd = violation && violation.combadd ? String(violation.combadd) : `violation_${id}`;
-      // sanitize combadd: replace non-alphanum with underscore, collapse multiple underscores
       const sanitize = (s) => s.replace(/[^a-zA-Z0-9]+/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
       const safeAdd = sanitize(combadd) || `violation_${id}`;
       const now = new Date();
       const mm = String(now.getMonth() + 1).padStart(2, '0');
       const dd = String(now.getDate()).padStart(2, '0');
       const yy = String(now.getFullYear()).slice(-2);
-      a.download = `${safeAdd}_${mm}_${dd}_${yy}.docx`;
+      a.download = `${safeAdd}_${mm}_${dd}_${yy}_compliance.docx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
+      return true;
     } catch (err) {
-      alert(err.message);
+      const message = err?.message || 'Failed to download compliance letter';
+      setComplianceError(message);
+      if (!showCompliancePrompt) {
+        alert(message);
+      }
+      return false;
+    } finally {
+      setDownloadingCompliance(false);
     }
+  };
+
+  const handleComplianceDownloadFromPrompt = async () => {
+    const success = await downloadComplianceLetter();
+    if (success) {
+      setShowCompliancePrompt(false);
+    }
+  };
+
+  const handleCloseCompliancePrompt = () => {
+    setShowCompliancePrompt(false);
+    setComplianceError(null);
   };
 
   // Download all violation attachments using signed URLs
@@ -412,7 +436,10 @@ const ViolationDetail = () => {
       if (!response.ok) throw new Error("Failed to mark as abated");
       // Refetch violation to update UI
       const updated = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}`);
-      setViolation(await updated.json());
+      const updatedData = await updated.json();
+      setViolation(updatedData);
+      setComplianceError(null);
+      setShowCompliancePrompt(true);
     } catch (err) {
       alert(err.message);
     }
@@ -434,6 +461,8 @@ const ViolationDetail = () => {
       // Refetch violation to update UI
       const updated = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}`);
       setViolation(await updated.json());
+      setShowCompliancePrompt(false);
+      setComplianceError(null);
     } catch (err) {
       alert(err.message);
     }
@@ -703,15 +732,18 @@ const ViolationDetail = () => {
           )}
         </div>
       </div>
-      {/* Download buttons above Violation Comments, only if status is Current (0) */}
-      {violation.status === 0 && (
+      {/* Download buttons for compliance letter and attachments */}
+      {(violation.status === 1 || attachments.length > 0) && (
         <div className="mt-2 mb-4 flex items-center gap-2">
-          <button
-            className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-blue-800 text-xs font-semibold"
-            onClick={handleDownloadNotice}
-          >
-            Download Violation Notice
-          </button>
+          {violation.status === 1 && (
+            <button
+              className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-blue-800 text-xs font-semibold disabled:opacity-60"
+              onClick={downloadComplianceLetter}
+              disabled={downloadingCompliance}
+            >
+              {downloadingCompliance ? 'Generating…' : 'Download Compliance Letter'}
+            </button>
+          )}
           {attachments.length > 0 && (
             <button
               type="button"
@@ -895,6 +927,51 @@ const ViolationDetail = () => {
           refreshCitations={refreshCitations}
         />
       </div>
+      {showCompliancePrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-md shadow-lg w-full max-w-lg p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-base font-semibold text-gray-900">Print Compliance Letter</h4>
+              <button
+                type="button"
+                className="text-gray-500 hover:text-gray-800"
+                onClick={handleCloseCompliancePrompt}
+                aria-label="Close compliance prompt"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-sm text-gray-600">
+              This violation has been marked as abated. Please print the compliance letter to provide to the responsible party.
+            </p>
+            {violation?.combadd && (
+              <p className="mt-2 text-sm text-gray-600">
+                The letter includes the details for <span className="font-medium">{violation.combadd}</span>.
+              </p>
+            )}
+            {complianceError && (
+              <p className="mt-3 text-sm text-red-600">{complianceError}</p>
+            )}
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                className="px-3 py-1 text-sm font-semibold text-gray-700 bg-gray-200 rounded hover:bg-gray-300"
+                onClick={handleCloseCompliancePrompt}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1 text-sm font-semibold text-white bg-blue-600 rounded hover:bg-blue-500 disabled:opacity-60"
+                onClick={handleComplianceDownloadFromPrompt}
+                disabled={downloadingCompliance}
+              >
+                {downloadingCompliance ? 'Generating…' : 'Download Compliance Letter'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
