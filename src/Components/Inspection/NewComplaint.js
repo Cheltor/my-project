@@ -3,42 +3,43 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
 import AsyncSelect from "react-select/async";
 import ContactSelection from "../Contact/ContactSelection";
-import BusinessSelection from "../Business/BusinessSelection"; // Import the new component
-import NewUnit from "../Inspection/NewUnit"; // Import NewUnit instead of NewUnitForm
+import BusinessSelection from "../Business/BusinessSelection";
+import NewUnit from "../Inspection/NewUnit";
 import FileUploadInput from "../Common/FileUploadInput";
 
-export default function NewComplaint() {
+const createInitialFormState = () => ({
+  address_id: null,
+  unit_id: null,
+  source: "Complaint",
+  description: "",
+  attachments: [],
+  business_id: null,
+  contact_id: null,
+  new_contact_name: "",
+  new_contact_email: "",
+  new_contact_phone: "",
+  paid: false,
+});
+
+export default function NewComplaint({ isPublic = false, title = "New Complaint", submitButtonLabel = "Create New Complaint" }) {
   const { user, token } = useAuth();
   const navigate = useNavigate();
   const [units, setUnits] = useState([]);
   const [businesses, setBusinesses] = useState([]);
-  const [showBusinessSelection, setShowBusinessSelection] = useState(false); // State to toggle business selection
-  const [showNewUnitForm, setShowNewUnitForm] = useState(false); // State to toggle new unit form
-  const [formData, setFormData] = useState({
-    address_id: null,  // Use `null` instead of ""
-    unit_id: null,
-    source: "Complaint",
-    description: "",
-    attachments: [],
-    business_id: null,
-    contact_id: null,
-    new_contact_name: "",
-    new_contact_email: "",
-    new_contact_phone: "",
-    paid: false,
-  });
-  // Admin assignment state
+  const [showBusinessSelection, setShowBusinessSelection] = useState(false);
+  const [showNewUnitForm, setShowNewUnitForm] = useState(false);
+  const [formData, setFormData] = useState(createInitialFormState);
   const [onsUsers, setOnsUsers] = useState([]);
   const [assigneeId, setAssigneeId] = useState("");
-  const [photos, setPhotos] = useState([]); // State to hold the photos
+  const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  // Local validation state for description
   const [descError, setDescError] = useState("");
   const isDescriptionValid = (formData.description || "").trim().length > 0;
-  // Local validation for address
   const [addressError, setAddressError] = useState("");
   const isAddressValid = !!formData.address_id;
+  const [contactError, setContactError] = useState("");
+  const [submissionSuccess, setSubmissionSuccess] = useState(false);
 
   useEffect(() => {
     const fetchBusinesses = async () => {
@@ -46,9 +47,9 @@ export default function NewComplaint() {
         const response = await fetch(`${process.env.REACT_APP_API_URL}/businesses/`);
         setBusinesses(await response.json());
         setLoading(false);
-      } catch (error) {
-        console.error("Error fetching businesses:", error);
-        setError(error.message);
+      } catch (fetchError) {
+        console.error("Error fetching businesses:", fetchError);
+        setError(fetchError.message);
         setLoading(false);
       }
     };
@@ -57,7 +58,6 @@ export default function NewComplaint() {
   }, []);
 
   useEffect(() => {
-    // Load ONS users for admin (role 3)
     const loadOns = async () => {
       try {
         const resp = await fetch(`${process.env.REACT_APP_API_URL}/users/ons/`);
@@ -68,18 +68,32 @@ export default function NewComplaint() {
         setOnsUsers([]);
       }
     };
-    if (user?.role === 3) loadOns();
-  }, [user?.role]);
+
+    if (!isPublic && user?.role === 3) {
+      loadOns();
+    }
+  }, [isPublic, user?.role]);
+
+  useEffect(() => {
+    if (!isPublic) return;
+    const hasExistingContact = Boolean(formData.contact_id);
+    const trimmedName = (formData.new_contact_name || "").trim();
+    const trimmedEmail = (formData.new_contact_email || "").trim();
+    const trimmedPhone = (formData.new_contact_phone || "").trim();
+    if (hasExistingContact || (trimmedName && (trimmedEmail || trimmedPhone))) {
+      setContactError("");
+    }
+  }, [formData.contact_id, formData.new_contact_email, formData.new_contact_name, formData.new_contact_phone, isPublic]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
+    setSubmissionSuccess(false);
     if (type === "checkbox") {
       setFormData({ ...formData, [name]: checked });
     } else {
       setFormData({ ...formData, [name]: value });
-      if (name === 'description') {
-        // Clear error as user types something valid
-        if ((value || '').trim().length > 0) setDescError("");
+      if (name === "description" && (value || "").trim().length > 0) {
+        setDescError("");
       }
     }
   };
@@ -87,10 +101,12 @@ export default function NewComplaint() {
   const handleAttachmentsChange = (files) => {
     const next = Array.isArray(files) ? files : Array.from(files || []);
     setPhotos(next);
+    setSubmissionSuccess(false);
   };
 
   const handleAddressChange = async (selectedOption) => {
     const addressId = selectedOption ? selectedOption.value : "";
+    setSubmissionSuccess(false);
     setFormData((prevFormData) => ({
       ...prevFormData,
       address_id: addressId,
@@ -105,8 +121,8 @@ export default function NewComplaint() {
         const unitsRes = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${addressId}/units`);
         const unitsData = await unitsRes.json();
         setUnits(unitsData);
-      } catch (error) {
-        console.error("Error fetching units:", error);
+      } catch (unitsError) {
+        console.error("Error fetching units:", unitsError);
         setUnits([]);
       }
     } else {
@@ -116,21 +132,32 @@ export default function NewComplaint() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submitted"); // Add this line to confirm the function is called
+    setSubmissionSuccess(false);
+    setContactError("");
 
     if (!formData.description.trim()) {
-      setDescError('Description is required.');
-      return; // Don't submit if description is empty
+      setDescError("Description is required.");
+      return;
     }
     if (!formData.address_id) {
-      setAddressError('Address is required.');
-      return; // Don't submit if address is empty
+      setAddressError("Address is required.");
+      return;
+    }
+
+    const trimmedName = (formData.new_contact_name || "").trim();
+    const trimmedEmail = (formData.new_contact_email || "").trim();
+    const trimmedPhone = (formData.new_contact_phone || "").trim();
+    const hasExistingContact = Boolean(formData.contact_id);
+    const hasNewContactDetails = trimmedName && (trimmedEmail || trimmedPhone);
+
+    if (isPublic && !hasExistingContact && !hasNewContactDetails) {
+      setContactError("Please select an existing contact or provide your name and at least one way to reach you.");
+      return;
     }
 
     try {
-      // If no existing contact selected but a new contact name is provided, create the contact first
       let effectiveContactId = formData.contact_id;
-      const hasNewContact = !effectiveContactId && (formData.new_contact_name || "").trim().length > 0;
+      const hasNewContact = !effectiveContactId && trimmedName.length > 0;
       if (hasNewContact) {
         try {
           const resp = await fetch(`${process.env.REACT_APP_API_URL}/contacts/`, {
@@ -140,9 +167,9 @@ export default function NewComplaint() {
               ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
             body: JSON.stringify({
-              name: formData.new_contact_name,
-              email: formData.new_contact_email || undefined,
-              phone: formData.new_contact_phone || undefined,
+              name: trimmedName,
+              email: trimmedEmail || undefined,
+              phone: trimmedPhone || undefined,
             }),
           });
           if (resp.ok) {
@@ -152,34 +179,35 @@ export default function NewComplaint() {
               setFormData((prev) => ({ ...prev, contact_id: effectiveContactId }));
             }
           } else {
-            // If contact creation fails, proceed without a contact rather than blocking complaint creation
-            try { const errJson = await resp.json(); console.error('Create contact failed:', errJson); } catch {}
+            try {
+              const errJson = await resp.json();
+              console.error("Create contact failed:", errJson);
+            } catch {
+              // ignore json parse error
+            }
           }
         } catch (createErr) {
-          console.error('Create contact error:', createErr);
+          console.error("Create contact error:", createErr);
         }
       }
 
-      // Step 1: Create Complaint (send as multipart/form-data to match API Form fields)
       const createForm = new FormData();
-      if (formData.address_id) createForm.append('address_id', String(formData.address_id));
-      if (formData.unit_id) createForm.append('unit_id', String(formData.unit_id));
-      createForm.append('source', formData.source || 'Complaint');
-  createForm.append('description', formData.description || '');
-  // Mirror to comment for compatibility with backends that use `comment` or `details`
-  createForm.append('comment', formData.description || '');
-      if (effectiveContactId) createForm.append('contact_id', String(effectiveContactId));
-      createForm.append('paid', formData.paid ? 'true' : 'false');
+      if (formData.address_id) createForm.append("address_id", String(formData.address_id));
+      if (formData.unit_id) createForm.append("unit_id", String(formData.unit_id));
+      createForm.append("source", formData.source || "Complaint");
+      createForm.append("description", formData.description || "");
+      createForm.append("comment", formData.description || "");
+      if (effectiveContactId) createForm.append("contact_id", String(effectiveContactId));
+      createForm.append("paid", formData.paid ? "true" : "false");
       if (photos.length > 0) {
         photos.forEach((photo) => {
-          createForm.append('attachments', photo);
+          createForm.append("attachments", photo);
         });
       }
-      // Admin-selected assignee -> inspector_id; OAS defaults to inspector 1
-      if (user?.role === 3 && assigneeId) {
-        createForm.append('inspector_id', String(assigneeId));
-      } else if (user?.role === 2) {
-        createForm.append('inspector_id', '1');
+      if (!isPublic && user?.role === 3 && assigneeId) {
+        createForm.append("inspector_id", String(assigneeId));
+      } else if (!isPublic && user?.role === 2) {
+        createForm.append("inspector_id", "1");
       }
 
       const complaintResponse = await fetch(`${process.env.REACT_APP_API_URL}/inspections/`, {
@@ -195,18 +223,26 @@ export default function NewComplaint() {
       }
 
       const createdComplaint = await complaintResponse.json();
-      alert("Complaint created successfully!");
-      if (createdComplaint?.id) {
+      if (!isPublic) {
+        alert("Complaint created successfully!");
+      }
+      if (!isPublic && createdComplaint?.id) {
         navigate(`/complaint/${createdComplaint.id}`);
       }
       setPhotos([]);
-    } catch (error) {
-      console.error("Error creating complaint:", error);
+      if (isPublic) {
+        setSubmissionSuccess(true);
+        setFormData(createInitialFormState());
+        setUnits([]);
+        setShowNewUnitForm(false);
+        setShowBusinessSelection(false);
+      }
+    } catch (submitError) {
+      console.error("Error creating complaint:", submitError);
       alert("Error creating complaint.");
     }
   };
 
-  // Function to load options asynchronously
   const loadAddressOptions = async (inputValue) => {
     const response = await fetch(
       `${process.env.REACT_APP_API_URL}/addresses/search?query=${inputValue}&limit=5`
@@ -220,28 +256,26 @@ export default function NewComplaint() {
     }));
   };
 
-  // Define custom styles
   const customStyles = {
     control: (provided) => ({
       ...provided,
-      backgroundColor: 'white',
-      borderColor: '#d1d5db', // Tailwind's gray-300
-      boxShadow: 'none',
-      '&:hover': { borderColor: '#2563eb' }, // Tailwind's indigo-600 on hover
+      backgroundColor: "white",
+      borderColor: "#d1d5db",
+      boxShadow: "none",
+      "&:hover": { borderColor: "#2563eb" },
     }),
     option: (provided, state) => ({
       ...provided,
-      backgroundColor: state.isSelected ? '#2563eb' : state.isFocused ? '#ebf4ff' : 'white',
-      color: state.isSelected ? 'white' : '#111827', // Tailwind's gray-900 for non-selected text
-      '&:active': { backgroundColor: '#2563eb', color: 'white' },
+      backgroundColor: state.isSelected ? "#2563eb" : state.isFocused ? "#ebf4ff" : "white",
+      color: state.isSelected ? "white" : "#111827",
+      "&:active": { backgroundColor: "#2563eb", color: "white" },
     }),
     singleValue: (provided) => ({
       ...provided,
-      color: '#111827', // Tailwind's gray-900
+      color: "#111827",
     }),
   };
 
-  // loadContactOptions function
   const loadContactOptions = async (inputValue) => {
     const response = await fetch(
       `${process.env.REACT_APP_API_URL}/contacts/search?query=${inputValue}&limit=5`
@@ -249,10 +283,20 @@ export default function NewComplaint() {
 
     const data = await response.json();
 
-    return data.map((contact) => ({
-      label: `${contact.name} (${contact.email})`,
-      value: contact.id,
-    }));
+    return data.map((contact) => {
+      const name = contact.name || "Unnamed Contact";
+      if (isPublic) {
+        return {
+          label: name,
+          value: contact.id,
+        };
+      }
+      const details = contact.email ? `(${contact.email})` : "";
+      return {
+        label: details ? `${name} ${details}` : name,
+        value: contact.id,
+      };
+    });
   };
 
   if (loading) {
@@ -265,7 +309,12 @@ export default function NewComplaint() {
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-      <h1 className="text-2xl font-semibold text-gray-900">New Complaint</h1>
+      <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
+      {submissionSuccess && (
+        <div className="mt-4 rounded-md bg-green-50 p-4 text-sm text-green-800 border border-green-100">
+          Thank you! Your concern has been submitted.
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="mt-6 bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
 
         {/* Address Selection */}
@@ -280,15 +329,15 @@ export default function NewComplaint() {
           >
             <AsyncSelect
               inputId="address_id"
-              loadOptions={loadAddressOptions} // Set the async loader function
+              loadOptions={loadAddressOptions}
               onChange={handleAddressChange}
               placeholder="Type to search addresses..."
               isClearable
-              styles={customStyles} // Reuse custom styles if desired
+              styles={customStyles}
               classNamePrefix="address-select"
               className="mb-0"
-              cacheOptions // Cache loaded options for performance
-              defaultOptions // Show default options initially
+              cacheOptions
+              defaultOptions
             />
           </div>
           <div className="text-xs text-gray-500 mt-1">This field is required.</div>
@@ -298,7 +347,7 @@ export default function NewComplaint() {
         </div>
 
         {/* Assignee (Admin only) */}
-        {user?.role === 3 && (
+        {!isPublic && user?.role === 3 && (
           <div className="mb-4">
             <label htmlFor="assignee_id" className="block text-sm font-medium text-gray-700">
               Assign to ONS member
@@ -343,7 +392,7 @@ export default function NewComplaint() {
         )}
 
         {/* New Unit Form */}
-        {formData.address_id && (
+        {formData.address_id && !isPublic && (
           <div className="mb-4">
             <button
               type="button"
@@ -355,7 +404,7 @@ export default function NewComplaint() {
             {showNewUnitForm && (
               <NewUnit
                 addressId={formData.address_id}
-                inspectionId={null} // Pass null or appropriate value for inspectionId
+                inspectionId={null}
                 onUnitCreated={(newUnit) => {
                   setUnits([...units, newUnit]);
                   setFormData({ ...formData, unit_id: newUnit.id });
@@ -377,10 +426,10 @@ export default function NewComplaint() {
             value={formData.description}
             onChange={handleInputChange}
             onBlur={() => {
-              if (!isDescriptionValid) setDescError('Description is required.');
+              if (!isDescriptionValid) setDescError("Description is required.");
             }}
             aria-invalid={!!descError}
-            aria-describedby={descError ? 'description-error' : undefined}
+            aria-describedby={descError ? "description-error" : undefined}
             className={`mt-1 block w-full shadow-sm rounded-md ${descError ? 'border-red-500 border' : 'border-gray-300'}`}
           ></textarea>
           <div className="text-xs text-gray-500 mt-1">This field is required.</div>
@@ -406,7 +455,7 @@ export default function NewComplaint() {
             type="button"
             onClick={() => setShowBusinessSelection(!showBusinessSelection)}
             className="bg-transparent hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-1 px-2 border border-blue-500 hover:border-transparent rounded"
-            >
+          >
             {showBusinessSelection ? "Hide Business Selection" : "Add a Business"}
           </button>
           {showBusinessSelection && (
@@ -424,7 +473,11 @@ export default function NewComplaint() {
           setFormData={setFormData}
           loadContactOptions={loadContactOptions}
           onInputChange={handleInputChange}
+          existingContactPlaceholder={isPublic ? "Type to search contacts by name..." : undefined}
         />
+        {contactError && (
+          <div className="text-xs text-red-600 mt-1">{contactError}</div>
+        )}
 
         {/* Submit Button */}
         <div className="mt-6">
@@ -434,7 +487,7 @@ export default function NewComplaint() {
             disabled={!isDescriptionValid || !isAddressValid}
             aria-disabled={!isDescriptionValid || !isAddressValid}
           >
-            Create New Complaint
+            {submitButtonLabel}
           </button>
         </div>
       </form>
