@@ -3,9 +3,6 @@ import React from "react";
 export default function NewContactForm({ formData, onInputChange }) {
   return (
     <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700">Create a new contact</label>
-      
-      {/* Name Field */}
       <input
         type="text"
         name="new_contact_name"

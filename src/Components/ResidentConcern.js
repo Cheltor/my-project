@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import AsyncSelect from "react-select/async";
 import FileUploadInput from "./Common/FileUploadInput";
 import NewContactForm from "./Contact/NewContactForm";
@@ -34,18 +34,151 @@ const selectStyles = {
   }),
 };
 
+const sanitizePhoneDigits = (value) => String(value || "").replace(/\D/g, "");
+
+const getContactDisplayName = (contact) => {
+  if (!contact) return "";
+  const name = (contact.name || "").trim();
+  if (name) return name;
+  return `Contact #${contact.id}`;
+};
+
+const matchReasonLabels = {
+  email: "email",
+  phone: "phone",
+  name: "name",
+};
+
+const formatMatchReasons = (reasons = []) => {
+  if (!Array.isArray(reasons) || reasons.length === 0) return "";
+  const labels = reasons
+    .map((reason) => matchReasonLabels[reason] || reason)
+    .filter(Boolean);
+  if (labels.length === 0) return "";
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  const head = labels.slice(0, -1).join(", ");
+  return `${head}, and ${labels[labels.length - 1]}`;
+};
+
+const deriveMatchReasons = (contact, { nameTerm = "", emailTerm = "", phoneDigitsTerm = "", generalTerm = "" } = {}) => {
+  const reasons = new Set(Array.isArray(contact?.matchReasons) ? contact.matchReasons : []);
+  const normalized = (value) => (value || "").toLowerCase();
+  const nameValue = normalized(contact?.name);
+  const emailValue = normalized(contact?.email);
+  const phoneDigitsValue = sanitizePhoneDigits(contact?.phone);
+
+  if (nameTerm) {
+    const term = nameTerm.toLowerCase();
+    if (nameValue && nameValue.includes(term)) reasons.add("name");
+  }
+
+  if (emailTerm) {
+    const term = emailTerm.toLowerCase();
+    if (emailValue && emailValue.includes(term)) reasons.add("email");
+  }
+
+  if (phoneDigitsTerm) {
+    if (phoneDigitsValue && phoneDigitsValue.includes(phoneDigitsTerm)) reasons.add("phone");
+  }
+
+  if (generalTerm) {
+    const generalLower = generalTerm.toLowerCase();
+    if (nameValue && nameValue.includes(generalLower)) reasons.add("name");
+    if (emailValue && emailValue.includes(generalLower)) reasons.add("email");
+    const generalDigits = sanitizePhoneDigits(generalTerm);
+    if (generalDigits && generalDigits.length >= 4 && phoneDigitsValue && phoneDigitsValue.includes(generalDigits)) {
+      reasons.add("phone");
+    }
+  }
+
+  return {
+    ...contact,
+    matchReasons: Array.from(reasons),
+  };
+};
+
+const fetchSimilarContacts = async ({ name, email, phoneDigits, signal }) => {
+  const searchConfigs = [];
+  if (email) searchConfigs.push({ value: email, type: "email" });
+  if (phoneDigits) searchConfigs.push({ value: phoneDigits, type: "phone" });
+  if (name) searchConfigs.push({ value: name, type: "name" });
+
+  const seenValues = new Set();
+  const queries = [];
+
+  searchConfigs.forEach((config) => {
+    const normalized = config.value.toLowerCase();
+    if (seenValues.has(normalized)) return;
+    seenValues.add(normalized);
+
+    const url = `${process.env.REACT_APP_API_URL}/contacts/search?query=${encodeURIComponent(config.value)}&limit=5`;
+    queries.push(
+      (async () => {
+        try {
+          const res = await fetch(url, { signal });
+          if (!res.ok) {
+            return { items: [], type: config.type };
+          }
+          const payload = await res.json();
+          const items = Array.isArray(payload) ? payload : [];
+          return { items, type: config.type };
+        } catch (err) {
+          if (err.name !== "AbortError") {
+            console.error("Error searching for similar contacts:", err);
+          }
+          return { items: [], type: config.type };
+        }
+      })()
+    );
+  });
+
+  if (queries.length === 0) return [];
+
+  const responses = await Promise.all(queries);
+  const matchesMap = new Map();
+
+  responses.forEach(({ items, type }) => {
+    items.forEach((contact) => {
+      if (!contact || !contact.id) return;
+      const entry = matchesMap.get(contact.id) || {
+        contact,
+        score: 0,
+        reasons: new Set(),
+      };
+      entry.reasons.add(type);
+      if (type === "email") entry.score += 4;
+      else if (type === "phone") entry.score += 3;
+      else entry.score += 1;
+      matchesMap.set(contact.id, entry);
+    });
+  });
+
+  return Array.from(matchesMap.values())
+    .sort((a, b) => b.score - a.score)
+    .map((entry) => ({
+      ...entry.contact,
+      matchReasons: Array.from(entry.reasons),
+    }))
+    .slice(0, 6);
+};
+
 export default function ResidentConcern() {
   const [formData, setFormData] = useState(defaultFormState);
   const [units, setUnits] = useState([]);
   const [photos, setPhotos] = useState([]);
-  const [useExistingContact, setUseExistingContact] = useState(true);
   const [addressError, setAddressError] = useState("");
   const [descError, setDescError] = useState("");
   const [contactError, setContactError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionMessage, setSubmissionMessage] = useState(null);
   const [addressSelectKey, setAddressSelectKey] = useState(0);
-  const [contactSelectKey, setContactSelectKey] = useState(0);
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [potentialContactMatches, setPotentialContactMatches] = useState([]);
+  const [isCheckingContactMatches, setIsCheckingContactMatches] = useState(false);
+  const [duplicateSearchSummary, setDuplicateSearchSummary] = useState("");
+  const duplicateRequestRef = useRef(0);
+  const hasSelectedContact = Boolean(selectedContact);
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
@@ -104,39 +237,172 @@ export default function ResidentConcern() {
     }
   };
 
-  const loadContactOptions = async (inputValue) => {
-    try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/contacts/search?query=${encodeURIComponent(inputValue)}&limit=5`
-      );
-      if (!response.ok) return [];
-      const data = await response.json();
-      return data.map((contact) => ({
-        label: contact.name || `Contact #${contact.id}`,
-        value: contact.id,
-      }));
-    } catch (error) {
-      console.error("Error loading contacts:", error);
-      return [];
+  useEffect(() => {
+    if (selectedContact) {
+      setPotentialContactMatches([]);
+      setIsCheckingContactMatches(false);
+      setDuplicateSearchSummary("");
+      return;
     }
+
+    const name = (formData.new_contact_name || "").trim();
+    const email = (formData.new_contact_email || "").trim();
+    const phoneRaw = (formData.new_contact_phone || "").trim();
+    const phoneDigits = sanitizePhoneDigits(phoneRaw);
+
+    const shouldSearchEmail = email.length >= 3;
+    const shouldSearchPhone = phoneDigits.length >= 4;
+    const shouldSearchName = name.length >= 3;
+
+    if (!shouldSearchEmail && !shouldSearchPhone && !shouldSearchName) {
+      setPotentialContactMatches([]);
+      setIsCheckingContactMatches(false);
+      setDuplicateSearchSummary("");
+      return;
+    }
+
+    const requestId = ++duplicateRequestRef.current;
+    const controller = new AbortController();
+
+    const summaryPieces = [];
+    if (shouldSearchEmail) summaryPieces.push(email);
+    if (shouldSearchPhone) summaryPieces.push(phoneRaw);
+    if (!summaryPieces.length && shouldSearchName) summaryPieces.push(name);
+    setDuplicateSearchSummary(summaryPieces.join(", "));
+    setIsCheckingContactMatches(true);
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const matches = await fetchSimilarContacts({
+          name: shouldSearchName ? name : "",
+          email: shouldSearchEmail ? email : "",
+          phoneDigits: shouldSearchPhone ? phoneDigits : "",
+          signal: controller.signal,
+        });
+        if (duplicateRequestRef.current === requestId) {
+          const augmented = matches.map((contact) =>
+            deriveMatchReasons(contact, {
+              nameTerm: shouldSearchName ? name : "",
+              emailTerm: shouldSearchEmail ? email : "",
+              phoneDigitsTerm: shouldSearchPhone ? phoneDigits : "",
+            })
+          );
+          setPotentialContactMatches(augmented);
+          setIsCheckingContactMatches(false);
+        }
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          console.error("Error checking for similar contacts:", err);
+        }
+        if (duplicateRequestRef.current === requestId) {
+          setIsCheckingContactMatches(false);
+        }
+      }
+    }, 400);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
+  }, [
+    formData.new_contact_email,
+    formData.new_contact_name,
+    formData.new_contact_phone,
+    selectedContact,
+  ]);
+
+  const applyContactMatch = (contact) => {
+    if (!contact || !contact.id) return;
+    duplicateRequestRef.current += 1;
+    setPotentialContactMatches([]);
+    setIsCheckingContactMatches(false);
+    setDuplicateSearchSummary("");
+    setSelectedContact(contact);
+    setFormData((prev) => ({
+      ...prev,
+      contact_id: contact.id,
+      new_contact_name: "",
+      new_contact_email: "",
+      new_contact_phone: "",
+    }));
+    setContactError("");
   };
 
-  const toggleContactMode = () => {
-    setUseExistingContact((prev) => {
-      const next = !prev;
-      setFormData((current) => ({
-        ...current,
-        contact_id: next ? current.contact_id : null,
-        new_contact_name: next ? "" : current.new_contact_name,
-        new_contact_email: next ? "" : current.new_contact_email,
-        new_contact_phone: next ? "" : current.new_contact_phone,
-      }));
-      setContactError("");
-      if (!next) {
-        setContactSelectKey((key) => key + 1);
+  const clearSelectedContact = () => {
+    setSelectedContact(null);
+    setFormData((prev) => ({
+      ...prev,
+      contact_id: null,
+      new_contact_name: "",
+      new_contact_email: "",
+      new_contact_phone: "",
+    }));
+    setContactError("");
+    duplicateRequestRef.current += 1;
+    setPotentialContactMatches([]);
+    setIsCheckingContactMatches(false);
+    setDuplicateSearchSummary("");
+  };
+
+  const renderContactMatchesPanel = () => {
+    if (hasSelectedContact) {
+      return null;
+    }
+    if (!isCheckingContactMatches && potentialContactMatches.length === 0) {
+      return null;
+    }
+
+    const hasMatches = potentialContactMatches.length > 0;
+    const title = hasMatches ? "Possible existing contacts found" : "Searching contacts";
+
+    let description = "";
+    if (duplicateSearchSummary) {
+      if (hasMatches) {
+        description = `These records match the details "${duplicateSearchSummary}".`;
+      } else {
+        description = `Looking for matches similar to "${duplicateSearchSummary}"...`;
       }
-      return next;
-    });
+    }
+
+    return (
+      <div className="mt-3 rounded-md border border-yellow-200 bg-yellow-50 p-3">
+        <div className="text-sm font-semibold text-yellow-900">{title}</div>
+        {description && <p className="mt-1 text-xs text-yellow-800">{description}</p>}
+        {hasMatches && (
+          <ul className="mt-3 space-y-2">
+            {potentialContactMatches.map((contact) => (
+              <li
+                key={contact.id}
+                className="rounded border border-yellow-200 bg-white p-2 text-xs text-gray-700 shadow-sm"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">
+                      {getContactDisplayName(contact)}
+                    </div>
+                    {Array.isArray(contact.matchReasons) && contact.matchReasons.length > 0 && (
+                      <div className="text-xs text-yellow-700">
+                        Matches on {formatMatchReasons(contact.matchReasons)}.
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => applyContactMatch(contact)}
+                    className="inline-flex items-center rounded border border-blue-500 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-500 hover:text-white"
+                  >
+                    Use this contact
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        {isCheckingContactMatches && potentialContactMatches.length === 0 && (
+          <p className="mt-2 text-xs text-yellow-700">Searching for matching contacts...</p>
+        )}
+      </div>
+    );
   };
 
   const validateContactChoice = () => {
@@ -153,7 +419,7 @@ export default function ResidentConcern() {
       setContactError("");
       return true;
     }
-    setContactError("Please select an existing contact or provide a name plus an email or phone.");
+    setContactError("Please select a suggested contact or provide a name plus an email or phone.");
     return false;
   };
 
@@ -161,12 +427,15 @@ export default function ResidentConcern() {
     setFormData(defaultFormState);
     setUnits([]);
     setPhotos([]);
-    setUseExistingContact(true);
     setAddressError("");
     setDescError("");
     setContactError("");
     setAddressSelectKey((key) => key + 1);
-    setContactSelectKey((key) => key + 1);
+    setSelectedContact(null);
+    setPotentialContactMatches([]);
+    setIsCheckingContactMatches(false);
+    setDuplicateSearchSummary("");
+    duplicateRequestRef.current += 1;
   };
 
   const handleSubmit = async (event) => {
@@ -380,34 +649,28 @@ export default function ResidentConcern() {
             <div className="mb-2 text-sm font-medium text-gray-700">
               Your contact information <span className="text-red-600" aria-hidden="true">*</span>
             </div>
-            {useExistingContact ? (
-              <AsyncSelect
-                key={contactSelectKey}
-                cacheOptions
-                defaultOptions={false}
-                loadOptions={loadContactOptions}
-                placeholder="Search for your name..."
-                isClearable
-                onChange={(option) => {
-                  setFormData((prev) => ({ ...prev, contact_id: option ? option.value : null }));
-                  if (option) {
-                    setContactError("");
-                  }
-                }}
-                styles={selectStyles}
-                classNamePrefix="contact-select"
-                inputId="resident-concern-contact"
-              />
+            {hasSelectedContact ? (
+              <div className="rounded-md border border-green-200 bg-green-50 p-3">
+                <div className="text-sm font-semibold text-green-900">
+                  {getContactDisplayName(selectedContact)}
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-green-800">Using this contact</span>
+                  <button
+                    type="button"
+                    onClick={clearSelectedContact}
+                    className="inline-flex items-center rounded border border-green-500 px-2 py-1 text-xs font-semibold text-green-700 hover:bg-green-500 hover:text-white"
+                  >
+                    Enter different contact details
+                  </button>
+                </div>
+              </div>
             ) : (
-              <NewContactForm formData={formData} onInputChange={handleInputChange} />
+              <>
+                <NewContactForm formData={formData} onInputChange={handleInputChange} />
+                {renderContactMatchesPanel()}
+              </>
             )}
-            <button
-              type="button"
-              onClick={toggleContactMode}
-              className="mt-2 inline-flex rounded border border-blue-500 px-2 py-1 text-sm font-semibold text-blue-700 hover:bg-blue-500 hover:text-white"
-            >
-              {useExistingContact ? "Or enter new contact details" : "Or select an existing contact"}
-            </button>
             {contactError && <p className="mt-2 text-xs text-red-600">{contactError}</p>}
           </div>
 

@@ -49,6 +49,13 @@ export default function ComplaintDetail() {
 	const [uploading, setUploading] = useState(false);
 	const [uploadError, setUploadError] = useState(null);
 
+	// Assignment (admin only)
+	const [assignableUsers, setAssignableUsers] = useState([]);
+	const [assigneeId, setAssigneeId] = useState('');
+	const [assignSaving, setAssignSaving] = useState(false);
+	const [assignError, setAssignError] = useState(null);
+	const [assignSuccess, setAssignSuccess] = useState('');
+
 	// Status editing (express as whether a violation was found)
 	const [statusValue, setStatusValue] = useState("Pending");
 	const [savingStatus, setSavingStatus] = useState(false);
@@ -133,6 +140,11 @@ export default function ComplaintDetail() {
 			}
 		}
 
+		// Prefill assignee id when complaint loads
+		if (typeof complaint?.inspector_id !== 'undefined') {
+			setAssigneeId(complaint?.inspector_id ? String(complaint.inspector_id) : '');
+		}
+
 		// If this complaint references a unit, fetch it to show the unit number
 		(async () => {
 			try {
@@ -174,6 +186,22 @@ export default function ComplaintDetail() {
 		}, 300);
 		return () => clearTimeout(t);
 	}, [contactSearch]);
+
+	// Load assignable users for admins (role 3)
+	useEffect(() => {
+		if (user?.role !== 3) return;
+		const loadAssignable = async () => {
+			try {
+				const resp = await fetch(`${process.env.REACT_APP_API_URL}/users/ons/`);
+				if (!resp.ok) throw new Error('Failed to load users');
+				const data = await resp.json();
+				setAssignableUsers(Array.isArray(data) ? data : []);
+			} catch (err) {
+				setAssignableUsers([]);
+			}
+		};
+		loadAssignable();
+	}, [user?.role]);
 
 	const handleAttachmentsChange = (files) => {
 		const next = Array.isArray(files) ? files : Array.from(files || []);
@@ -273,6 +301,36 @@ export default function ComplaintDetail() {
 		}
 	};
 
+	const handleAssigneeUpdate = async () => {
+		if (user?.role !== 3) return;
+		setAssignSaving(true);
+		setAssignError(null);
+		setAssignSuccess('');
+		try {
+			const fd = new FormData();
+			if (assigneeId) fd.append('inspector_id', assigneeId);
+			else fd.append('inspector_id', '');
+			const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+			const resp = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/assignee`, {
+				method: 'PATCH',
+				headers: headers,
+				body: fd,
+			});
+			if (!resp.ok) {
+				let msg = 'Failed to update assignment';
+				try { const j = await resp.json(); if (j?.detail) msg = j.detail; } catch {}
+				throw new Error(msg);
+			}
+			const updated = await resp.json();
+			setComplaint(updated);
+			setAssignSuccess('Assignee updated');
+		} catch (err) {
+			setAssignError(err.message);
+		} finally {
+			setAssignSaving(false);
+		}
+	};
+
 	const handleDownloadAll = async () => {
 		try {
 			const r = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/photos?download=true`);
@@ -344,12 +402,11 @@ export default function ComplaintDetail() {
 						</dd>
 					</div>
 
-					{/* Unit (if applicable) */}
-					<div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-						<dt className="text-sm font-medium leading-6 text-gray-900">Unit</dt>
-						<dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
-							{complaint.unit_id ? (
-								complaint.address ? (
+					{complaint.unit_id && (
+						<div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+							<dt className="text-sm font-medium leading-6 text-gray-900">Unit</dt>
+							<dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
+								{complaint.address ? (
 									<Link
 										to={`/address/${complaint.address.id}/unit/${complaint.unit_id}`}
 										className="text-indigo-600 hover:text-indigo-900"
@@ -358,12 +415,53 @@ export default function ComplaintDetail() {
 									</Link>
 								) : (
 									<span>{unit?.number ? `Unit ${unit.number}` : `Unit ${complaint.unit_id}`}</span>
-								)
-							) : (
-								<span className="text-gray-500">—</span>
-							)}
-						</dd>
-					</div>
+								)}
+							</dd>
+						</div>
+					)}
+
+						{/* Inspector assignment (admins can reassign) */}
+						<div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+							<dt className="text-sm font-medium leading-6 text-gray-900">Inspector</dt>
+							<dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
+								{user?.role === 3 ? (
+									<div className="max-w-md">
+										<label className="block text-sm font-medium text-gray-700">Assigned To</label>
+										<div className="mt-1 flex gap-2">
+											<select
+												value={assigneeId}
+												onChange={(e) => setAssigneeId(e.target.value)}
+												className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+											>
+												<option value="">Unassigned</option>
+												{complaint?.inspector && !(Array.isArray(assignableUsers) ? assignableUsers : []).some(u => Number(u.id) === Number(complaint.inspector.id)) && (
+													<option key={`inspector-${complaint.inspector.id}`} value={String(complaint.inspector.id)}>
+														{complaint.inspector.name || complaint.inspector.email || `User ${complaint.inspector.id}`}
+													</option>
+												)}
+												{(Array.isArray(assignableUsers) ? assignableUsers : []).map((u) => (
+													<option key={u.id} value={String(u.id)}>
+														{u.name || u.email || `User ${u.id}`}
+													</option>
+												))}
+											</select>
+											<button
+												type="button"
+												onClick={handleAssigneeUpdate}
+												disabled={assignSaving}
+												className="px-3 py-1 rounded bg-indigo-600 text-white text-xs font-semibold disabled:opacity-60"
+											>
+												{assignSaving ? 'Saving...' : 'Save'}
+											</button>
+										</div>
+										{assignError && <div className="text-xs text-red-600 mt-1">{assignError}</div>}
+										{!assignError && assignSuccess && <div className="text-xs text-green-600 mt-1">{assignSuccess}</div>}
+									</div>
+								) : (
+									<p className="text-sm text-gray-700">{complaint?.inspector ? (complaint.inspector.name || complaint.inspector.email) : 'No inspector assigned'}</p>
+								)}
+							</dd>
+						</div>
 
 					<div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
 						<dt className="text-sm font-medium leading-6 text-gray-900">Violation found?</dt>
@@ -430,11 +528,11 @@ export default function ComplaintDetail() {
           <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">{complaint.description && complaint.description.trim() ? complaint.description.trim() : 'No description provided.'}</dd>
 					</div>
 
-					<div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-						<dt className="text-sm font-medium leading-6 text-gray-900">Contact</dt>
-						<dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
-							<div className="space-y-2">
-								{complaint.contact ? (
+					{complaint.contact && (
+						<div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+							<dt className="text-sm font-medium leading-6 text-gray-900">Contact</dt>
+							<dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
+								<div className="space-y-2">
 									<div className="flex items-center gap-2">
 										<Link to={`/contacts/${complaint.contact.id}`} className="text-indigo-600 hover:text-indigo-900">
 											{complaint.contact.name}
@@ -450,111 +548,28 @@ export default function ComplaintDetail() {
 										<span className="text-gray-400">|</span>
 										<span>{complaint.contact.phone ? formatPhoneNumber(complaint.contact.phone) : "N/A"}</span>
 									</div>
-								) : (
-									<p className="text-gray-500">No contact information</p>
-								)}
-
-								{/* Assign existing contact */}
-								<div className="flex items-center gap-2">
-									<input
-										type="text"
-										placeholder="Search contacts by name, email, or phone"
-										className="w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-										value={contactSearch}
-										onChange={(e) => setContactSearch(e.target.value)}
-									/>
-									{contactLoading && <span className="text-xs text-gray-500">Searching…</span>}
+									{contactMessage && <p className="text-xs text-gray-500 mt-1">{contactMessage}</p>}
 								</div>
-								{contactResults.length > 0 && (
-									<ul className="mt-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
-										{contactResults.map((c) => {
-											const formattedPhone = c.phone ? formatPhoneNumber(c.phone) : '';
-											const phoneLabel = formattedPhone !== 'N/A' ? formattedPhone : '';
-
-											return (
-												<li key={c.id} className="flex items-center justify-between border rounded-md p-2">
-													<div className="text-sm">
-														<div className="font-medium text-gray-900">{c.name}</div>
-														<div className="text-gray-500 text-xs">
-															{c.email || "—"}{phoneLabel ? ` | ${phoneLabel}` : ''}
-														</div>
-													</div>
-													<button
-														onClick={() => handleAssignContact(c.id)}
-														disabled={assigningContact}
-														className="rounded-md bg-indigo-600 px-2 py-1 text-xs font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-indigo-500"
-													>
-														Assign
-													</button>
-												</li>
-											);
-										})}
-									</ul>
-								)}
-
-
-								{/* Toggle new contact form */}
-								<div className="mt-3">
-									<button
-										onClick={() => setShowNewContactForm((v) => !v)}
-										className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-200"
-									>
-										{showNewContactForm ? "Cancel" : "Add new contact"}
-									</button>
-								</div>
-
-								{showNewContactForm && (
-									<div className="mt-3 grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
-										<input
-											type="text"
-											placeholder="New contact name"
-											className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-											value={newContact.name}
-											onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
-										/>
-										<input
-											type="email"
-											placeholder="Email (optional)"
-											className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-											value={newContact.email}
-											onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
-										/>
-										<input
-											type="tel"
-											placeholder="Phone (optional)"
-											className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-											value={newContact.phone}
-											onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
-										/>
-										<button
-											onClick={handleCreateContact}
-											disabled={assigningContact || !newContact.name.trim()}
-											className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-green-500"
-										>
-											{assigningContact ? "Saving…" : "Add & Assign"}
-										</button>
-									</div>
-								)}
-								{contactMessage && <p className="text-xs text-gray-500 mt-1">{contactMessage}</p>}
-							</div>
-						</dd>
-					</div>
+							</dd>
+						</div>
+					)}
 
 					{/* Attachments */}
 					<div className="px-4 py-6 sm:px-0">
 						<div className="flex items-center justify-between mb-3">
 							<dt className="text-sm font-medium leading-6 text-gray-900">Attachments</dt>
 							<div className="flex items-center gap-2">
-								<button
-									type="button"
-									onClick={handleDownloadAll}
-									className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
-								>
-									Download attachments ({attachments.length})
-								</button>
+								{attachments.length > 0 && (
+									<button
+										type="button"
+										onClick={handleDownloadAll}
+										className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+									>
+										Download attachments ({attachments.length})
+									</button>
+								)}
 							</div>
 						</div>
-
 						{attachments.length === 0 ? (
 							<p className="text-sm text-gray-500">No attachments uploaded yet.</p>
 						) : (
@@ -582,7 +597,7 @@ export default function ComplaintDetail() {
 							</ul>
 						)}
 
-						{/* Upload new attachments */}
+						{/* Upload new attachments (always visible) */}
 						<div className="mt-4 flex flex-col gap-3">
 							<FileUploadInput
 								id="complaint-attachments"
@@ -602,10 +617,10 @@ export default function ComplaintDetail() {
 								>
 									{uploading ? "Uploading…" : "Upload"}
 								</button>
+								</div>
 							</div>
+							{uploadError && <p className="mt-2 text-sm text-red-600">{uploadError}</p>}
 						</div>
-						{uploadError && <p className="mt-2 text-sm text-red-600">{uploadError}</p>}
-					</div>
 				</dl>
 			</div>
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toEasternLocaleString } from '../utils';
+import { useAuth } from '../AuthContext';
 
 export default function Complaints() {
   const [complaints, setComplaints] = useState([]);
@@ -9,8 +10,11 @@ export default function Complaints() {
   const [currentPage, setCurrentPage] = useState(1);
   const complaintsPerPage = 10;
   const [statusFilter, setStatusFilter] = useState('');
+  const [refFilter, setRefFilter] = useState('');
   const [printGeneratedAt, setPrintGeneratedAt] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const { user } = useAuth();
+  const [unassignedOnly, setUnassignedOnly] = useState(false);
   // Cache of unit details keyed by unit_id so we can show Unit numbers
   const [unitsById, setUnitsById] = useState({}); // { [unit_id]: { id, name?, number?, address_id? } }
 
@@ -50,12 +54,17 @@ export default function Complaints() {
   const filteredComplaints = React.useMemo(() => {
     return complaints.filter((c) => {
       if (statusFilter && normalizeStatus(c.status) !== statusFilter) return false;
+      if (refFilter && !String(c.id).includes(String(refFilter))) return false;
+      if (unassignedOnly) {
+        const hasInspector = !!(c.inspector_id || (c.inspector && c.inspector.id));
+        if (hasInspector) return false;
+      }
       return true;
     });
-  }, [complaints, statusFilter]);
+  }, [complaints, statusFilter, refFilter, unassignedOnly]);
 
   // Reset pagination when filter changes
-  useEffect(() => { setCurrentPage(1); }, [statusFilter]);
+  useEffect(() => { setCurrentPage(1); }, [statusFilter, refFilter, unassignedOnly]);
 
   // Newest first: sort by created_at desc (fallback updated_at)
   const sortedComplaints = React.useMemo(() => {
@@ -92,7 +101,13 @@ export default function Complaints() {
   };
 
   // Print helpers
-  const statusFilterLabel = statusFilter ? `Status: ${statusFilter}` : 'All statuses';
+  const statusFilterLabel = (() => {
+    const parts = [];
+    if (statusFilter) parts.push(`Status: ${statusFilter}`);
+    if (refFilter) parts.push(`Ref: ${refFilter}`);
+    if (unassignedOnly) parts.push('Unassigned');
+    return parts.length > 0 ? parts.join(' · ') : 'All statuses';
+  })();
   const printableResultsLabel = sortedComplaints.length === 1 ? '1 result' : `${sortedComplaints.length} results`;
   const resolvedPrintTimestamp = printGeneratedAt || toEasternLocaleString(new Date(), 'en-US');
 
@@ -184,7 +199,7 @@ export default function Complaints() {
           <div className="sm:flex-auto">
             <h1 className="text-base font-semibold leading-6 text-gray-900">Complaints</h1>
             <p className="mt-2 text-sm text-gray-700">
-              A list of all complaints, including their status, source, and associated address.
+              A list of all complaints, including their status and associated address.
             </p>
           </div>
           <div className="mt-4 sm:mt-0 sm:ml-auto flex gap-2">
@@ -209,27 +224,50 @@ export default function Complaints() {
         {/* Filters */}
         {showFilters && (
           <div className="mt-4 bg-white rounded-lg shadow p-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Status</label>
-                <select
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="">All</option>
-                  {statusOptions.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Status</label>
+                    <select
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                    >
+                      <option value="">All</option>
+                      {statusOptions.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Ref</label>
+                    <input
+                      type="text"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                      value={refFilter}
+                      onChange={(e) => setRefFilter(e.target.value)}
+                      placeholder="Filter by ref number"
+                    />
+                  </div>
+                  {user?.role === 3 && (
+                    <div className="flex items-center gap-2">
+                      <label className="inline-flex items-center text-sm">
+                        <input
+                          type="checkbox"
+                          className="mr-2"
+                          checked={unassignedOnly}
+                          onChange={(e) => setUnassignedOnly(e.target.checked)}
+                        />
+                        <span className="text-sm text-gray-700">Unassigned only</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
             <div className="mt-3 flex items-center justify-between text-sm text-gray-600">
               <span>Showing {filteredComplaints.length} of {complaints.length}</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setStatusFilter('')}
+                  onClick={() => { setStatusFilter(''); setRefFilter(''); setUnassignedOnly(false); }}
                   className="px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50"
                 >
                   Clear filters
@@ -245,7 +283,7 @@ export default function Complaints() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Source
+                  Ref number
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -258,9 +296,9 @@ export default function Complaints() {
       <tbody className="bg-white divide-y divide-gray-200">
               {currentComplaints.map((complaint, idx) => (
                 <tr key={complaint.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-semibold">
                     <Link to={`/complaint/${complaint.id}`} className="text-indigo-600 hover:text-indigo-900">
-                      {complaint.source}
+                      {complaint.id}
                     </Link>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -355,10 +393,10 @@ export default function Complaints() {
         <p className="mt-2 text-sm text-gray-700">
           Generated {resolvedPrintTimestamp} · {statusFilterLabel} · {printableResultsLabel}
         </p>
-        <table className="print-table mt-6">
+          <table className="print-table mt-6">
           <thead>
             <tr>
-              <th>Source</th>
+              <th>Ref number</th>
               <th>Status</th>
               <th>Address</th>
               <th>Unit</th>
@@ -372,7 +410,7 @@ export default function Complaints() {
             ) : (
               sortedComplaints.map((complaint) => (
                 <tr key={`print-${complaint.id}`}>
-                  <td>{complaint.source || '—'}</td>
+                  <td>{complaint.id}</td>
                   <td>{normalizeStatus(complaint.status) || '—'}</td>
                   <td>{complaint.address?.combadd || 'No address'}</td>
                   <td>
