@@ -9,6 +9,19 @@ import {
   formatPhoneNumber
 } from '../utils';
 
+const pad2 = (n) => String(n).padStart(2, '0');
+
+function formatForInput(dtStr) {
+  if (!dtStr) return '';
+  const d = new Date(dtStr);
+  const yyyy = d.getFullYear();
+  const mm = pad2(d.getMonth() + 1);
+  const dd = pad2(d.getDate());
+  const hh = pad2(d.getHours());
+  const mi = pad2(d.getMinutes());
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+}
+
 export default function InspectionDetail() {
   const { id } = useParams();
   const { user, token } = useAuth();
@@ -89,18 +102,6 @@ export default function InspectionDetail() {
     };
     loadAssignable();
   }, [user?.role]);
-  const pad2 = (n) => String(n).padStart(2, '0');
-  function formatForInput(dtStr) {
-    if (!dtStr) return '';
-    const d = new Date(dtStr);
-    const yyyy = d.getFullYear();
-    const mm = pad2(d.getMonth() + 1);
-    const dd = pad2(d.getDate());
-    const hh = pad2(d.getHours());
-    const mi = pad2(d.getMinutes());
-    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
-  }
-
   const saveSchedule = async () => {
     try {
       setScheduleSaving(true);
@@ -235,18 +236,16 @@ export default function InspectionDetail() {
           </div>
 
           {/* Business (if associated) */}
-          <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-            <dt className="text-sm font-medium leading-6 text-gray-900">Business</dt>
-            <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
-              {inspection.business_id ? (
+          {inspection.business_id && (
+            <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+              <dt className="text-sm font-medium leading-6 text-gray-900">Business</dt>
+              <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
                 <Link to={`/businesses/${inspection.business_id}`} className="text-indigo-600 hover:text-indigo-900">
                   Business #{inspection.business_id}
                 </Link>
-              ) : (
-                'No business associated'
-              )}
-            </dd>
-          </div>
+              </dd>
+            </div>
+          )}
           
           {/* Inspector Information */}
           <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
