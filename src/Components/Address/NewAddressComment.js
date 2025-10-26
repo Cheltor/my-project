@@ -6,6 +6,7 @@ import { useAuth } from '../../AuthContext'; // Import the useAuth hook from the
 const NewAddressComment = ({ addressId, onCommentAdded }) => {
   const [newComment, setNewComment] = useState(''); // State for new comment input
   const [mentionIds, setMentionIds] = useState([]);
+  const [contactMentionIds, setContactMentionIds] = useState([]);
   const [submitting, setSubmitting] = useState(false); // State for form submission
   const [files, setFiles] = useState([]);
   const { user } = useAuth(); // Get user data from context
@@ -37,6 +38,9 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
       formData.append('mentioned_user_ids', mentionIds.join(','));
     }
     formData.append('user_id', userId);
+    if (contactMentionIds && contactMentionIds.length > 0) {
+      formData.append('mentioned_contact_ids', contactMentionIds.join(','));
+    }
     // address_id is in the path
     for (const f of files) formData.append('files', f);
 
@@ -71,6 +75,7 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
         setNewComment('');
         setMentionIds([]);
         setFiles([]);
+        setContactMentionIds([]);
         setSubmitting(false);
         try {
           // If the created comment has mentions, trigger a notification refresh
@@ -92,7 +97,8 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
         value={newComment}
         onChange={setNewComment}
         onMentionsChange={setMentionIds}
-        placeholder="Write a comment... Use @Name to mention users"
+        onContactMentionsChange={setContactMentionIds}
+        placeholder="Write a comment... Use @Name for users or %Name for contacts"
         className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-200"
         rows={4}
         disabled={submitting}

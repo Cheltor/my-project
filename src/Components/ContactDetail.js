@@ -715,7 +715,7 @@ export default function ContactDetail() {
         </div>
 
         <div className="border-t pt-6">
-          <ContactComments contactId={id} />
+          <ContactComments contactId={id} contact={contact} />
         </div>
       </div>
     </div>

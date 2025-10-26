@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import NewContactComment from './NewContactComment';  // Assuming this is the component for adding a new comment
 
 // Utility function to format the date
@@ -7,51 +7,217 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString(undefined, options);
 };
 
-export default function ContactComments({ contactId }) {  // Accept contactId as a prop
+export default function ContactComments({ contactId, contact }) {  // Accept contactId and optional contact context
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [selectedCommentId, setSelectedCommentId] = useState(null);
+  const [selectedComment, setSelectedComment] = useState(null);
   const [attachments, setAttachments] = useState([]);
   const [attachmentsLoading, setAttachmentsLoading] = useState(false);
-  const [attachmentCounts, setAttachmentCounts] = useState({}); // commentId -> number
+  const [attachmentCounts, setAttachmentCounts] = useState({}); // key -> number
   const [usersMap, setUsersMap] = useState({}); // userId -> email
 
-  // Function to fetch comments
-  const fetchComments = () => {
-    setLoading(true);
-    fetch(`${process.env.REACT_APP_API_URL}/comments/contact/${contactId}`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch comments');
-        }
-        return response.json();
-      })
-      .then(async (data) => {
-        console.log('Fetched comments:', data);
-        // Enrich each comment with mentions
-        const enriched = await Promise.all((data || []).map(async (c) => {
-          try {
-            const resp = await fetch(`${process.env.REACT_APP_API_URL}/comments/${c.id}/mentions`);
-            const mentions = resp.ok ? await resp.json() : [];
-            return { ...c, mentions };
-          } catch {
-            return { ...c, mentions: [] };
+  const attachmentKey = (item) => (item ? `${item.type}:${item.id}` : '');
+  const contactAddresses = useMemo(() => Array.isArray(contact?.addresses) ? contact.addresses : [], [contact?.addresses]);
+  const contactAddressesKey = useMemo(() => contactAddresses.map((addr) => addr?.id).filter(Boolean).join(','), [contactAddresses]);
+  const contactMeta = useMemo(() => ({
+    name: (contact?.name || '').trim(),
+    email: (contact?.email || '').trim(),
+    phone: (contact?.phone || '').trim(),
+  }), [contact?.name, contact?.email, contact?.phone]);
+  const contactMetaKey = `${contactMeta.name}|${contactMeta.email}|${contactMeta.phone}`;
+
+  const collectMentionedFromAddresses = async ({ baseUrl, addresses, contactId, contactMeta }) => {
+    const results = new Map();
+    if (!Array.isArray(addresses) || addresses.length === 0) return [];
+    const numericContactId = Number(contactId);
+    const stringContactId = String(contactId);
+    const nameTokens = new Set();
+    const emailToken = (contactMeta?.email || '').toLowerCase();
+    const normalizedName = (contactMeta?.name || '').trim().toLowerCase();
+    if (normalizedName) {
+      const spaced = normalizedName.replace(/\s+/g, ' ');
+      const compact = normalizedName.replace(/\s+/g, '');
+      nameTokens.add(normalizedName);
+      nameTokens.add(spaced);
+      if (compact) {
+        nameTokens.add(compact);
+      }
+    }
+    if (emailToken) {
+      nameTokens.add(emailToken);
+    }
+    const phoneDigits = (contactMeta?.phone || '').replace(/\D/g, '');
+    if (phoneDigits) {
+      nameTokens.add(phoneDigits);
+    }
+
+    const mentionRegex = /%([A-Za-z0-9@._\- ]+)/g;
+
+    const limitedAddresses = addresses.slice(0, 10);
+
+    for (const addr of limitedAddresses) {
+      const addressId = addr?.id;
+      if (!addressId) continue;
+      try {
+        const resp = await fetch(`${baseUrl}/comments/address/${addressId}`);
+        if (!resp.ok) continue;
+        const addressComments = await resp.json();
+        const list = Array.isArray(addressComments) ? addressComments : [];
+        for (const comment of list) {
+          if (!comment || results.has(comment.id)) continue;
+          const contactMentions = Array.isArray(comment.contact_mentions) ? comment.contact_mentions : [];
+          let matches = contactMentions.some(
+            (cm) =>
+              (Number(cm.id) === numericContactId && !Number.isNaN(numericContactId)) ||
+              String(cm.id) === stringContactId
+          );
+
+          if (!matches) {
+            const tokens = [];
+            const contentString = String(comment.content || '');
+            mentionRegex.lastIndex = 0;
+            let match;
+            while ((match = mentionRegex.exec(contentString)) !== null) {
+              const token = match[1]?.trim().toLowerCase();
+              if (token) tokens.push(token);
+            }
+            if (tokens.length > 0) {
+              matches = tokens.some((token) => nameTokens.has(token));
+            }
           }
-        }));
-        setComments(enriched);
-        setLoading(false);
-      })
-      .catch((error) => {
-        setError(error.message);
-        setLoading(false);
-      });
+
+          if (!matches) continue;
+
+          results.set(comment.id, {
+            id: comment.id,
+            type: 'linked',
+            text: comment.content,
+            created_at: comment.created_at,
+            updated_at: comment.updated_at,
+            user_id: comment.user_id,
+            mentions: Array.isArray(comment.mentions) ? comment.mentions : [],
+            contact_mentions: contactMentions,
+            address_id: comment.address_id,
+            combadd: comment.combadd || addr?.combadd || addr?.full_address || '',
+            unit_id: comment.unit_id,
+            raw: comment,
+          });
+        }
+      } catch {
+        // ignore individual address failures
+      }
+    }
+
+    return Array.from(results.values());
+  };
+
+  // Function to fetch comments
+  const fetchComments = async () => {
+    setLoading(true);
+    const baseUrl = process.env.REACT_APP_API_URL;
+    try {
+      const [contactResp, mentionedResp] = await Promise.all([
+        fetch(`${baseUrl}/comments/contact/${contactId}`),
+        fetch(`${baseUrl}/comments/contact/${contactId}/mentioned`),
+      ]);
+
+      if (!contactResp.ok) {
+        throw new Error('Failed to fetch comments');
+      }
+
+      const contactData = await contactResp.json();
+      let mentionedData = [];
+      if (mentionedResp.ok) {
+        try {
+          const payload = await mentionedResp.json();
+          mentionedData = Array.isArray(payload) ? payload : [];
+        } catch {
+          mentionedData = [];
+        }
+      }
+
+      const contactItems = (await Promise.all((contactData || []).map(async (c) => {
+        try {
+          const resp = await fetch(`${baseUrl}/comments/${c.id}/mentions`);
+          const mentions = resp.ok ? await resp.json() : [];
+          return {
+            id: c.id,
+            type: 'contact',
+            text: c.comment,
+            created_at: c.created_at,
+            updated_at: c.updated_at,
+            user_id: c.user_id,
+            mentions,
+            contact_mentions: Array.isArray(c.contact_mentions) ? c.contact_mentions : [],
+            raw: c,
+          };
+        } catch {
+          return {
+            id: c.id,
+            type: 'contact',
+            text: c.comment,
+            created_at: c.created_at,
+            updated_at: c.updated_at,
+            user_id: c.user_id,
+            mentions: [],
+            contact_mentions: Array.isArray(c.contact_mentions) ? c.contact_mentions : [],
+            raw: c,
+          };
+        }
+      }))).filter(Boolean);
+
+      const contactIds = new Set(contactItems.map((item) => item.id));
+
+      let mentionItems = (mentionedData || []).map((c) => ({
+        id: c.id,
+        type: 'linked',
+        text: c.content,
+        created_at: c.created_at,
+        updated_at: c.updated_at,
+        user_id: c.user_id,
+        mentions: Array.isArray(c.mentions) ? c.mentions : [],
+        contact_mentions: Array.isArray(c.contact_mentions) ? c.contact_mentions : [],
+        address_id: c.address_id,
+        combadd: c.combadd,
+        unit_id: c.unit_id,
+        raw: c,
+      }));
+
+      if (mentionItems.length === 0 && contactAddresses.length > 0) {
+        try {
+          const fallbackMentioned = await collectMentionedFromAddresses({
+            baseUrl,
+            addresses: contactAddresses,
+            contactId,
+            contactMeta,
+          });
+          if (fallbackMentioned.length > 0) {
+            mentionItems = fallbackMentioned;
+          }
+        } catch {
+          // ignore fallback failures
+        }
+      }
+
+      const filteredMentionItems = mentionItems.filter((item) => !contactIds.has(item.id));
+
+      const combined = [...contactItems, ...filteredMentionItems].sort(
+        (a, b) => new Date(b.created_at) - new Date(a.created_at),
+      );
+      setComments(combined);
+      setAttachmentCounts({});
+      setLoading(false);
+    } catch (err) {
+      setError(err.message || 'Failed to load comments');
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchComments();  // Fetch comments on component load and when contactId changes
-  }, [contactId]);
+    fetchComments();  // Fetch comments on component load and when identifiers change
+  }, [contactId, contactAddressesKey, contactMetaKey]);
 
   // Fetch all users once to map user_id -> email
   useEffect(() => {
@@ -77,15 +243,31 @@ export default function ContactComments({ contactId }) {  // Accept contactId as
     const run = async () => {
       try {
         const promises = comments.map(async (c) => {
-          // Skip if already counted
-          if (attachmentCounts[c.id] != null) return;
-          const resp = await fetch(`${process.env.REACT_APP_API_URL}/comments/contact/${c.id}/attachments/count`, {
-            signal: controller.signal,
-          });
-          if (!resp.ok) throw new Error('Failed to fetch attachments');
-          const data = await resp.json();
-          const count = (data && typeof data.count === 'number') ? data.count : 0;
-          setAttachmentCounts((prev) => ({ ...prev, [c.id]: count }));
+          const key = attachmentKey(c);
+          if (!key) return;
+          if (attachmentCounts[key] != null) return;
+          const baseUrl = process.env.REACT_APP_API_URL;
+          try {
+            if (c.type === 'contact') {
+              const resp = await fetch(`${baseUrl}/comments/contact/${c.id}/attachments/count`, {
+                signal: controller.signal,
+              });
+              if (!resp.ok) throw new Error('Failed to fetch attachments');
+              const data = await resp.json();
+              const count = (data && typeof data.count === 'number') ? data.count : 0;
+              setAttachmentCounts((prev) => ({ ...prev, [key]: count }));
+            } else {
+              const resp = await fetch(`${baseUrl}/comments/${c.id}/photos`, {
+                signal: controller.signal,
+              });
+              if (!resp.ok) throw new Error('Failed to fetch attachments');
+              const data = await resp.json();
+              const count = Array.isArray(data) ? data.length : 0;
+              setAttachmentCounts((prev) => ({ ...prev, [key]: count }));
+            }
+          } catch {
+            setAttachmentCounts((prev) => ({ ...prev, [key]: 0 }));
+          }
         });
         await Promise.allSettled(promises);
       } catch (e) {
@@ -96,12 +278,16 @@ export default function ContactComments({ contactId }) {  // Accept contactId as
     return () => controller.abort();
   }, [comments]);
 
-  const openAttachments = (commentId) => {
-    setSelectedCommentId(commentId);
+  const openAttachments = (comment) => {
+    setSelectedComment(comment);
     setShowModal(true);
     setAttachments([]);
     setAttachmentsLoading(true);
-    fetch(`${process.env.REACT_APP_API_URL}/comments/contact/${commentId}/attachments`)
+    const baseUrl = process.env.REACT_APP_API_URL;
+    const url = comment.type === 'contact'
+      ? `${baseUrl}/comments/contact/${comment.id}/attachments`
+      : `${baseUrl}/comments/${comment.id}/photos`;
+    fetch(url)
       .then((response) => {
         if (!response.ok) throw new Error('Failed to fetch attachments');
         return response.json();
@@ -118,7 +304,7 @@ export default function ContactComments({ contactId }) {  // Accept contactId as
 
   const closeModal = () => {
     setShowModal(false);
-    setSelectedCommentId(null);
+    setSelectedComment(null);
     setAttachments([]);
     setAttachmentsLoading(false);
   };
@@ -135,42 +321,74 @@ export default function ContactComments({ contactId }) {  // Accept contactId as
         <p className='pt-4'>No comments available.</p>
       ) : (
         <ul className="space-y-4 pt-4">
-          {comments.map((comment) => (
-            <li key={comment.id} className="bg-gray-100 p-4 rounded-lg shadow">
-              <p className="text-gray-700">{comment.comment}</p>
-              {Array.isArray(comment.mentions) && comment.mentions.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {comment.mentions.map((u) => (
-                    <span key={u.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-700 border border-indigo-200">
-                      @{u.name || u.email}
-                    </span>
-                  ))}
+          {comments.map((comment) => {
+            const key = attachmentKey(comment);
+            const attachmentCount = attachmentCounts[key] || 0;
+            const typeLabel = comment.type === 'contact' ? 'Contact Comment' : 'Mentioned Comment';
+            const addressHint = comment.type === 'linked'
+              ? (comment.combadd
+                ? `Address: ${comment.combadd}`
+                : (comment.address_id ? `Address ID: ${comment.address_id}` : ''))
+              : '';
+            return (
+              <li key={key} className="bg-gray-100 p-4 rounded-lg shadow">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500">{typeLabel}</p>
+                    {addressHint && (
+                      <p className="text-xs text-gray-500 mt-1">{addressHint}</p>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {usersMap[comment.user_id] ? usersMap[comment.user_id] : 'Unknown user'}
+                  </div>
                 </div>
-              )}
-              <div className="mt-2 flex items-start justify-between">
-                <div className="text-sm text-gray-500">
-                  <p>Created on {formatDate(comment.created_at)}</p>
-                  {comment.updated_at && (
-                    <p>Updated on {formatDate(comment.updated_at)}</p>
-                  )}
+
+                <p className="text-gray-700 mt-2 whitespace-pre-line">{comment.text}</p>
+
+                {Array.isArray(comment.mentions) && comment.mentions.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {comment.mentions.map((u) => (
+                      <span key={`user-${u.id}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        @{u.name || u.email || `user-${u.id}`}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {Array.isArray(comment.contact_mentions) && comment.contact_mentions.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {comment.contact_mentions.map((c) => (
+                      <span key={`contact-${c.id}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        %{c.name || c.email || `contact-${c.id}`}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-2 flex items-start justify-between">
+                  <div className="text-sm text-gray-500">
+                    <p>Created on {formatDate(comment.created_at)}</p>
+                    {comment.updated_at && (
+                      <p>Updated on {formatDate(comment.updated_at)}</p>
+                    )}
+                  </div>
                 </div>
-                <div className="text-xs text-gray-500 self-end">
-                  {usersMap[comment.user_id] ? usersMap[comment.user_id] : 'Unknown user'}
-                </div>
-              </div>
-              {attachmentCounts[comment.id] > 0 && (
-                <div className="mt-3">
-                  <button
-                    type="button"
-                    onClick={() => openAttachments(comment.id)}
-                    className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
-                  >
-                    View attachments ({attachmentCounts[comment.id]})
-                  </button>
-                </div>
-              )}
-            </li>
-          ))}
+
+                {attachmentCount > 0 && (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => openAttachments(comment)}
+                      className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                    >
+                      View attachments ({attachmentCount})
+                    </button>
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
 

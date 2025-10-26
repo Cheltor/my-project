@@ -118,7 +118,13 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
             console.error(`Error fetching mentions for comment ${comment.id}:`, e);
           }
 
-          return { ...comment, photos, unit, mentions };
+          return {
+            ...comment,
+            photos,
+            unit,
+            mentions,
+            contact_mentions: Array.isArray(comment.contact_mentions) ? comment.contact_mentions : [],
+          };
         });
 
         // Wait for all comments with their extras to be fetched
@@ -149,7 +155,11 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
   const handleCommentAdded = (newComment) => {
     if (!newComment || typeof newComment.id === 'undefined' || newComment.id === null) {
       // Just prepend the comment without photos
-      setComments([newComment, ...comments]);
+      const normalized = {
+        ...newComment,
+        contact_mentions: Array.isArray(newComment?.contact_mentions) ? newComment.contact_mentions : [],
+      };
+      setComments([normalized, ...comments]);
       setPage(1);
       return;
     }
@@ -189,12 +199,22 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
           console.error(`Error fetching mentions for new comment ${newComment.id}:`, e);
         }
 
-        const newCommentWithExtras = { ...newComment, photos, unit, mentions };
+        const newCommentWithExtras = {
+          ...newComment,
+          photos,
+          unit,
+          mentions,
+          contact_mentions: Array.isArray(newComment.contact_mentions) ? newComment.contact_mentions : [],
+        };
         setComments([newCommentWithExtras, ...comments]);
         setPage(1);
       } catch (error) {
         console.error(`Error enriching new comment ${newComment.id}:`, error);
-        setComments([newComment, ...comments]);
+        const fallback = {
+          ...newComment,
+          contact_mentions: Array.isArray(newComment.contact_mentions) ? newComment.contact_mentions : [],
+        };
+        setComments([fallback, ...comments]);
         setPage(1);
       }
     })();
@@ -288,6 +308,18 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
                   {comment.mentions.map((u) => (
                     <span key={u.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-700 border border-indigo-200">
                       @{u.name || u.email}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {Array.isArray(comment.contact_mentions) && comment.contact_mentions.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {comment.contact_mentions.map((c) => (
+                    <span
+                      key={c.id}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    >
+                      %{c.name || c.email || `contact-${c.id}`}
                     </span>
                   ))}
                 </div>

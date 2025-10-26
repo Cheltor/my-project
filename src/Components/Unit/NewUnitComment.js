@@ -8,6 +8,7 @@ const NewUnitComment = ({ unitId, addressId, onCommentAdded }) => {
   const [submitting, setSubmitting] = useState(false);
   const [files, setFiles] = useState([]);
   const [mentionIds, setMentionIds] = useState([]);
+  const [contactMentionIds, setContactMentionIds] = useState([]);
   const { user } = useAuth();
 
   const handleSubmit = (event) => {
@@ -34,6 +35,9 @@ const NewUnitComment = ({ unitId, addressId, onCommentAdded }) => {
           if (mentionIds && mentionIds.length > 0) {
             formData.append('mentioned_user_ids', mentionIds.join(','));
           }
+          if (contactMentionIds && contactMentionIds.length > 0) {
+            formData.append('mentioned_contact_ids', contactMentionIds.join(','));
+          }
           for (const f of files) formData.append('files', f);
           return { method: 'POST', body: formData };
         })()
@@ -45,6 +49,8 @@ const NewUnitComment = ({ unitId, addressId, onCommentAdded }) => {
             user_id: userId,
             address_id: addressId,
             unit_id: unitId,
+            mentioned_user_ids: mentionIds && mentionIds.length > 0 ? mentionIds : undefined,
+            mentioned_contact_ids: contactMentionIds && contactMentionIds.length > 0 ? contactMentionIds : undefined,
           }),
         };
 
@@ -71,6 +77,7 @@ const NewUnitComment = ({ unitId, addressId, onCommentAdded }) => {
         setNewComment('');
         setFiles([]);
         setMentionIds([]);
+        setContactMentionIds([]);
         setSubmitting(false);
         try {
           if (created && Array.isArray(created.mentions) && created.mentions.length > 0) {
@@ -90,7 +97,8 @@ const NewUnitComment = ({ unitId, addressId, onCommentAdded }) => {
         value={newComment}
         onChange={setNewComment}
         onMentionsChange={setMentionIds}
-        placeholder="Write a comment... Use @Name to mention users"
+        onContactMentionsChange={setContactMentionIds}
+        placeholder="Write a comment... Use @Name for users or %Name for contacts"
         className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-200"
         rows={4}
         disabled={submitting}

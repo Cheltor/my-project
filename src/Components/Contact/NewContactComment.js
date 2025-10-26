@@ -9,6 +9,7 @@ const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }
   const [mentionIds, setMentionIds] = useState([]);
   const [files, setFiles] = useState([]); // Selected files
   const { user, token } = useAuth(); // Get user data and token from context
+  const [contactMentionIds, setContactMentionIds] = useState([]);
 
   useEffect(() => {
     // Initialize text when editing
@@ -65,6 +66,9 @@ const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }
     if (mentionIds && mentionIds.length > 0) {
       formData.append('mentioned_user_ids', mentionIds.join(','));
     }
+    if (contactMentionIds && contactMentionIds.length > 0) {
+      formData.append('mentioned_contact_ids', contactMentionIds.join(','));
+    }
     // contact_id is in the path; backend doesn't need it in body
     for (const f of files) {
       formData.append('files', f);
@@ -83,6 +87,7 @@ const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }
         setNewComment(''); // Clear the input field
         setMentionIds([]);
         setFiles([]);
+        setContactMentionIds([]);
         setSubmitting(false);
       })
       .catch((error) => {
@@ -99,7 +104,8 @@ const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }
         value={newComment}
         onChange={setNewComment}
         onMentionsChange={setMentionIds}
-        placeholder={isEditing ? 'Edit your comment... Use @Name to mention users' : 'Write a comment... Use @Name to mention users'}
+        onContactMentionsChange={setContactMentionIds}
+        placeholder={isEditing ? 'Edit your comment... Use @Name for users or %Name for contacts' : 'Write a comment... Use @Name for users or %Name for contacts'}
         className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-200"
         rows={4}
         disabled={submitting}
