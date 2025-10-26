@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import API from '../Services/api';
-import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -95,8 +95,14 @@ const Login = () => {
             </div>
 
             {errorMessage && (
-              <p className="text-red-500">{errorMessage}</p> // Display the error message in red
+              <p className="text-red-500">{errorMessage}</p>
             )}
+
+            <div className="text-right text-sm">
+              <Link to="/forgot-password" className="font-semibold text-indigo-600 hover:text-indigo-500">
+                Forgot your password?
+              </Link>
+            </div>
 
             <div>
               <button

@@ -54,6 +54,8 @@ import ScheduleCalendar from './Components/ScheduleCalendar';
 import MapPage from './Components/MapPage';
 import ResidentConcern from './Components/ResidentConcern';
 import LandingPage from './Components/LandingPage';
+import ForgotPassword from './Components/ForgotPassword';
+import ResetPassword from './Components/ResetPassword';
 
 function App() {
   return (
@@ -171,6 +173,8 @@ function MainApp() {
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/resident-concern" element={<ResidentConcern />} />
             <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             {/* Add more routes as needed */}
           </Routes>
         </Sidebar>
@@ -181,6 +185,8 @@ function MainApp() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/resident-concern" element={<ResidentConcern />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<LandingPage />} /> {/* Redirect any other route to landing if not authenticated */}
         </Routes>
       )}

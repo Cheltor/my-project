@@ -11,6 +11,30 @@ import {
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
+const getStatusBadgeClasses = (status) => {
+  if (!status) return 'bg-slate-100 text-slate-800 ring-slate-500/20';
+  const normalized = status.toString().toLowerCase();
+  if (normalized.includes('no violation')) {
+    return 'bg-emerald-100 text-emerald-800 ring-emerald-500/20';
+  }
+  if (normalized.includes('violation')) {
+    return 'bg-rose-100 text-rose-800 ring-rose-500/20';
+  }
+  if (normalized.includes('pending')) {
+    return 'bg-indigo-100 text-indigo-800 ring-indigo-500/20';
+  }
+  if (normalized.includes('complete') || normalized.includes('pass')) {
+    return 'bg-emerald-100 text-emerald-800 ring-emerald-500/20';
+  }
+  if (normalized.includes('fail')) {
+    return 'bg-rose-100 text-rose-800 ring-rose-500/20';
+  }
+  if (normalized.includes('schedule')) {
+    return 'bg-amber-100 text-amber-800 ring-amber-500/20';
+  }
+  return 'bg-slate-100 text-slate-800 ring-slate-500/20';
+};
+
 function formatForInput(dtStr) {
   if (!dtStr) return '';
   const d = new Date(dtStr);
@@ -271,7 +295,9 @@ export default function InspectionDetail() {
           <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
             <dt className="text-sm font-medium leading-6 text-gray-900">Inspection Status</dt>
             <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
-              {formatStatus(inspection.status)}
+              <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${getStatusBadgeClasses(inspection.status)}`}>
+                {formatStatus(inspection.status)}
+              </span>
             </dd>
           </div>
 
