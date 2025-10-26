@@ -225,12 +225,18 @@ export default function ResidentConcern() {
       );
       if (!response.ok) return [];
       const data = await response.json();
-      return data.map((address) => ({
+      const addresses = Array.isArray(data) ? data : [];
+      return addresses
+        .filter((address) => {
+          const streetNumber = address?.streetnumb;
+          return streetNumber !== null && streetNumber !== undefined && String(streetNumber).trim() !== "";
+        })
+        .map((address) => ({
         label: `${address.property_name ? `${address.property_name} - ` : ""}${address.combadd}${
           address.aka ? ` (AKA: ${address.aka})` : ""
         }`,
         value: address.id,
-      }));
+        }));
     } catch (error) {
       console.error("Error loading addresses:", error);
       return [];
