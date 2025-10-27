@@ -483,13 +483,15 @@ export default function InspectionDetail() {
             </div>
           )}
           
-          {/* Inspector Information */}
-          <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-            <dt className="text-sm font-medium leading-6 text-gray-900">Inspector</dt>
-            <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
-              {inspection.inspector?.name || "No inspector assigned"}
-            </dd>
-          </div>
+          {/* Inspector Information (visible to non-admins) */}
+          {user?.role !== 3 && (
+            <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+              <dt className="text-sm font-medium leading-6 text-gray-900">Inspector</dt>
+              <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
+                {inspection.inspector?.name || "No inspector assigned"}
+              </dd>
+            </div>
+          )}
 
           {/* Inspector Contact Information with Mailto 
           <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
@@ -513,11 +515,11 @@ export default function InspectionDetail() {
             </dd>
           </div>
 
-          {/* Inspector Assignment */}
-          <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-            <dt className="text-sm font-medium leading-6 text-gray-900">Assigned Inspector</dt>
-            <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
-              {user?.role === 3 ? (
+          {/* Inspector Assignment (admin only) */}
+          {user?.role === 3 && (
+            <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
+              <dt className="text-sm font-medium leading-6 text-gray-900">Assigned Inspector</dt>
+              <dd className="mt-1 text-sm leading-6 text-gray-700 sm:col-span-2 sm:mt-0">
                 <div className="max-w-md">
                   <div className="flex gap-2">
                     <select
@@ -544,15 +546,9 @@ export default function InspectionDetail() {
                   {assignError && <div className="text-xs text-red-600 mt-1">{assignError}</div>}
                   {!assignError && assignSuccess && <div className="text-xs text-green-600 mt-1">{assignSuccess}</div>}
                 </div>
-              ) : (
-                <span>
-                  {inspection.inspector
-                    ? inspection.inspector.name || inspection.inspector.email || `User ${inspection.inspector_id}`
-                    : "Unassigned"}
-                </span>
-              )}
-            </dd>
-          </div>
+              </dd>
+            </div>
+          )}
 
           {/* Scheduled Date/Time */}
           <div className="px-4 py-6 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
