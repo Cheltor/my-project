@@ -98,7 +98,7 @@ const NewUnitComment = ({ unitId, addressId, onCommentAdded }) => {
         onChange={setNewComment}
         onMentionsChange={setMentionIds}
         onContactMentionsChange={setContactMentionIds}
-        placeholder="Write a comment... Use @Name for users or %Name for contacts"
+        placeholder="Write a comment... Use @Name for users or %Name for contacts..."
         className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-200"
         rows={4}
         disabled={submitting}

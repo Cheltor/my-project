@@ -429,6 +429,3 @@ export default function Complaints() {
   );
 }
 
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}

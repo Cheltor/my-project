@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NewContactComment from './NewContactComment';  // Assuming this is the component for adding a new comment
 
 // Utility function to format the date
@@ -12,7 +12,6 @@ export default function ContactComments({ contactId, contact }) {  // Accept con
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [selectedComment, setSelectedComment] = useState(null);
   const [attachments, setAttachments] = useState([]);
   const [attachmentsLoading, setAttachmentsLoading] = useState(false);
   const [attachmentCounts, setAttachmentCounts] = useState({}); // key -> number
@@ -64,7 +63,11 @@ export default function ContactComments({ contactId, contact }) {  // Accept con
         const resp = await fetch(`${baseUrl}/comments/address/${addressId}`);
         if (!resp.ok) continue;
         const addressComments = await resp.json();
-        const list = Array.isArray(addressComments) ? addressComments : [];
+        const list = Array.isArray(addressComments)
+          ? addressComments
+          : Array.isArray(addressComments?.results)
+            ? addressComments.results
+            : [];
         for (const comment of list) {
           if (!comment || results.has(comment.id)) continue;
           const contactMentions = Array.isArray(comment.contact_mentions) ? comment.contact_mentions : [];
@@ -114,7 +117,7 @@ export default function ContactComments({ contactId, contact }) {  // Accept con
   };
 
   // Function to fetch comments
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     setLoading(true);
     const baseUrl = process.env.REACT_APP_API_URL;
     try {
@@ -213,11 +216,11 @@ export default function ContactComments({ contactId, contact }) {  // Accept con
       setError(err.message || 'Failed to load comments');
       setLoading(false);
     }
-  };
+  }, [contactId, contactAddresses, contactMeta, contactAddressesKey, contactMetaKey]);
 
   useEffect(() => {
     fetchComments();  // Fetch comments on component load and when identifiers change
-  }, [contactId, contactAddressesKey, contactMetaKey]);
+  }, [fetchComments]);
 
   // Fetch all users once to map user_id -> email
   useEffect(() => {
@@ -276,10 +279,9 @@ export default function ContactComments({ contactId, contact }) {  // Accept con
     };
     run();
     return () => controller.abort();
-  }, [comments]);
+  }, [attachmentCounts, comments]);
 
   const openAttachments = (comment) => {
-    setSelectedComment(comment);
     setShowModal(true);
     setAttachments([]);
     setAttachmentsLoading(true);
@@ -304,7 +306,6 @@ export default function ContactComments({ contactId, contact }) {  // Accept con
 
   const closeModal = () => {
     setShowModal(false);
-    setSelectedComment(null);
     setAttachments([]);
     setAttachmentsLoading(false);
   };

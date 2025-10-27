@@ -91,12 +91,12 @@ export default function CodeDrawerLink({
         {children}
       </button>
 
-      <Dialog open={open} onClose={setOpen} className="relative z-50">
-        <div className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm" aria-hidden="true" />
-        <div className="fixed inset-0 overflow-hidden">
+      <Dialog open={open} onClose={setOpen} className="relative z-[1300]">
+        <div className="fixed inset-0 z-10 bg-gray-900/30 backdrop-blur-sm" aria-hidden="true" />
+        <div className="fixed inset-0 z-20 overflow-hidden">
           <div className="absolute inset-0 overflow-hidden">
             <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10 sm:pl-16">
-              <DialogPanel className="pointer-events-auto w-screen max-w-md transform transition duration-500 ease-in-out data-[closed]:translate-x-full sm:duration-700">
+              <DialogPanel className="pointer-events-auto w-screen max-w-md transform bg-white transition duration-500 ease-in-out data-[closed]:translate-x-full sm:duration-700">
                 <div className="flex h-full flex-col overflow-y-auto bg-white shadow-xl">
                   <header className="px-4 pb-4 pt-6 sm:px-6">
                     <div className="flex items-start justify-between">

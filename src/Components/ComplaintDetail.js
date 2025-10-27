@@ -62,15 +62,6 @@ export default function ComplaintDetail() {
 	const [statusMessage, setStatusMessage] = useState("");
 	const [showViolationPrompt, setShowViolationPrompt] = useState(false);
 
-	// Contact management
-	const [contactSearch, setContactSearch] = useState("");
-	const [contactResults, setContactResults] = useState([]);
-	const [contactLoading, setContactLoading] = useState(false);
-	const [assigningContact, setAssigningContact] = useState(false);
-	const [newContact, setNewContact] = useState({ name: "", email: "", phone: "" });
-	const [contactMessage, setContactMessage] = useState("");
-	const [showNewContactForm, setShowNewContactForm] = useState(false);
-
 	// Scheduling
 	const [scheduleValue, setScheduleValue] = useState("");
 	const [savingSchedule, setSavingSchedule] = useState(false);
@@ -165,28 +156,6 @@ export default function ComplaintDetail() {
 		})();
 	}, [complaint]);
 
-	// Debounced contact search
-	useEffect(() => {
-		const t = setTimeout(async () => {
-			if (!contactSearch || contactSearch.length < 2) {
-				setContactResults([]);
-				return;
-			}
-			setContactLoading(true);
-			try {
-				const r = await fetch(`${process.env.REACT_APP_API_URL}/contacts/?search=${encodeURIComponent(contactSearch)}`);
-				if (!r.ok) throw new Error("Failed to search contacts");
-				const data = await r.json();
-				setContactResults(Array.isArray(data) ? data : []);
-			} catch {
-				setContactResults([]);
-			} finally {
-				setContactLoading(false);
-			}
-		}, 300);
-		return () => clearTimeout(t);
-	}, [contactSearch]);
-
 	// Load assignable users for admins (role 3)
 	useEffect(() => {
 		if (user?.role !== 3) return;
@@ -206,28 +175,6 @@ export default function ComplaintDetail() {
 	const handleAttachmentsChange = (files) => {
 		const next = Array.isArray(files) ? files : Array.from(files || []);
 		setUploadFiles(next);
-	};
-
-	const handleAssignContact = async (contactId) => {
-		setAssigningContact(true);
-		setContactMessage("");
-		try {
-			const fd = new FormData();
-			fd.append("contact_id", String(contactId));
-			const resp = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/contact`, {
-				method: "PATCH",
-				headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
-				body: fd,
-			});
-			if (!resp.ok) throw new Error("Failed to assign contact");
-			const updated = await resp.json();
-			setComplaint(updated);
-			setContactMessage("Contact assigned");
-		} catch (e) {
-			setContactMessage(e.message || "Failed to assign contact");
-		} finally {
-			setAssigningContact(false);
-		}
 	};
 
 	const handleSaveSchedule = async () => {
@@ -250,29 +197,6 @@ export default function ComplaintDetail() {
 			setScheduleMessage(e.message || "Failed to save schedule");
 		} finally {
 			setSavingSchedule(false);
-		}
-	};
-
-	const handleCreateContact = async () => {
-		setAssigningContact(true);
-		setContactMessage("");
-		try {
-			const resp = await fetch(`${process.env.REACT_APP_API_URL}/contacts/`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-				},
-				body: JSON.stringify({ ...newContact }),
-			});
-			if (!resp.ok) throw new Error("Failed to create contact");
-			const contact = await resp.json();
-			await handleAssignContact(contact.id);
-			setNewContact({ name: "", email: "", phone: "" });
-		} catch (e) {
-			setContactMessage(e.message || "Failed to create contact");
-		} finally {
-			setAssigningContact(false);
 		}
 	};
 
@@ -548,7 +472,6 @@ export default function ComplaintDetail() {
 										<span className="text-gray-400">|</span>
 										<span>{complaint.contact.phone ? formatPhoneNumber(complaint.contact.phone) : "N/A"}</span>
 									</div>
-									{contactMessage && <p className="text-xs text-gray-500 mt-1">{contactMessage}</p>}
 								</div>
 							</dd>
 						</div>
@@ -573,7 +496,7 @@ export default function ComplaintDetail() {
 						{attachments.length === 0 ? (
 							<p className="text-sm text-gray-500">No attachments uploaded yet.</p>
 						) : (
-							<ul role="list" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+							<ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
 								{attachments.map((a, idx) => (
 									<li key={idx} className="group border rounded-md p-2 bg-white shadow-sm">
 										{isImage(a.content_type) ? (

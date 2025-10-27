@@ -12,7 +12,7 @@ import NewMFLicense from './Inspection/NewMFLicense';
 import NewSFLicense from './Inspection/NewSFLicense';
 import NewBuildingPermit from './Inspection/NewBuildingPermit';
 import NewBusinessLicense from './Inspection/NewBusinessLicense';
-import { useAuth } from '../AuthContext'; 
+import { useAuth } from '../AuthContext';
 
 export default function Example() {
   const { user } = useAuth();

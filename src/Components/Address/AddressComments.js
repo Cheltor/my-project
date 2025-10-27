@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import NewAddressComment from './NewAddressComment';
 import FullScreenPhotoViewer from '../FullScreenPhotoViewer';
@@ -33,11 +33,13 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
   const [editingPage, setEditingPage] = useState(false);
   const [pageInputVal, setPageInputVal] = useState('');
   const [pageError, setPageError] = useState('');
+  const [total, setTotal] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const startEditPage = () => { setPageInputVal(String(page)); setPageError(''); setEditingPage(true); };
   const applyPageInput = () => {
     const n = parseInt(pageInputVal, 10);
-    const totalPages = Math.max(1, Math.ceil((comments?.length || 0) / pageSize));
+  const totalPages = total > 0 ? Math.ceil(total / pageSize) : 1;
     if (Number.isNaN(n) || n < 1 || n > totalPages) {
       setPageError(`Enter a number between 1 and ${totalPages}`);
       return;
@@ -71,51 +73,76 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
     }
   };
 
-  useEffect(() => {
-    // Fetch comments for the address
-    fetch(`${process.env.REACT_APP_API_URL}/comments/address/${addressId}`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch comments');
-        }
-        return response.json();
-      })
-      .then((data) => {
-        // For each comment, fetch photos and unit details (if unit not provided)
-        const fetchExtrasPromises = data.map(async (comment) => {
-          // Photos
+  const fetchCommentsPage = useCallback(
+    async (targetPage, signal) => {
+      const baseUrl = process.env.REACT_APP_API_URL;
+      if (!baseUrl) {
+        throw new Error('API URL is not configured');
+      }
+
+      const params = new URLSearchParams({
+        page: String(targetPage),
+        page_size: String(pageSize),
+      });
+
+      const response = await fetch(`${baseUrl}/comments/address/${addressId}?${params.toString()}`, {
+        signal,
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch comments');
+      }
+      const payload = await response.json();
+
+      let rawComments;
+      let totalCount;
+
+      if (Array.isArray(payload)) {
+        totalCount = payload.length;
+        const start = (targetPage - 1) * pageSize;
+        rawComments = payload.slice(start, start + pageSize);
+      } else {
+        rawComments = Array.isArray(payload?.results) ? payload.results : [];
+        totalCount = typeof payload?.total === 'number' ? payload.total : rawComments.length;
+      }
+
+      const enriched = await Promise.all(
+        rawComments.map(async (comment) => {
           let photos = [];
           try {
-            const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/${comment.id}/photos`);
-            if (response.ok) {
-              photos = await response.json();
+            const photoResp = await fetch(`${baseUrl}/comments/${comment.id}/photos`, { signal });
+            if (photoResp.ok) {
+              photos = await photoResp.json();
             }
           } catch (error) {
-            console.error(`Error fetching photos for comment ${comment.id}:`, error);
+            if (error?.name !== 'AbortError') {
+              console.error(`Error fetching photos for comment ${comment.id}:`, error);
+            }
           }
 
-          // Unit details (if missing but unit_id present)
           let unit = comment.unit;
           if (!unit && comment.unit_id) {
             try {
-              const uResp = await fetch(`${process.env.REACT_APP_API_URL}/units/${comment.unit_id}`);
-              if (uResp.ok) {
-                unit = await uResp.json();
+              const unitResp = await fetch(`${baseUrl}/units/${comment.unit_id}`, { signal });
+              if (unitResp.ok) {
+                unit = await unitResp.json();
               }
-            } catch (e) {
-              console.error(`Error fetching unit for comment ${comment.id}:`, e);
+            } catch (error) {
+              if (error?.name !== 'AbortError') {
+                console.error(`Error fetching unit for comment ${comment.id}:`, error);
+              }
             }
           }
 
-          // Mentions (users)
           let mentions = [];
           try {
-            const mResp = await fetch(`${process.env.REACT_APP_API_URL}/comments/${comment.id}/mentions`);
-            if (mResp.ok) {
-              mentions = await mResp.json();
+            const mentionsResp = await fetch(`${baseUrl}/comments/${comment.id}/mentions`, { signal });
+            if (mentionsResp.ok) {
+              mentions = await mentionsResp.json();
             }
-          } catch (e) {
-            console.error(`Error fetching mentions for comment ${comment.id}:`, e);
+          } catch (error) {
+            if (error?.name !== 'AbortError') {
+              console.error(`Error fetching mentions for comment ${comment.id}:`, error);
+            }
           }
 
           return {
@@ -125,106 +152,69 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
             mentions,
             contact_mentions: Array.isArray(comment.contact_mentions) ? comment.contact_mentions : [],
           };
-        });
+        })
+      );
 
-        // Wait for all comments with their extras to be fetched
-        Promise.all(fetchExtrasPromises)
-          .then((commentsWithExtras) => {
-            setComments(commentsWithExtras);
-            setPage(initialPage);
-            setLoading(false);
-          })
-          .catch((error) => {
-            setError(error.message);
-            setLoading(false);
-          });
-      })
-      .catch((error) => {
-        setError(error.message);
-        setLoading(false);
-      });
+      if (signal?.aborted) {
+        return;
+      }
+
+      setComments(enriched);
+      setTotal(totalCount);
+    },
+    [addressId, pageSize]
+  );
+
+  useEffect(() => {
+    let isActive = true;
+    const controller = new AbortController();
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        await fetchCommentsPage(page, controller.signal);
+      } catch (err) {
+        if (!isActive || err?.name === 'AbortError') return;
+        setError(err.message || 'Failed to fetch comments');
+        setComments([]);
+        setTotal(0);
+      } finally {
+        if (isActive && !controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    load();
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [addressId, page, pageSize, refreshKey, fetchCommentsPage]);
+
+  useEffect(() => {
+    setPage(initialPage);
   }, [addressId, initialPage]);
 
-  // Adjust page if comments or pageSize change
   useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil((comments?.length || 0) / pageSize));
-    if (page > totalPages) setPage(totalPages);
-    if (page < 1) setPage(1);
-  }, [comments, page, pageSize]);
-
-  const handleCommentAdded = (newComment) => {
-    if (!newComment || typeof newComment.id === 'undefined' || newComment.id === null) {
-      // Just prepend the comment without photos
-      const normalized = {
-        ...newComment,
-        contact_mentions: Array.isArray(newComment?.contact_mentions) ? newComment.contact_mentions : [],
-      };
-      setComments([normalized, ...comments]);
+    const totalPages = total > 0 ? Math.ceil(total / pageSize) : 1;
+    if (page > totalPages) {
+      setPage(totalPages);
+    } else if (page < 1) {
       setPage(1);
-      return;
     }
-    // Fetch photos (and unit if needed) for the new comment
-    (async () => {
-      try {
-        let photos = [];
-        try {
-          const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/${newComment.id}/photos`);
-          if (response.ok) {
-            photos = await response.json();
-          }
-        } catch (e) {
-          console.error(`Error fetching photos for new comment ${newComment.id}:`, e);
-        }
+  }, [page, total, pageSize]);
 
-        let unit = newComment.unit;
-        if (!unit && newComment.unit_id) {
-          try {
-            const uResp = await fetch(`${process.env.REACT_APP_API_URL}/units/${newComment.unit_id}`);
-            if (uResp.ok) {
-              unit = await uResp.json();
-            }
-          } catch (e) {
-            console.error(`Error fetching unit for new comment ${newComment.id}:`, e);
-          }
-        }
-
-        // Mentions for the new comment (so chips show up immediately)
-        let mentions = [];
-        try {
-          const mResp = await fetch(`${process.env.REACT_APP_API_URL}/comments/${newComment.id}/mentions`);
-          if (mResp.ok) {
-            mentions = await mResp.json();
-          }
-        } catch (e) {
-          console.error(`Error fetching mentions for new comment ${newComment.id}:`, e);
-        }
-
-        const newCommentWithExtras = {
-          ...newComment,
-          photos,
-          unit,
-          mentions,
-          contact_mentions: Array.isArray(newComment.contact_mentions) ? newComment.contact_mentions : [],
-        };
-        setComments([newCommentWithExtras, ...comments]);
-        setPage(1);
-      } catch (error) {
-        console.error(`Error enriching new comment ${newComment.id}:`, error);
-        const fallback = {
-          ...newComment,
-          contact_mentions: Array.isArray(newComment.contact_mentions) ? newComment.contact_mentions : [],
-        };
-        setComments([fallback, ...comments]);
-        setPage(1);
-      }
-    })();
+  const handleCommentAdded = () => {
+    setPage(1);
+    setRefreshKey((key) => key + 1);
   };
 
-  const total = comments.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const startIdx = (page - 1) * pageSize;
-  const endIdx = Math.min(total, startIdx + pageSize);
-  const currentSlice = comments.slice(startIdx, endIdx);
+  const totalPages = total > 0 ? Math.ceil(total / pageSize) : 1;
+  const startIdx = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endIdx = total === 0 ? 0 : Math.min(total, startIdx + Math.max(comments.length - 1, 0));
 
   if (loading) {
     return <p>Loading comments...</p>;
@@ -249,7 +239,7 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
         <div>
           {total > 0 ? (
             <span>
-              Showing <span className="font-medium">{startIdx + 1}-{endIdx}</span> of <span className="font-medium">{total}</span>
+              Showing <span className="font-medium">{startIdx}-{endIdx}</span> of <span className="font-medium">{total}</span>
             </span>
           ) : (
             <span>0 results</span>
@@ -299,8 +289,8 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
       </div>
 
       <ul className="space-y-4 mt-2">
-        {currentSlice.length > 0 ? (
-          currentSlice.map((comment) => (
+        {comments.length > 0 ? (
+          comments.map((comment) => (
             <li key={comment.id} className="bg-gray-100 p-4 rounded-lg shadow">
               <p className="text-gray-700 whitespace-pre-line">{comment.content}</p>
               {Array.isArray(comment.mentions) && comment.mentions.length > 0 && (
