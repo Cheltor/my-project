@@ -111,13 +111,133 @@ const TAB_GROUPS = [
   },
 ];
 
+const sanitizeBusinessPhoneDigits = (value) => String(value || '').replace(/\D/g, '');
+
+const RELATIVE_TIME_DIVISIONS = [
+  { amount: 60, unit: 'second' },
+  { amount: 60, unit: 'minute' },
+  { amount: 24, unit: 'hour' },
+  { amount: 7, unit: 'day' },
+  { amount: 4.34524, unit: 'week' },
+  { amount: 12, unit: 'month' },
+  { amount: Infinity, unit: 'year' },
+];
+
+const formatRelativeTimeFromNow = (input) => {
+  const target = input instanceof Date ? input : new Date(input);
+  if (!target || Number.isNaN(target.getTime())) return '';
+  let duration = (target.getTime() - Date.now()) / 1000;
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  for (const division of RELATIVE_TIME_DIVISIONS) {
+    if (Math.abs(duration) < division.amount) {
+      return rtf.format(Math.round(duration), division.unit);
+    }
+    duration /= division.amount;
+  }
+  return '';
+};
+
+const formatRecentDescriptor = (input) => {
+  const target = input instanceof Date ? input : new Date(input);
+  if (!target || Number.isNaN(target.getTime())) return '';
+  const diffMs = Math.abs(Date.now() - target.getTime());
+  const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+  if (diffMs <= thirtyDays) {
+    const relative = formatRelativeTimeFromNow(target);
+    if (relative) return relative;
+  }
+  return target.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+};
+
+const getLatestTimestamp = (list, fields) => {
+  if (!Array.isArray(list) || list.length === 0) return null;
+  let latest = -Infinity;
+  list.forEach((item) => {
+    fields.forEach((field) => {
+      const value = item?.[field];
+      if (!value) return;
+      const ms = new Date(value).getTime();
+      if (!Number.isNaN(ms) && ms > latest) {
+        latest = ms;
+      }
+    });
+  });
+  return Number.isFinite(latest) ? new Date(latest) : null;
+};
+
+const inspectionStatusIsPending = (status) => {
+  const value = (status || '').toString().trim().toLowerCase();
+  if (!value) return true;
+  const closedKeywords = ['satisfactory', 'unsatisfactory', 'completed', 'complete', 'closed', 'cancelled', 'canceled', 'failed', 'passed'];
+  if (closedKeywords.some((keyword) => value.includes(keyword))) return false;
+  const pendingKeywords = ['pending', 'scheduled', 'open', 'in progress', 'in-progress', 'awaiting', 'requested', 'draft'];
+  return pendingKeywords.some((keyword) => value.includes(keyword));
+};
+
+const normalizeComplaintStatus = (status) => {
+  if (!status) return 'Pending';
+  const value = status.toString().toLowerCase();
+  if (value === 'unsatisfactory' || value === 'violation found' || value === 'violation') return 'Violation Found';
+  if (value === 'satisfactory' || value === 'no violation found' || value === 'no violation') return 'No Violation Found';
+  if (value === 'pending' || value === 'unknown') return 'Pending';
+  return status;
+};
+
+const violationIsCurrent = (violation) => {
+  if (!violation) return false;
+  const candidates = [violation.status, violation.status_id, violation.status_code];
+  for (const candidate of candidates) {
+    if (candidate === undefined || candidate === null) continue;
+    const numeric = Number(candidate);
+    if (!Number.isNaN(numeric)) {
+      return numeric === 0;
+    }
+    const label = String(candidate).trim().toLowerCase();
+    if (!label) continue;
+    if (label === 'current') return true;
+    if (label === 'resolved' || label === 'closed' || label === 'dismissed') return false;
+  }
+  return false;
+};
+
+const citationIsUnpaid = (citation) => {
+  if (!citation) return false;
+  const candidates = [
+    citation.status,
+    citation.status_id,
+    citation.status_code,
+    citation.statusValue,
+    citation.status_label,
+    citation.status_name,
+    citation.statusText,
+  ];
+  for (const candidate of candidates) {
+    if (candidate === undefined || candidate === null) continue;
+    const numeric = Number(candidate);
+    if (!Number.isNaN(numeric)) {
+      if (numeric === 0) return true;
+      if (numeric === 1 || numeric === 3) return false;
+      continue;
+    }
+    const label = String(candidate).trim().toLowerCase();
+    if (!label) continue;
+    if (label === 'unpaid') return true;
+    if (label === 'paid' || label === 'dismissed') return false;
+  }
+  return false;
+};
+
 // Utility function to titlize a string
 function titlize(str) {
   if (!str) return '';
   return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
 }
-
-const sanitizeBusinessPhoneDigits = (value) => String(value || '').replace(/\D/g, '');
 
 const BUSINESS_MATCH_REASON_LABELS = {
   name: 'name',
@@ -279,6 +399,7 @@ const AddressDetails = () => {
     contacts: 0,
     licenses: 0,
   });
+  const [tabHighlights, setTabHighlights] = useState({});
   // Quick comment (mobile) state
   const [quickContent, setQuickContent] = useState('');
   const [quickFiles, setQuickFiles] = useState([]);
@@ -696,41 +817,107 @@ const AddressDetails = () => {
     if (!id) return;
     let cancelled = false;
     const loadCounts = async () => {
+      const base = process.env.REACT_APP_API_URL;
+      const endpoints = {
+        comments: `/addresses/${id}/comments`,
+        violations: `/addresses/${id}/violations`,
+        inspections: `/addresses/${id}/inspections`,
+        complaints: `/complaints/address/${id}`,
+        citations: `/citations/address/${id}`,
+        photos: `/addresses/${id}/photos`,
+      };
+
       try {
-        const base = process.env.REACT_APP_API_URL;
-        const endpoints = {
-          comments: `/addresses/${id}/comments`,
-          violations: `/addresses/${id}/violations`,
-          inspections: `/addresses/${id}/inspections`,
-          complaints: `/complaints/address/${id}`,
-          citations: `/citations/address/${id}`,
-          photos: `/addresses/${id}/photos`,
-        };
         const entries = Object.entries(endpoints);
         const results = await Promise.allSettled(
           entries.map(([key, path]) =>
             fetch(`${base}${path}`)
               .then((r) => (r.ok ? r.json() : []))
-              .then((data) => ({ key, len: Array.isArray(data) ? data.length : 0 }))
-              .catch(() => ({ key, len: 0 }))
+              .then((data) => ({ key, data: Array.isArray(data) ? data : [] }))
+              .catch(() => ({ key, data: [] }))
           )
         );
-        const next = {};
+
+        const nextCounts = {};
+        const nextHighlights = { comments: '', inspections: '', complaints: '', violations: '', citations: '' };
+        let violationList = [];
+
         results.forEach((res) => {
-          if (res.status === 'fulfilled') {
-            next[res.value.key] = res.value.len;
+          if (res.status !== 'fulfilled') return;
+          const { key, data } = res.value;
+          const list = Array.isArray(data) ? data : [];
+          nextCounts[key] = list.length;
+          if (key === 'violations') {
+            violationList = list;
+          }
+
+          if (key === 'comments') {
+            if (list.length === 0) {
+              nextHighlights.comments = 'No comments yet';
+            } else {
+              const latest = getLatestTimestamp(list, ['created_at', 'updated_at']);
+              nextHighlights.comments = latest
+                ? `Most recent · ${formatRecentDescriptor(latest)}`
+                : 'Latest timing unavailable';
+            }
+          }
+
+          if (key === 'inspections') {
+            if (list.length === 0) {
+              nextHighlights.inspections = 'No inspections yet';
+            } else {
+              const pendingCount = list.filter((item) => inspectionStatusIsPending(item?.status)).length;
+              nextHighlights.inspections = pendingCount > 0
+                ? (pendingCount === 1 ? '1 pending inspection' : `${pendingCount} pending inspections`)
+                : 'No pending inspections';
+            }
+          }
+
+          if (key === 'complaints') {
+            if (list.length === 0) {
+              nextHighlights.complaints = 'No complaints yet';
+            } else {
+              const pendingCount = list.filter((item) => normalizeComplaintStatus(item?.status) === 'Pending').length;
+              nextHighlights.complaints = pendingCount > 0
+                ? (pendingCount === 1 ? '1 pending complaint' : `${pendingCount} pending complaints`)
+                : 'No pending complaints';
+            }
+          }
+
+          if (key === 'violations') {
+            if (list.length === 0) {
+              nextHighlights.violations = 'No violations yet';
+            } else {
+              const currentCount = list.filter(violationIsCurrent).length;
+              nextHighlights.violations = currentCount > 0
+                ? (currentCount === 1 ? '1 open violation' : `${currentCount} open violations`)
+                : 'No open violations';
+            }
+          }
+
+          if (key === 'citations') {
+            if (list.length === 0) {
+              nextHighlights.citations = 'No citations yet';
+            } else {
+              const unpaidCount = list.filter(citationIsUnpaid).length;
+              nextHighlights.citations = unpaidCount > 0
+                ? (unpaidCount === 1 ? '1 unpaid citation' : `${unpaidCount} unpaid citations`)
+                : 'No unpaid citations';
+            }
           }
         });
 
-        // Include violation photo count in total photos (graceful fallbacks)
         try {
-          let vRes = await fetch(`${base}/addresses/${id}/violations`);
-          let vList = [];
-          if (vRes.ok) {
-            vList = await vRes.json();
+          let vList = Array.isArray(violationList) ? violationList : [];
+          if (vList.length === 0 && (nextCounts.violations || 0) > 0) {
+            const vRes = await fetch(`${base}/addresses/${id}/violations`);
+            if (vRes.ok) {
+              const fetched = await vRes.json();
+              vList = Array.isArray(fetched) ? fetched : [];
+            }
           }
           const vPhotoSettled = await Promise.allSettled(
-            (Array.isArray(vList) ? vList : []).map((v) =>
+            vList.map((v) =>
               fetch(`${base}/violation/${v.id}/photos`)
                 .then((r) => (r.ok ? r.json() : []))
                 .catch(() => [])
@@ -743,12 +930,11 @@ const AddressDetails = () => {
             }
             return sum;
           }, 0);
-          next.photos = (next.photos || 0) + vPhotoCount;
+          nextCounts.photos = (nextCounts.photos || 0) + vPhotoCount;
         } catch {
-          // ignore
+          // ignore photo aggregation fallbacks
         }
 
-        // Permits count with graceful fallback similar to licenses
         let permitsLen = 0;
         try {
           let r = await fetch(`${base}/permits/address/${id}`);
@@ -772,13 +958,23 @@ const AddressDetails = () => {
         } catch {
           permitsLen = 0;
         }
-        next.permits = permitsLen;
+        nextCounts.permits = permitsLen;
 
         if (!cancelled) {
-          setCounts((prev) => ({ ...prev, ...next }));
+          setCounts((prev) => ({ ...prev, ...nextCounts }));
+          setTabHighlights((prev) => ({ ...prev, ...nextHighlights }));
         }
       } catch {
-        // ignore
+        if (!cancelled) {
+          setTabHighlights((prev) => ({
+            ...prev,
+            comments: '',
+            inspections: '',
+            complaints: '',
+            violations: '',
+            citations: '',
+          }));
+        }
       }
     };
     loadCounts();
@@ -928,8 +1124,9 @@ const AddressDetails = () => {
         id: key,
         ...meta,
         count: tabCounts[key] ?? 0,
+        highlight: tabHighlights[key] ?? '',
       })),
-  })).filter((group) => group.items.length > 0), [tabCounts]);
+  })).filter((group) => group.items.length > 0), [tabCounts, tabHighlights]);
 
   const tabOptions = useMemo(
     () => groupedTabs.flatMap((group) => group.items),
@@ -2009,6 +2206,9 @@ const AddressDetails = () => {
                             <span className="text-sm font-semibold text-gray-900">{item.label}</span>
                             {item.description && (
                               <span className="text-xs leading-snug text-gray-500">{item.description}</span>
+                            )}
+                            {item.highlight && (
+                              <span className="text-xs font-semibold text-indigo-600">{item.highlight}</span>
                             )}
                           </div>
                         </div>
