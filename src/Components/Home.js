@@ -25,6 +25,16 @@ export default function Example() {
   const [showAdminWidgets, setShowAdminWidgets] = useState(false); // Admin widgets toggle
   const [emailTestStatus, setEmailTestStatus] = useState(null);
   const [emailTestLoading, setEmailTestLoading] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false); // Collapse the quick action buttons when not needed
+
+  const closeAllForms = () => {
+    setShowNewComplaint(false);
+    setShowNewMFLicense(false);
+    setShowNewSFLicense(false);
+    setShowNewBuildingPermit(false);
+    setShowNewBusinessLicense(false);
+    setShowNewViolationForm(false);
+  };
 
   const toggleNewComplaint = () => {
     setShowNewComplaint(!showNewComplaint);
@@ -82,6 +92,15 @@ export default function Example() {
 
   const toggleAdminWidgets = () => {
     setShowAdminWidgets((prev) => !prev);
+  };
+
+  const toggleQuickActions = () => {
+    setShowQuickActions((prev) => {
+      if (prev) {
+        closeAllForms();
+      }
+      return !prev;
+    });
   };
 
   const sendTestEmail = async () => {
@@ -154,27 +173,41 @@ export default function Example() {
 
       {(user.role === 2 || user.role === 1 || user.role === 3) && (
         <>
-          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-4">
-            {buttons.map((button, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={button.toggle}
-                className={`relative flex items-center space-x-3 rounded-lg border border-gray-300 px-6 py-5 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-gray-400 ${button.color}`}
-              >
-                <span className="w-full text-white font-semibold">
-                  {button.label}
-                </span>
-              </button>
-            ))}
+          <div className="mt-5 mb-4 flex justify-end">
+            <button
+              type="button"
+              onClick={toggleQuickActions}
+              className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
+              {showQuickActions ? 'Hide Quick Actions' : 'Show Quick Actions'}
+            </button>
           </div>
 
-          {showNewViolationForm && <NewViolationForm />}
-          {showNewComplaint && <NewComplaint />}
-          {showNewMFLicense && <NewMFLicense />}
-          {showNewSFLicense && <NewSFLicense />}
-          {showNewBuildingPermit && <NewBuildingPermit />}
-          {showNewBusinessLicense && <NewBusinessLicense />}
+          {showQuickActions && (
+            <>
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-4">
+                {buttons.map((button, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={button.toggle}
+                    className={`relative flex items-center space-x-3 rounded-lg border border-gray-300 px-6 py-5 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-gray-400 ${button.color}`}
+                  >
+                    <span className="w-full text-white font-semibold">
+                      {button.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {showNewViolationForm && <NewViolationForm />}
+              {showNewComplaint && <NewComplaint />}
+              {showNewMFLicense && <NewMFLicense />}
+              {showNewSFLicense && <NewSFLicense />}
+              {showNewBuildingPermit && <NewBuildingPermit />}
+              {showNewBusinessLicense && <NewBusinessLicense />}
+            </>
+          )}
         </>
       )}
       
