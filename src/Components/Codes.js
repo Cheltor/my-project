@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom'; // Import Link for navigation
 import { useAuth } from '../AuthContext';
 import AddCodeModal from './AddCodeModal';
@@ -15,6 +15,7 @@ const Codes = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1); // State for the current page
   const codesPerPage = 10; // Number of codes to display per page
+  const [sortOption, setSortOption] = useState('recent');
 
   const [searchTerm, setSearchTerm] = useState(''); // State for text-based filtering
   const [selectedChapter, setSelectedChapter] = useState(''); // State for chapter filter
@@ -53,21 +54,42 @@ const Codes = () => {
   }, []);
 
   // Filter codes based on search term and selected filters
-  const filteredCodes = codes.filter((code) => {
-    const matchesSearchTerm =
-      (code.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (code.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredCodes = useMemo(() => {
+    const lowered = searchTerm.trim().toLowerCase();
+    return codes.filter((code) => {
+      const nameText = (code.name || '').toLowerCase();
+      const descriptionText = (code.description || '').toLowerCase();
+      const matchesSearchTerm = !lowered || nameText.includes(lowered) || descriptionText.includes(lowered);
+      const matchesChapter = selectedChapter ? code.chapter === selectedChapter : true;
+      return matchesSearchTerm && matchesChapter;
+    });
+  }, [codes, searchTerm, selectedChapter]);
 
-    const matchesChapter = selectedChapter ? code.chapter === selectedChapter : true;
-
-    return matchesSearchTerm && matchesChapter;
-  });
+  const sortedCodes = useMemo(() => {
+    const list = [...filteredCodes];
+    if (sortOption === 'violations') {
+      list.sort((a, b) => {
+        const violationDiff = (b.violation_count || 0) - (a.violation_count || 0);
+        if (violationDiff !== 0) return violationDiff;
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA;
+      });
+      return list;
+    }
+    list.sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return dateB - dateA;
+    });
+    return list;
+  }, [filteredCodes, sortOption]);
 
   // Get the current set of codes to display
-  const maxFilteredPages = Math.max(1, Math.ceil(filteredCodes.length / codesPerPage));
+  const maxFilteredPages = Math.max(1, Math.ceil(sortedCodes.length / codesPerPage));
   const indexOfLastCode = currentPage * codesPerPage;
   const indexOfFirstCode = indexOfLastCode - codesPerPage;
-  const currentCodes = filteredCodes.slice(indexOfFirstCode, indexOfLastCode);
+  const currentCodes = sortedCodes.slice(indexOfFirstCode, indexOfLastCode);
 
   // Change page
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
@@ -90,13 +112,19 @@ const Codes = () => {
   };
 
   // Get unique chapters for filtering options
-  const uniqueChapters = [...new Set(codes.map((code) => code.chapter))];
+  const uniqueChapters = useMemo(() => {
+    return [...new Set(codes.map((code) => code.chapter).filter(Boolean))];
+  }, [codes]);
 
   useEffect(() => {
     if (currentPage > maxFilteredPages) {
       setCurrentPage(maxFilteredPages);
     }
   }, [currentPage, maxFilteredPages]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortOption, searchTerm, selectedChapter]);
 
   const handleCodeCreated = (newCode) => {
     if (!newCode) return;
@@ -181,6 +209,14 @@ const Codes = () => {
               </option>
             ))}
           </select>
+          <select
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value)}
+            className="w-full sm:w-1/2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          >
+            <option value="recent">Sort by Recently Added</option>
+            <option value="violations">Sort by Most Violations</option>
+          </select>
         </div>
 
         {/* Responsive Table Container */}
@@ -201,6 +237,12 @@ const Codes = () => {
                       className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter"
                     >
                       Section
+                    </th>
+                    <th
+                      scope="col"
+                      className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter"
+                    >
+                      Violations
                     </th>
                     <th
                       scope="col"
@@ -234,6 +276,14 @@ const Codes = () => {
                         )}
                       >
                         {code.section}
+                      </td>
+                      <td
+                        className={classNames(
+                          idx !== currentCodes.length - 1 ? 'border-b border-gray-200' : '',
+                          'whitespace-nowrap px-3 py-4 text-sm text-gray-500',
+                        )}
+                      >
+                        {code.violation_count ?? 0}
                       </td>
                       <td
                         className={classNames(
