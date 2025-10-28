@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { formatPhoneNumber } from '../utils';
 
-
 const BusinessDetails = () => {
   const { id } = useParams();
   const [business, setBusiness] = useState(null);
@@ -147,21 +146,50 @@ const BusinessDetails = () => {
     }
   };
 
-  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 via-white to-slate-200">
+        <div className="inline-flex items-center gap-3 rounded-full bg-white/90 px-5 py-2 text-sm font-medium text-slate-500 shadow-lg ring-1 ring-slate-200">
+          <span className="h-3 w-3 animate-ping rounded-full bg-indigo-500/80" />
+          Loading business…
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-rose-50 via-white to-rose-100">
+        <div className="rounded-3xl border border-rose-200 bg-white/90 px-6 py-5 text-center shadow-xl">
+          <p className="text-base font-semibold text-rose-700">Something went wrong</p>
+          <p className="mt-2 text-sm text-rose-500">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white shadow-sm ring-1 ring-gray-200 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-semibold text-gray-900">Business Details</h1>
-            <div className="flex items-center gap-3">
-              {isEditing ? (
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-slate-200">
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-8">
+          <header className="flex flex-wrap items-center justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500/80">Business #{business?.id ?? id}</p>
+              <h1 className="text-3xl font-semibold text-slate-900">Business Details</h1>
+              <p className="text-sm text-slate-500">Review and manage business information, contacts, and activity.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              {business?.is_closed !== undefined && (
+                <span className={`inline-flex items-center gap-2 rounded-full px-4 py-1 text-xs font-semibold ring-1 ring-inset ${business.is_closed ? 'bg-rose-50 text-rose-700 ring-rose-200' : 'bg-emerald-50 text-emerald-700 ring-emerald-200'}`}>
+                  <span className={`h-2 w-2 rounded-full ${business.is_closed ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                  {business.is_closed ? 'Closed' : 'Active'}
+                </span>
+              )}
+              {isEditing && (
                 <button
-                  className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2"
+                  type="button"
+                  className="inline-flex items-center justify-center rounded-full bg-white/80 px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm ring-1 ring-inset ring-slate-200 transition hover:bg-white hover:text-slate-700"
                   onClick={() => {
-                    // Reset edits to current business values
                     if (business) {
                       setEditFields({
                         name: business.name || '',
@@ -179,318 +207,448 @@ const BusinessDetails = () => {
                     setSaveMsg('');
                   }}
                 >Cancel</button>
-              ) : null}
+              )}
               <button
-                className={`inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isEditing ? 'bg-blue-600 text-white hover:bg-blue-700 focus-visible:ring-blue-500' : 'bg-indigo-600 text-white hover:bg-indigo-700 focus-visible:ring-indigo-500'}`}
+                type="button"
+                className={`inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-semibold shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${isEditing ? 'bg-blue-600 text-white hover:bg-blue-500 focus-visible:ring-blue-500' : 'bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:ring-indigo-500'}`}
                 onClick={() => setIsEditing((v) => !v)}
-              >{isEditing ? 'Editing…' : 'Edit'}</button>
-            </div>
-          </div>
-
-          {/* Tabs */}
-          <div className="mb-6">
-            <div className="inline-flex rounded-full bg-gray-100 p-1">
-              <button
-                className={`px-4 py-2 text-sm rounded-full transition ${activeTab === 'details' ? 'bg-white text-gray-900 shadow' : 'text-gray-600 hover:text-gray-800'}`}
-                onClick={() => setActiveTab('details')}
               >
-                Details
-              </button>
-              <button
-                className={`px-4 py-2 text-sm rounded-full transition ${activeTab === 'contacts' ? 'bg-white text-gray-900 shadow' : 'text-gray-600 hover:text-gray-800'}`}
-                onClick={() => setActiveTab('contacts')}
-              >
-                Contacts
+                {isEditing ? 'Editing…' : 'Edit Details'}
               </button>
             </div>
-          </div>
+          </header>
 
-          {/* Tab Content */}
-          {activeTab === 'details' && (
-            business ? (
-              <div className="space-y-8">
-                <div className="border-b border-gray-200 pb-6">
-                  <h2 className="text-lg font-semibold text-gray-900">Basic Information</h2>
-              {isEditing ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                  <div>
-                        <label className="block text-sm font-medium text-gray-700">Business Name</label>
-                        <input
-                          type="text"
-                          value={editFields.name}
-                          onChange={(e) => setEditFields((p) => ({ ...p, name: e.target.value }))}
-                          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        />
-                  </div>
-                  <div>
-                        <label className="block text-sm font-medium text-gray-700">Email</label>
-                        <input
-                          type="email"
-                          value={editFields.email}
-                          onChange={(e) => setEditFields((p) => ({ ...p, email: e.target.value }))}
-                          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        />
-                  </div>
-                  <div>
-                        <label className="block text-sm font-medium text-gray-700">Phone</label>
-                        <input
-                          type="tel"
-                          value={editFields.phone}
-                          onChange={(e) => setEditFields((p) => ({ ...p, phone: e.target.value }))}
-                          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        />
-                  </div>
-                  <div>
-                        <label className="block text-sm font-medium text-gray-700">Website</label>
-                        <input
-                          type="url"
-                          value={editFields.website}
-                          onChange={(e) => setEditFields((p) => ({ ...p, website: e.target.value }))}
-                          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        />
-                  </div>
-                  <div>
-                        <label className="block text-sm font-medium text-gray-700">Trading As</label>
-                        <input
-                          type="text"
-                          value={editFields.trading_as}
-                          onChange={(e) => setEditFields((p) => ({ ...p, trading_as: e.target.value }))}
-                          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                        />
-                  </div>
-                  {units.length > 0 && (
-                    <div>
-                          <label className="block text-sm font-medium text-gray-700">Unit</label>
-                          <select
-                            value={editFields.unit_id || ''}
-                            onChange={(e) => setEditFields((p) => ({ ...p, unit_id: e.target.value ? Number(e.target.value) : null }))}
-                            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                          >
-                            <option value="">Whole Building</option>
-                            {units.map((u) => (
-                              <option key={u.id} value={u.id}>{u.number}</option>
-                            ))}
-                          </select>
-                    </div>
-                  )}
-                    </div>
-              ) : (
-                    <div className="space-y-1 mt-4">
-                      <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Business Name:</span> {business.name || 'N/A'}</p>
-                      <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Email:</span> {business.email ? (<a href={`mailto:${business.email}`} className="text-indigo-600 hover:text-indigo-700">{business.email}</a>) : 'N/A'}</p>
-                      <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Phone:</span> {business.phone ? formatPhoneNumber(business.phone) : 'N/A'}</p>
-                      <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Website:</span> {business.website ? (<a href={business.website} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-700">{business.website}</a>) : 'N/A'}</p>
-                      <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Trading As:</span> {business.trading_as || 'N/A'}</p>
-                      {business.unit_id && units.length > 0 ? (
-                        <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Unit:</span> {(() => {
-                          const u = units.find((x) => x.id === business.unit_id);
-                          return u ? u.number : business.unit_id;
-                        })()}</p>
-                      ) : (
-                        <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Unit:</span> Whole Building</p>
+          <div className="flex flex-col gap-6">
+            <nav className="flex justify-start">
+              <div className="inline-flex rounded-full border border-slate-200 bg-white/80 p-1 shadow-sm">
+                <button
+                  type="button"
+                  className={`rounded-full px-5 py-2 text-sm font-semibold transition ${activeTab === 'details' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+                  onClick={() => setActiveTab('details')}
+                >
+                  Details
+                </button>
+                <button
+                  type="button"
+                  className={`rounded-full px-5 py-2 text-sm font-semibold transition ${activeTab === 'contacts' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+                  onClick={() => setActiveTab('contacts')}
+                >
+                  Contacts
+                </button>
+              </div>
+            </nav>
+
+            {activeTab === 'details' && (
+              business ? (
+                <div className="space-y-8">
+                  <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-xl backdrop-blur">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <h2 className="text-lg font-semibold text-slate-900">Basic Information</h2>
+                      {saveMsg && !isEditing && (
+                        <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">{saveMsg}</span>
                       )}
                     </div>
-              )}
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-                {isEditing ? (
-                  <>
-                        <label className="inline-flex items-center gap-2">
+                    {isEditing ? (
+                      <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-600">Business Name</label>
                           <input
+                            type="text"
+                            value={editFields.name}
+                            onChange={(e) => setEditFields((p) => ({ ...p, name: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-600">Email</label>
+                          <input
+                            type="email"
+                            value={editFields.email}
+                            onChange={(e) => setEditFields((p) => ({ ...p, email: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-600">Phone</label>
+                          <input
+                            type="tel"
+                            value={editFields.phone}
+                            onChange={(e) => setEditFields((p) => ({ ...p, phone: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-600">Website</label>
+                          <input
+                            type="url"
+                            value={editFields.website}
+                            onChange={(e) => setEditFields((p) => ({ ...p, website: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-600">Trading As</label>
+                          <input
+                            type="text"
+                            value={editFields.trading_as}
+                            onChange={(e) => setEditFields((p) => ({ ...p, trading_as: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                          />
+                        </div>
+                        {units.length > 0 && (
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-600">Unit</label>
+                            <select
+                              value={editFields.unit_id || ''}
+                              onChange={(e) => setEditFields((p) => ({ ...p, unit_id: e.target.value ? Number(e.target.value) : null }))}
+                              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                            >
+                              <option value="">Whole Building</option>
+                              {units.map((u) => (
+                                <option key={u.id} value={u.id}>{u.number}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3">
+                          <input
+                            id="business-closed"
                             type="checkbox"
                             checked={!!editFields.is_closed}
                             onChange={(e) => setEditFields((p) => ({ ...p, is_closed: e.target.checked }))}
-                            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                           />
-                          <span className="text-sm text-gray-700">Closed</span>
-                        </label>
-                    <div>
-                          <label className="block text-sm font-medium text-gray-700">Opened On</label>
+                          <label htmlFor="business-closed" className="text-sm font-medium text-slate-600">Business is closed</label>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-600">Opened On</label>
                           <input
                             type="date"
                             value={editFields.opened_on || ''}
                             onChange={(e) => setEditFields((p) => ({ ...p, opened_on: e.target.value }))}
-                            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                           />
-                    </div>
-                    <div>
-                          <label className="block text-sm font-medium text-gray-700">Employee Count</label>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-600">Employee Count</label>
                           <input
                             type="number"
                             min="0"
                             value={editFields.employee_count}
                             onChange={(e) => setEditFields((p) => ({ ...p, employee_count: e.target.value }))}
-                            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                           />
-                    </div>
-                  </>
-                ) : (
-                  <>
-                        <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Closed:</span> {business.is_closed ? (
-                          <span className="ml-1 inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">Yes</span>
-                        ) : (
-                          <span className="ml-1 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">No</span>
-                        )}</p>
-                        <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Opened On:</span> {business.opened_on ? new Date(business.opened_on).toLocaleDateString() : 'N/A'}</p>
-                        <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Employee Count:</span> {business.employee_count ?? 'N/A'}</p>
-                  </>
-                )}
+                        </div>
+                      </div>
+                    ) : (
+                      <dl className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Business Name</dt>
+                          <dd className="mt-2 text-sm font-medium text-slate-800">{business.name || 'N/A'}</dd>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</dt>
+                          <dd className="mt-2 text-sm font-medium text-slate-800">
+                            {business.email ? (
+                              <a href={`mailto:${business.email}`} className="text-indigo-600 transition hover:text-indigo-500">{business.email}</a>
+                            ) : 'N/A'}
+                          </dd>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</dt>
+                          <dd className="mt-2 text-sm font-medium text-slate-800">{business.phone ? formatPhoneNumber(business.phone) : 'N/A'}</dd>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Website</dt>
+                          <dd className="mt-2 text-sm font-medium text-slate-800">
+                            {business.website ? (
+                              <a
+                                href={business.website}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-indigo-600 transition hover:text-indigo-500"
+                              >
+                                {business.website}
+                              </a>
+                            ) : 'N/A'}
+                          </dd>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Trading As</dt>
+                          <dd className="mt-2 text-sm font-medium text-slate-800">{business.trading_as || 'N/A'}</dd>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Unit</dt>
+                          <dd className="mt-2 text-sm font-medium text-slate-800">
+                            {business.unit_id && units.length > 0
+                              ? (() => {
+                                  const u = units.find((x) => x.id === business.unit_id);
+                                  return u ? u.number : business.unit_id;
+                                })()
+                              : 'Whole Building'}
+                          </dd>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Opened On</dt>
+                          <dd className="mt-2 text-sm font-medium text-slate-800">{business.opened_on ? new Date(business.opened_on).toLocaleDateString() : 'N/A'}</dd>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Employee Count</dt>
+                          <dd className="mt-2 text-sm font-medium text-slate-800">{business.employee_count ?? 'N/A'}</dd>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Closed</dt>
+                          <dd className="mt-2">
+                            {business.is_closed ? (
+                              <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">Closed</span>
+                            ) : (
+                              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">Open</span>
+                            )}
+                          </dd>
+                        </div>
+                      </dl>
+                    )}
+                    {isEditing && (
+                      <div className="mt-6 flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={saving}
+                          onClick={async () => {
+                            setSaving(true);
+                            setSaveMsg('');
+                            try {
+                              const payload = {
+                                name: editFields.name,
+                                email: editFields.email,
+                                phone: editFields.phone,
+                                website: editFields.website,
+                                trading_as: editFields.trading_as,
+                                unit_id: editFields.unit_id === '' ? null : editFields.unit_id,
+                                is_closed: !!editFields.is_closed,
+                                opened_on: editFields.opened_on || null,
+                                employee_count: editFields.employee_count === '' ? null : Number(editFields.employee_count),
+                              };
+                              const res = await fetch(`${process.env.REACT_APP_API_URL}/businesses/${id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload),
+                              });
+                              if (!res.ok) throw new Error('Save failed');
+                              const updated = await res.json();
+                              setBusiness(updated);
+                              setIsEditing(false);
+                              setSaveMsg('Saved');
+                              setTimeout(() => setSaveMsg(''), 1800);
+                            } catch (_) {
+                              setSaveMsg('Error saving');
+                            } finally {
+                              setSaving(false);
+                            }
+                          }}
+                        >
+                          {saving ? 'Saving…' : 'Save Changes'}
+                        </button>
+                        {saveMsg && <span className="text-sm font-medium text-slate-500">{saveMsg}</span>}
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-xl backdrop-blur">
+                    <h2 className="text-lg font-semibold text-slate-900">Address Information</h2>
+                    {business.address ? (
+                      <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Combined Address</dt>
+                          <dd className="mt-2 text-sm font-medium text-slate-800">
+                            <Link to={`/address/${business.address.id}`} className="text-indigo-600 transition hover:text-indigo-500">
+                              {business.address.combadd}
+                            </Link>
+                          </dd>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Owner Name</dt>
+                          <dd className="mt-2 text-sm font-medium text-slate-800">{business.address.ownername || 'N/A'}</dd>
+                        </div>
+                      </dl>
+                    ) : (
+                      <p className="mt-4 text-sm text-slate-500">No address information available.</p>
+                    )}
+                  </section>
+
+                  <section className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-xl backdrop-blur">
+                    <h2 className="text-lg font-semibold text-slate-900">Additional Information</h2>
+                    <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Created</dt>
+                        <dd className="mt-2 text-sm font-medium text-slate-800">{new Date(business.created_at).toLocaleDateString()}</dd>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Last Updated</dt>
+                        <dd className="mt-2 text-sm font-medium text-slate-800">{new Date(business.updated_at).toLocaleDateString()}</dd>
+                      </div>
+                    </dl>
+                  </section>
                 </div>
-                {isEditing && (
-                  <div className="mt-4 flex items-center gap-3">
-                    <button
-                      className="inline-flex items-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:opacity-60"
-                      disabled={saving}
-                      onClick={async () => {
-                        setSaving(true);
-                        setSaveMsg('');
-                        try {
-                          const payload = {
-                            name: editFields.name,
-                            email: editFields.email,
-                            phone: editFields.phone,
-                            website: editFields.website,
-                            trading_as: editFields.trading_as,
-                            unit_id: editFields.unit_id === '' ? null : editFields.unit_id,
-                            is_closed: !!editFields.is_closed,
-                            opened_on: editFields.opened_on || null,
-                            employee_count: editFields.employee_count === '' ? null : Number(editFields.employee_count),
-                          };
-                          const res = await fetch(`${process.env.REACT_APP_API_URL}/businesses/${id}`, {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload),
-                          });
-                          if (!res.ok) throw new Error('Save failed');
-                          const updated = await res.json();
-                          setBusiness(updated);
-                          setIsEditing(false);
-                          setSaveMsg('Saved');
-                          setTimeout(() => setSaveMsg(''), 1500);
-                        } catch (_) {
-                          setSaveMsg('Error saving');
-                        } finally {
-                          setSaving(false);
-                        }
-                      }}
-                    >{saving ? 'Saving…' : 'Save Changes'}</button>
-                    {saveMsg && <span className="text-sm text-gray-500">{saveMsg}</span>}
+              ) : (
+                <div className="rounded-3xl border border-slate-200 bg-white/90 p-10 text-center shadow-xl">
+                  <p className="text-sm font-medium text-slate-500">No details available for this business.</p>
+                </div>
+              )
+            )}
+
+            {activeTab === 'contacts' && (
+              <section className="space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Contacts</h2>
+                    <p className="text-sm text-slate-500">Link people to this business for quick follow-up.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                    onClick={() => setShowAddContact((prev) => !prev)}
+                  >
+                    {showAddContact ? 'Cancel' : 'Add Contact'}
+                  </button>
+                </div>
+                {contacts.length === 0 && (
+                  <p className="text-sm text-slate-500">No contacts associated with this business.</p>
+                )}
+                <ul className="grid grid-cols-1 gap-4">
+                  {contacts.map((contact) => (
+                    <li
+                      key={contact.id}
+                      className="group flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-xl transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-2xl"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <Link
+                            to={`/contacts/${contact.id}`}
+                            className="text-base font-semibold text-indigo-700 transition group-hover:text-indigo-600"
+                            title={`View contact ${contact.name}`}
+                          >
+                            {contact.name}
+                          </Link>
+                          <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500">
+                            {contact.email && (
+                              <a
+                                href={`mailto:${contact.email}`}
+                                className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-200 transition hover:bg-blue-100"
+                                title={`Email ${contact.email}`}
+                              >
+                                <span className="text-sm">✉️</span>
+                                {contact.email}
+                              </a>
+                            )}
+                            {contact.phone && (
+                              <a
+                                href={`tel:${contact.phone}`}
+                                className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200 transition hover:bg-emerald-100"
+                                title={`Call ${formatPhoneNumber(contact.phone)}`}
+                              >
+                                <span className="text-sm">📞</span>
+                                {formatPhoneNumber(contact.phone)}
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center rounded-full bg-rose-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2"
+                          onClick={() => handleRemoveContact(contact.id)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+
+                {showAddContact && (
+                  <div className="rounded-3xl border border-indigo-100 bg-indigo-50/80 p-6 shadow-xl">
+                    <h3 className="text-base font-semibold text-slate-900">Add Existing Contact</h3>
+                    <p className="mt-1 text-sm text-slate-500">Search for an existing person in the system and link them to this business.</p>
+                    <input
+                      type="text"
+                      className="mt-4 w-full rounded-xl border border-indigo-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                      placeholder="Search by name, email, or phone…"
+                      value={contactSearch}
+                      onChange={(e) => setContactSearch(e.target.value)}
+                    />
+                    {contactResults.length > 0 && (
+                      <ul className="mt-3 max-h-48 overflow-auto rounded-2xl border border-indigo-100 bg-white/90 text-sm shadow-inner">
+                        {contactResults.map((c) => (
+                          <li key={c.id} className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 last:border-0">
+                            <span className="text-slate-700">
+                              {c.name}
+                              {c.email && <span className="ml-2 text-xs text-slate-400">({c.email})</span>}
+                            </span>
+                            <button
+                              type="button"
+                              className="inline-flex items-center justify-center rounded-full bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500"
+                              onClick={() => handleAddExistingContact(c.id)}
+                            >
+                              Add
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="mt-6 space-y-4 rounded-2xl border border-indigo-100 bg-white/90 p-5 shadow-inner">
+                      <h3 className="text-sm font-semibold text-slate-900">Or Create a New Contact</h3>
+                      <form onSubmit={handleCreateAndAddContact} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="sm:col-span-2 space-y-2">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Name</label>
+                          <input
+                            required
+                            type="text"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                            placeholder="Contact name"
+                            value={newContact.name}
+                            onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</label>
+                          <input
+                            type="email"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                            placeholder="name@example.com"
+                            value={newContact.email}
+                            onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</label>
+                          <input
+                            type="text"
+                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                            placeholder="(555) 555-5555"
+                            value={newContact.phone}
+                            onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <button
+                            type="submit"
+                            className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                          >
+                            Create & Add Contact
+                          </button>
+                        </div>
+                      </form>
+                      {addContactError && (
+                        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-600">
+                          {addContactError}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
-              </div>
-              <div className="border-b border-gray-200 pb-6">
-                <h2 className="text-lg font-semibold text-gray-900">Address Information</h2>
-                {business.address ? (
-                  <>
-                    <p className="text-sm text-gray-600 mt-2">
-                      <span className="font-medium text-gray-900">Combined Address:</span>
-                      {business.address ? (
-                        <Link to={`/address/${business.address.id}`} className="ml-1 text-indigo-600 hover:text-indigo-700">
-                          {business.address.combadd}
-                        </Link>
-                      ) : ' N/A'}
-                    </p>
-                    <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Owner Name:</span> {business.address.ownername}</p>
-                  </>
-                ) : (
-                  <p className="text-sm text-gray-600">No address information available.</p>
-                )}
-              </div>
-              <div className="pb-2">
-                <h2 className="text-lg font-semibold text-gray-900">Additional Information</h2>
-                <p className="text-sm text-gray-600 mt-2"><span className="font-medium text-gray-900">Created At:</span> {new Date(business.created_at).toLocaleDateString()}</p>
-                <p className="text-sm text-gray-600"><span className="font-medium text-gray-900">Updated At:</span> {new Date(business.updated_at).toLocaleDateString()}</p>
-              </div>
-            </div>
-            ) : (
-              <p className="text-center text-gray-600">No details available for this business.</p>
-            )
-          )}
-
-          {activeTab === 'contacts' && (
-            <div className="mb-2">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">Contacts</h2>
-                <button
-                  className="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
-                  onClick={() => setShowAddContact(!showAddContact)}
-                >{showAddContact ? 'Cancel' : 'Add Contact'}</button>
-              </div>
-              {contacts.length === 0 && <p className="text-gray-500">No contacts associated with this business.</p>}
-              <ul className="space-y-2">
-                {contacts.map(contact => (
-                  <li key={contact.id} className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 hover:shadow-sm transition">
-                    <div>
-                      <Link
-                        to={`/contacts/${contact.id}`}
-                        className="font-semibold text-indigo-700 hover:underline hover:text-indigo-900"
-                        title={`View contact ${contact.name}`}
-                      >
-                        {contact.name}
-                      </Link>
-                      {contact.email && (
-                        <a
-                          href={`mailto:${contact.email}`}
-                          className="ml-2 inline-flex items-center rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
-                          title={`Email ${contact.email}`}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12H8m8 0a4 4 0 11-8 0 4 4 0 018 0zm0 0v4m0-4V8" /></svg>
-                          {contact.email}
-                        </a>
-                      )}
-                      {contact.phone && (
-                        <a
-                          href={`tel:${contact.phone}`}
-                          className="ml-2 inline-flex items-center rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
-                          title={`Call ${formatPhoneNumber(contact.phone)}`}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm0 10a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2zm10-10a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zm0 10a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
-                          {formatPhoneNumber(contact.phone)}
-                        </a>
-                      )}
-                    </div>
-                    <button
-                      className="ml-2 inline-flex items-center rounded bg-rose-600 px-2 py-1 text-xs font-medium text-white hover:bg-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2"
-                      onClick={() => handleRemoveContact(contact.id)}
-                    >Remove</button>
-                  </li>
-                ))}
-              </ul>
-
-              {/* Add Contact Modal/Form */}
-              {showAddContact && (
-                <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                  <h3 className="font-semibold text-gray-900 mb-2">Add Existing Contact</h3>
-                  <input
-                    type="text"
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm mb-2"
-                    placeholder="Search by name, email, or phone..."
-                    value={contactSearch}
-                    onChange={e => setContactSearch(e.target.value)}
-                  />
-                  {contactResults.length > 0 && (
-                    <ul className="mb-2 max-h-40 overflow-auto divide-y divide-gray-100">
-                      {contactResults.map(c => (
-                        <li key={c.id} className="flex justify-between items-center p-2 hover:bg-gray-50">
-                          <span>{c.name} {c.email && <span className='text-gray-400'>({c.email})</span>}</span>
-                          <button className="ml-2 inline-flex items-center rounded bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2" onClick={() => handleAddExistingContact(c.id)}>Add</button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <div className="border-t border-gray-200 pt-3 mt-3">
-                    <h3 className="font-semibold text-gray-900 mb-2">Or Create New Contact</h3>
-                    <form onSubmit={handleCreateAndAddContact} className="space-y-2">
-                      <input required type="text" className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Name" value={newContact.name} onChange={e => setNewContact({ ...newContact, name: e.target.value })} />
-                      <input type="email" className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Email" value={newContact.email} onChange={e => setNewContact({ ...newContact, email: e.target.value })} />
-                      <input type="text" className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" placeholder="Phone" value={newContact.phone} onChange={e => setNewContact({ ...newContact, phone: e.target.value })} />
-                      <button type="submit" className="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">Create & Add</button>
-                    </form>
-                    {addContactError && <div className="text-red-600 mt-2 text-sm">{addContactError}</div>}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+              </section>
+            )}
+          </div>
         </div>
       </div>
     </div>
