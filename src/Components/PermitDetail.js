@@ -28,47 +28,110 @@ export default function PermitDetail() {
   if (!permit) return <div className="p-6">Not found</div>;
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8">
-      <div className="sm:flex sm:items-center mb-6">
-        <div className="sm:flex-auto">
-          <h1 className="text-base font-semibold leading-6 text-gray-900">Permit #{permit.id}</h1>
-          <p className="mt-2 text-sm text-gray-700">Details about this permit.</p>
-        </div>
-      </div>
+    <div className="px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-5xl space-y-6">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wide text-indigo-600">Permit Detail</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-gray-900">Permit #{permit.id}</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Inspect payment status, issuance dates, and any conditions associated with this permit.
+            </p>
+          </div>
+          {permit.inspection_id && (
+            <Link
+              to={`/inspection/${permit.inspection_id}`}
+              className="inline-flex items-center justify-center rounded-md bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+            >
+              View inspection #{permit.inspection_id}
+            </Link>
+          )}
+        </header>
 
-      <div className="bg-white shadow rounded-lg divide-y divide-gray-200">
-        <div className="px-4 py-5 sm:px-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="text-sm font-medium text-gray-500">Type</div>
-          <div className="sm:col-span-2">{permit.permit_type || '—'}</div>
+        <section className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
+          <dl className="divide-y divide-gray-100">
+            <div className="grid gap-4 px-4 py-5 sm:grid-cols-3 sm:px-6">
+              <dt className="text-sm font-medium text-gray-600">Type</dt>
+              <dd className="text-sm text-gray-900 sm:col-span-2">{permit.permit_type || '—'}</dd>
+            </div>
 
-          <div className="text-sm font-medium text-gray-500">Paid</div>
-          <div className="sm:col-span-2">{permit.paid ? 'Paid' : 'Not Paid'}</div>
+            <div className="grid gap-4 px-4 py-5 sm:grid-cols-3 sm:px-6">
+              <dt className="text-sm font-medium text-gray-600">Paid</dt>
+              <dd className="text-sm text-gray-900 sm:col-span-2">
+                {permit.paid ? (
+                  <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                    Paid
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-md bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700 ring-1 ring-inset ring-rose-600/20">
+                    Not paid
+                  </span>
+                )}
+              </dd>
+            </div>
 
-          <div className="text-sm font-medium text-gray-500">Permit Number</div>
-          <div className="sm:col-span-2">{permit.permit_number || '—'}</div>
+            <div className="grid gap-4 px-4 py-5 sm:grid-cols-3 sm:px-6">
+              <dt className="text-sm font-medium text-gray-600">Permit Number</dt>
+              <dd className="text-sm text-gray-900 sm:col-span-2">{permit.permit_number || '—'}</dd>
+            </div>
 
-          <div className="text-sm font-medium text-gray-500">Date Issued</div>
-          <div className="sm:col-span-2">{permit.date_issued ? new Date(permit.date_issued).toLocaleDateString() : '—'}</div>
+            <div className="grid gap-4 px-4 py-5 sm:grid-cols-3 sm:px-6">
+              <dt className="text-sm font-medium text-gray-600">Date Issued</dt>
+              <dd className="text-sm text-gray-900 sm:col-span-2">
+                {permit.date_issued ? new Date(permit.date_issued).toLocaleDateString() : '—'}
+              </dd>
+            </div>
 
-          <div className="text-sm font-medium text-gray-500">Expiration Date</div>
-          <div className="sm:col-span-2">{permit.expiration_date ? new Date(permit.expiration_date).toLocaleDateString() : '—'}</div>
+            <div className="grid gap-4 px-4 py-5 sm:grid-cols-3 sm:px-6">
+              <dt className="text-sm font-medium text-gray-600">Expiration Date</dt>
+              <dd className="text-sm text-gray-900 sm:col-span-2">
+                {permit.expiration_date ? new Date(permit.expiration_date).toLocaleDateString() : '—'}
+              </dd>
+            </div>
 
-          <div className="text-sm font-medium text-gray-500">Conditions</div>
-          <div className="sm:col-span-2">{permit.conditions || '—'}</div>
+            <div className="grid gap-4 px-4 py-5 sm:grid-cols-3 sm:px-6">
+              <dt className="text-sm font-medium text-gray-600">Conditions</dt>
+              <dd className="text-sm text-gray-900 sm:col-span-2">
+                {permit.conditions ? (
+                  <p className="whitespace-pre-line leading-relaxed text-gray-700">{permit.conditions}</p>
+                ) : (
+                  '—'
+                )}
+              </dd>
+            </div>
 
-          <div className="text-sm font-medium text-gray-500">Created</div>
-          <div className="sm:col-span-2">{permit.created_at ? toEasternLocaleString(permit.created_at) : '—'}</div>
+            <div className="grid gap-4 px-4 py-5 sm:grid-cols-3 sm:px-6">
+              <dt className="text-sm font-medium text-gray-600">Created</dt>
+              <dd className="text-sm text-gray-900 sm:col-span-2">
+                {permit.created_at ? toEasternLocaleString(permit.created_at) : '—'}
+              </dd>
+            </div>
 
-          <div className="text-sm font-medium text-gray-500">Updated</div>
-          <div className="sm:col-span-2">{permit.updated_at ? toEasternLocaleString(permit.updated_at) : '—'}</div>
-        </div>
-      </div>
+            <div className="grid gap-4 px-4 py-5 sm:grid-cols-3 sm:px-6">
+              <dt className="text-sm font-medium text-gray-600">Updated</dt>
+              <dd className="text-sm text-gray-900 sm:col-span-2">
+                {permit.updated_at ? toEasternLocaleString(permit.updated_at) : '—'}
+              </dd>
+            </div>
+          </dl>
+        </section>
 
-      <div className="mt-6 flex gap-4">
-        <Link to="/permits" className="text-indigo-600 hover:text-indigo-800">Back to permits</Link>
-        {permit.inspection_id && (
-          <Link to={`/inspection/${permit.inspection_id}`} className="text-indigo-600 hover:text-indigo-800">Related inspection #{permit.inspection_id}</Link>
-        )}
+        <footer className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+          <Link
+            to="/permits"
+            className="text-sm font-semibold text-indigo-600 underline-offset-4 transition hover:text-indigo-500 hover:underline"
+          >
+            Back to all permits
+          </Link>
+          {permit.business_id && (
+            <Link
+              to={`/businesses/${permit.business_id}`}
+              className="text-sm font-semibold text-slate-600 underline-offset-4 transition hover:text-slate-500 hover:underline"
+            >
+              View related business
+            </Link>
+          )}
+        </footer>
       </div>
     </div>
   );
