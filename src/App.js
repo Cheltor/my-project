@@ -1,6 +1,7 @@
 // src/App.js
 import React, { useEffect } from 'react';
 import useVisibilityAwareInterval from './Hooks/useVisibilityAwareInterval';
+import { apiFetch } from './api';
 import { AuthProvider, useAuth } from './AuthContext';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
@@ -67,21 +68,21 @@ function App() {
 }
 
 function MainApp() {
-  const { user } = useAuth(); // Get user data from context
+  const { user, logout } = useAuth(); // Get user data and logout from context
   const [chatEnabled, setChatEnabled] = React.useState(true);
 
   // Poll the chat-enabled setting while the tab is visible. Pause when hidden.
   const fetchChatSetting = React.useCallback(async () => {
     try {
-      const resp = await fetch(`${process.env.REACT_APP_API_URL}/settings/chat`);
-      if (resp.ok) {
+      const resp = await apiFetch('/settings/chat', {}, { onUnauthorized: logout });
+      if (resp && resp.ok) {
         const data = await resp.json();
         if (typeof data.enabled === 'boolean') setChatEnabled(data.enabled);
       }
     } catch (e) {
       // ignore and leave current value
     }
-  }, []);
+  }, [logout]);
 
   // run every 60s while visible; run immediately on mount/when visibility resumes
   useVisibilityAwareInterval(fetchChatSetting, 60_000, { immediate: true });

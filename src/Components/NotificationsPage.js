@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { apiFetch } from '../api';
 
 function formatWhen(ts) {
   if (!ts) return '';
@@ -16,7 +17,7 @@ function formatWhen(ts) {
 }
 
 export default function NotificationsPage() {
-  const { token, user } = useAuth();
+  const { token, user, logout } = useAuth();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -28,10 +29,8 @@ export default function NotificationsPage() {
     setError(null);
     try {
       const userIdParam = user?.id ? `?user_id=${encodeURIComponent(user.id)}` : '';
-      const resp = await fetch(`${process.env.REACT_APP_API_URL}/notifications${userIdParam}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!resp.ok) throw new Error('Failed to load notifications');
+  const resp = await apiFetch(`/notifications${userIdParam}`, {}, { onUnauthorized: logout });
+      if (!resp || !resp.ok) throw new Error('Failed to load notifications');
       const data = await resp.json();
       const arr = Array.isArray(data) ? data : [];
       arr.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -47,10 +46,7 @@ export default function NotificationsPage() {
 
   const markAllRead = async () => {
     try {
-      await fetch(`${process.env.REACT_APP_API_URL}/notifications/read-all`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await apiFetch('/notifications/read-all', { method: 'PATCH' }, { onUnauthorized: logout });
       setItems((prev) => prev.map((n) => ({ ...n, read: true })));
       try { window.dispatchEvent(new CustomEvent('notifications:refresh')); } catch {}
     } catch {}
@@ -59,10 +55,7 @@ export default function NotificationsPage() {
   const onClickItem = async (n) => {
     try {
       if (!n.read) {
-        await fetch(`${process.env.REACT_APP_API_URL}/notifications/${n.id}/read`, {
-          method: 'PATCH',
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await apiFetch(`/notifications/${n.id}/read`, { method: 'PATCH' }, { onUnauthorized: logout });
         setItems((prev) => prev.map((it) => (it.id === n.id ? { ...it, read: true } : it)));
         try { window.dispatchEvent(new CustomEvent('notifications:refresh')); } catch {}
       }

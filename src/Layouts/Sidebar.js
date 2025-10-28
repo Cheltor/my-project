@@ -24,6 +24,7 @@ import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
 import { Link, useNavigate, useLocation } from 'react-router-dom'; // Import Link, useNavigate, and useLocation
 import Logout from '../Components/Logout'; // Import the Logout component
 import { useAuth } from '../AuthContext'; // Import useAuth hook
+import { apiFetch } from '../api';
 import { toEasternLocaleString } from '../utils';
 
 const navigation = [
@@ -70,7 +71,7 @@ export default function Sidebar({ children }) {
 
   const navigate = useNavigate(); // To navigate programmatically
   const location = useLocation(); // Track current location to refresh notifications on navigation
-  const { user, token } = useAuth(); // Get user data and token from context
+  const { user, token, logout } = useAuth(); // Get user data, token and logout from context
   const hasFetchedNotificationsRef = useRef(false); // Track if we've already performed the initial fetch
 
   const fetchNotifications = useCallback(
@@ -90,14 +91,8 @@ export default function Sidebar({ children }) {
 
       try {
         const userIdParam = user?.id ? `?user_id=${encodeURIComponent(user.id)}` : '';
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/notifications${userIdParam}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          signal,
-        });
-
-        if (!response.ok) {
+        const response = await apiFetch(`/notifications${userIdParam}`, { signal }, { onUnauthorized: logout });
+        if (!response || !response.ok) {
           throw new Error('Unable to load notifications');
         }
 
@@ -311,12 +306,7 @@ export default function Sidebar({ children }) {
   const handleMarkAllAsRead = async () => {
     if (!token) return;
     try {
-      await fetch(`${process.env.REACT_APP_API_URL}/notifications/read-all`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      await apiFetch('/notifications/read-all', { method: 'PATCH' }, { onUnauthorized: logout });
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       // Close the dropdown after successful action
       setShowNotificationsDropdown(false);
@@ -568,12 +558,7 @@ export default function Sidebar({ children }) {
                             onClick={async () => {
                               try {
                                 // Mark as read
-                                await fetch(`${process.env.REACT_APP_API_URL}/notifications/${notification.id}/read`, {
-                                  method: 'PATCH',
-                                  headers: {
-                                    Authorization: `Bearer ${token}`,
-                                  },
-                                });
+                                await apiFetch(`/notifications/${notification.id}/read`, { method: 'PATCH' }, { onUnauthorized: logout });
                                 // Optimistically update UI
                                 setNotifications((prev) => prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)));
                                 // Navigate using origin_url_path if provided; else fall back
