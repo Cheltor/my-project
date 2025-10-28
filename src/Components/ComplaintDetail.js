@@ -340,9 +340,6 @@ const ComplaintDetail = () => {
   }
 
   const statusTone = statusToneMap[statusValue] || "bg-slate-100 text-slate-700 ring-slate-200";
-  const scheduleLabel = complaint.scheduled_datetime
-    ? toEasternLocaleString(complaint.scheduled_datetime)
-    : "Not scheduled";
 
   return (
     <div className="bg-slate-50 py-10">
@@ -425,12 +422,11 @@ const ComplaintDetail = () => {
             </div>
 
             <div className="rounded-2xl bg-slate-50 p-5">
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Scheduled Inspection</dt>
-              <dd className="mt-2 space-y-2">
-                <p className="text-base text-slate-900">{scheduleLabel}</p>
-                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                  <span>Adjust from the controls below.</span>
-                </div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Complaint Notes</dt>
+              <dd className="mt-2 text-sm text-slate-700">
+                {complaint.description && complaint.description.trim()
+                  ? complaint.description.trim()
+                  : "No description provided."}
               </dd>
             </div>
 
@@ -525,7 +521,7 @@ const ComplaintDetail = () => {
 
               <div>
                 <h3 className="text-sm font-semibold text-slate-900">Schedule Follow-up</h3>
-                <p className="mt-1 text-sm text-slate-500">Choose a date and time to revisit this complaint.</p>
+                <p className="mt-1 text-sm text-slate-500">Choose a date and time to investigate this complaint.</p>
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
                   <input
                     type="datetime-local"
@@ -555,14 +551,6 @@ const ComplaintDetail = () => {
                 {scheduleMessage && <p className="mt-2 text-sm text-slate-500">{scheduleMessage}</p>}
               </div>
 
-              <div>
-                <h3 className="text-sm font-semibold text-slate-900">Complaint Notes</h3>
-                <p className="mt-2 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
-                  {complaint.description && complaint.description.trim()
-                    ? complaint.description.trim()
-                    : "No description provided."}
-                </p>
-              </div>
             </div>
           </section>
 
