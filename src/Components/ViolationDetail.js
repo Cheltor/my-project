@@ -357,33 +357,41 @@ const ViolationDetail = () => {
     } catch {}
   };
 
-  const assignmentOptions = useMemo(() => {
-    const base = Array.isArray(assignableUsers) ? assignableUsers : [];
-    if (violation?.user_id && violation?.user) {
-      const exists = base.some((u) => Number(u.id) === Number(violation.user_id));
-      if (!exists) {
-        return [
-          ...base,
-          {
-            id: violation.user_id,
-            name: violation.user.name,
-            email: violation.user.email,
-          },
-        ];
+    const assignmentOptions = useMemo(() => {
+      const base = Array.isArray(assignableUsers) ? assignableUsers : [];
+      if (violation?.user_id && violation?.user) {
+        const exists = base.some((u) => Number(u.id) === Number(violation.user_id));
+        if (!exists) {
+          return [
+            ...base,
+            {
+              id: violation.user_id,
+              name: violation.user.name,
+              email: violation.user.email,
+            },
+          ];
+        }
       }
-    }
-    return base;
-  }, [assignableUsers, violation?.user_id, violation?.user]);
-  const isFormalNotice = useMemo(() => {
-    const type = typeof violation?.violation_type === 'string'
-      ? violation.violation_type.trim().toLowerCase()
-      : '';
-    return type === 'formal notice';
-  }, [violation?.violation_type]);
+      return base;
+    }, [assignableUsers, violation?.user_id, violation?.user]);
+    const isFormalNotice = useMemo(() => {
+      const type = typeof violation?.violation_type === 'string'
+        ? violation.violation_type.trim().toLowerCase()
+        : '';
+      return type === 'formal notice';
+    }, [violation?.violation_type]);
+    const deadlineMeta = useMemo(
+      () => computeDeadlineMeta(violation?.deadline_date, violation?.status),
+      [violation?.deadline_date, violation?.status]
+    );
+    const sortedComments = useMemo(() => {
+      const list = Array.isArray(violation?.violation_comments) ? violation.violation_comments : [];
+      return [...list].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }, [violation?.violation_comments]);
 
-  if (loading) {
-    return <p>Loading violation...</p>;
-  }
+    if (loading) {
+      return <p>Loading violation...</p>;
+    }
 
   if (error) {
     return <p className="text-red-500">Error: {error}</p>;
@@ -561,23 +569,15 @@ const ViolationDetail = () => {
     }
   };
 
-  const violationTitle = formatViolationType(violation.violation_type) || 'Violation';
-  const statusLabel = statusMapping[violation.status] || 'Unknown';
-  const deadlineMeta = useMemo(
-    () => computeDeadlineMeta(violation.deadline_date, violation.status),
-    [violation.deadline_date, violation.status]
-  );
-  const createdLabel = formatDateLabel(violation.created_at, { includeTime: true });
-  const updatedLabel = formatDateLabel(violation.updated_at, { includeTime: true });
-  const hasCodes = Array.isArray(violation.codes) && violation.codes.length > 0;
-  const hasAttachments = attachments.length > 0;
-  const displayAssignee = violation.user
-    ? violation.user.name || violation.user.email || `User ${violation.user_id}`
-    : 'Unassigned';
-  const sortedComments = useMemo(() => {
-    const list = Array.isArray(violation?.violation_comments) ? violation.violation_comments : [];
-    return [...list].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  }, [violation?.violation_comments]);
+    const violationTitle = formatViolationType(violation.violation_type) || 'Violation';
+    const statusLabel = statusMapping[violation.status] || 'Unknown';
+    const createdLabel = formatDateLabel(violation.created_at, { includeTime: true });
+    const updatedLabel = formatDateLabel(violation.updated_at, { includeTime: true });
+    const hasCodes = Array.isArray(violation.codes) && violation.codes.length > 0;
+    const hasAttachments = attachments.length > 0;
+    const displayAssignee = violation.user
+      ? violation.user.name || violation.user.email || `User ${violation.user_id}`
+      : 'Unassigned';
   const showDocumentActions = (violation.status === 0 && isFormalNotice) || violation.status === 1;
 
   return (
