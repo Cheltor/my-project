@@ -24,6 +24,76 @@ function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
 }
 
+const statusToneMap = {
+  0: 'bg-rose-50 text-rose-700 ring-rose-200',
+  1: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  2: 'bg-amber-50 text-amber-700 ring-amber-200',
+  3: 'bg-slate-100 text-slate-700 ring-slate-200',
+};
+
+const formatViolationType = (value) => {
+  if (!value) return '';
+  return String(value)
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const formatDateLabel = (value, { includeTime = false } = {}) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  if (includeTime) {
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  }
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+};
+
+const computeDeadlineMeta = (deadlineDate, status) => {
+  if (!deadlineDate) return null;
+  const deadline = new Date(deadlineDate);
+  if (Number.isNaN(deadline.getTime())) return null;
+  if (status === 1) {
+    return {
+      deadline,
+      formatted: formatDateLabel(deadline, { includeTime: false }),
+      badgeLabel: '',
+      badgeClass: '',
+    };
+  }
+  const now = new Date();
+  const diffDays = (deadline - now) / (1000 * 60 * 60 * 24);
+  let badgeLabel = '';
+  let badgeClass = '';
+  if (diffDays < 0) {
+    badgeLabel = 'Past Due';
+    badgeClass = 'bg-rose-50 text-rose-700 ring-rose-200';
+  } else if (diffDays <= 3) {
+    badgeLabel = 'Approaching';
+    badgeClass = 'bg-amber-50 text-amber-700 ring-amber-200';
+  } else {
+    badgeLabel = 'Plenty of Time';
+    badgeClass = 'bg-emerald-50 text-emerald-700 ring-emerald-200';
+  }
+  return {
+    deadline,
+    formatted: formatDateLabel(deadline, { includeTime: false }),
+    badgeLabel,
+    badgeClass,
+  };
+};
+
 const ViolationDetail = () => {
   // State for extending deadline
   const [extendingDeadline, setExtendingDeadline] = useState(false);
@@ -287,33 +357,41 @@ const ViolationDetail = () => {
     } catch {}
   };
 
-  const assignmentOptions = useMemo(() => {
-    const base = Array.isArray(assignableUsers) ? assignableUsers : [];
-    if (violation?.user_id && violation?.user) {
-      const exists = base.some((u) => Number(u.id) === Number(violation.user_id));
-      if (!exists) {
-        return [
-          ...base,
-          {
-            id: violation.user_id,
-            name: violation.user.name,
-            email: violation.user.email,
-          },
-        ];
+    const assignmentOptions = useMemo(() => {
+      const base = Array.isArray(assignableUsers) ? assignableUsers : [];
+      if (violation?.user_id && violation?.user) {
+        const exists = base.some((u) => Number(u.id) === Number(violation.user_id));
+        if (!exists) {
+          return [
+            ...base,
+            {
+              id: violation.user_id,
+              name: violation.user.name,
+              email: violation.user.email,
+            },
+          ];
+        }
       }
-    }
-    return base;
-  }, [assignableUsers, violation?.user_id, violation?.user]);
-  const isFormalNotice = useMemo(() => {
-    const type = typeof violation?.violation_type === 'string'
-      ? violation.violation_type.trim().toLowerCase()
-      : '';
-    return type === 'formal notice';
-  }, [violation?.violation_type]);
+      return base;
+    }, [assignableUsers, violation?.user_id, violation?.user]);
+    const isFormalNotice = useMemo(() => {
+      const type = typeof violation?.violation_type === 'string'
+        ? violation.violation_type.trim().toLowerCase()
+        : '';
+      return type === 'formal notice';
+    }, [violation?.violation_type]);
+    const deadlineMeta = useMemo(
+      () => computeDeadlineMeta(violation?.deadline_date, violation?.status),
+      [violation?.deadline_date, violation?.status]
+    );
+    const sortedComments = useMemo(() => {
+      const list = Array.isArray(violation?.violation_comments) ? violation.violation_comments : [];
+      return [...list].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }, [violation?.violation_comments]);
 
-  if (loading) {
-    return <p>Loading violation...</p>;
-  }
+    if (loading) {
+      return <p>Loading violation...</p>;
+    }
 
   if (error) {
     return <p className="text-red-500">Error: {error}</p>;
@@ -491,21 +569,32 @@ const ViolationDetail = () => {
     }
   };
 
+    const violationTitle = formatViolationType(violation.violation_type) || 'Violation';
+    const statusLabel = statusMapping[violation.status] || 'Unknown';
+    const createdLabel = formatDateLabel(violation.created_at, { includeTime: true });
+    const updatedLabel = formatDateLabel(violation.updated_at, { includeTime: true });
+    const hasCodes = Array.isArray(violation.codes) && violation.codes.length > 0;
+    const hasAttachments = attachments.length > 0;
+    const displayAssignee = violation.user
+      ? violation.user.name || violation.user.email || `User ${violation.user_id}`
+      : 'Unassigned';
+  const showDocumentActions = (violation.status === 0 && isFormalNotice) || violation.status === 1;
+
   return (
-    <div className="border-b pb-4">
+    <div className="space-y-10">
       {showComplianceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 px-4">
-          <div className="bg-white w-full max-w-md rounded-lg shadow-xl p-6">
-            <h3 className="text-lg font-semibold text-gray-800">Print Compliance Letter</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 py-6">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold text-gray-900">Print Compliance Letter</h3>
             <p className="mt-3 text-sm text-gray-600">
               This violation is now marked as abated. Would you like to generate a compliance letter to thank the property owner for resolving the issue?
             </p>
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setShowComplianceModal(false)}
                 disabled={isGeneratingCompliance}
-                className="px-4 py-2 rounded border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-60"
+                className="inline-flex items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-200 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Close
               </button>
@@ -513,330 +602,385 @@ const ViolationDetail = () => {
                 type="button"
                 onClick={() => handleDownloadComplianceLetter(true)}
                 disabled={isGeneratingCompliance}
-                className="px-4 py-2 rounded bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 disabled:bg-indigo-300"
+                className="inline-flex items-center justify-center rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isGeneratingCompliance ? "Generating..." : "Print Letter"}
+                {isGeneratingCompliance ? 'Generating…' : 'Print Letter'}
               </button>
             </div>
           </div>
         </div>
       )}
-      <h2 className="text-2xl font-semibold text-gray-700">Violation Details</h2>
-      <div className="bg-gray-100 p-4 rounded-lg shadow mt-4 relative">
-        {selectedPhotoUrl && (
-          <FullScreenPhotoViewer
-            photoUrl={selectedPhotoUrl}
-            onClose={() => setSelectedPhotoUrl(null)}
-          />
-        )}
-        <div className="flex justify-between items-start">
-          <div className="flex-1">
-            <p className="text-gray-700 mt-2">
+      {selectedPhotoUrl && (
+        <FullScreenPhotoViewer
+          photoUrl={selectedPhotoUrl}
+          onClose={() => setSelectedPhotoUrl(null)}
+        />
+      )}
+
+      <section className="rounded-3xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-5 border-b border-gray-100 px-6 py-6">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-gray-500">
+              <span className="font-medium text-gray-900">Violation #{violation.id}</span>
+              {createdLabel && <span>Created {createdLabel}</span>}
+            </div>
+            <h1 className="text-3xl font-semibold text-gray-900">{violationTitle || 'Violation'}</h1>
+            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+              <span className="font-medium text-gray-500">Address</span>
               {violation.address_id ? (
                 <Link
                   to={`/address/${violation.address_id}`}
-                  className="text-blue-700 hover:underline font-semibold"
+                  className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 transition hover:text-indigo-500"
                 >
-                  {violation.combadd}
+                  {violation.combadd || 'View address'}
                 </Link>
               ) : (
-                violation.combadd
-              )}
-            </p>
-
-            <div className="mt-3">
-              {user?.role === 3 ? (
-                <div className="max-w-md">
-                  <label className="block text-sm font-medium text-gray-700">Assigned To</label>
-                  <div className="mt-1 flex gap-2">
-                    <select
-                      value={assigneeId}
-                      onChange={(e) => setAssigneeId(e.target.value)}
-                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    >
-                      <option value="">Select an inspector</option>
-                      {assignmentOptions.map((ons) => (
-                        <option key={ons.id} value={String(ons.id)}>
-                          {ons.name || ons.email || `User ${ons.id}`}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={handleAssigneeUpdate}
-                      disabled={assignSaving || !assigneeId}
-                      className="px-3 py-2 rounded bg-indigo-600 text-white text-xs font-semibold disabled:opacity-60"
-                    >
-                      {assignSaving ? "Saving..." : "Save"}
-                    </button>
-                  </div>
-                  {assignError && <div className="text-xs text-red-600 mt-1">{assignError}</div>}
-                  {!assignError && assignSuccess && <div className="text-xs text-green-600 mt-1">{assignSuccess}</div>}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-700">
-                  <span className="font-semibold">Assigned To:</span>{" "}
-                  {violation.user
-                    ? violation.user.name || violation.user.email || `User ${violation.user_id}`
-                    : "Unassigned"}
-                </p>
+                <span className="text-gray-900">{violation.combadd || '—'}</span>
               )}
             </div>
-
-
-            {/* Deadline moved here */}
-            {violation.deadline_date && (() => {
-              const deadline = new Date(violation.deadline_date);
-              const now = new Date();
-              const diffMs = deadline - now;
-              const diffDays = diffMs / (1000 * 60 * 60 * 24);
-              let deadlineStatus = '';
-              let badgeClass = '';
-              // If resolved, no color or badge
-              if (violation.status === 1) {
-                deadlineStatus = '';
-                badgeClass = '';
-              } else if (diffDays < 0) {
-                deadlineStatus = 'Past Due';
-                badgeClass = 'bg-red-200 text-red-800';
-              } else if (diffDays <= 3) {
-                deadlineStatus = 'Approaching';
-                badgeClass = 'bg-yellow-200 text-yellow-900';
-              } else {
-                deadlineStatus = 'Plenty of Time';
-                badgeClass = 'bg-green-100 text-green-800';
-              }
-              return (
-                <div className="mt-1 mb-2">
-                  <span className="text-gray-700 text-base font-semibold">Deadline: {deadline.toLocaleDateString('en-US')}</span>
-                  {deadlineStatus && (
-                    <span className={`ml-2 px-2 py-0.5 rounded text-xs font-semibold align-middle ${badgeClass}`}>
-                      {deadlineStatus}
-                    </span>
-                  )}
-                  {/* Extend Deadline button for logged-in users */}
-                  {user && !extendingDeadline && (
-                    <button
-                      className="ml-4 px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-xs font-semibold"
-                      onClick={() => {
-                        setExtendDays('');
-                        setExtendingDeadline(true);
-                      }}
-                    >
-                      Extend Deadline
-                    </button>
-                  )}
-                  {extendingDeadline && (
-                    <form className="inline-block ml-4" onSubmit={handleExtendDeadline}>
-                      <input
-                        type="number"
-                        min="1"
-                        value={extendDays}
-                        onChange={e => setExtendDays(e.target.value)}
-                        className="border rounded px-2 py-1 text-xs mr-2"
-                        placeholder="Days to extend"
-                        required
-                      />
-                      <button
-                        type="submit"
-                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-semibold"
-                        disabled={deadlineSubmitting}
-                      >
-                        {deadlineSubmitting ? 'Saving...' : 'Save'}
-                      </button>
-                      <button
-                        type="button"
-                        className="ml-2 px-3 py-1 bg-gray-300 text-gray-700 rounded text-xs"
-                        onClick={() => setExtendingDeadline(false)}
-                        disabled={deadlineSubmitting}
-                      >
-                        Cancel
-                      </button>
-                      {extendError && (
-                        <div className="text-xs text-red-600 mt-2">{extendError}</div>
-                      )}
-                    </form>
-                  )}
-                </div>
-              );
-            })()}
           </div>
-          <div className="flex flex-col items-end ml-4">
+          <div className="flex flex-col items-end gap-3">
             <span
               className={classNames(
-                'px-2 py-1 rounded text-xs whitespace-nowrap',
-                violation.status === 0 ? 'bg-red-100 text-red-800' : '',
-                violation.status === 1 ? 'bg-green-100 text-green-800' : '',
-                violation.status === 2 ? 'bg-yellow-100 text-yellow-800' : '',
-                violation.status === 3 ? 'bg-gray-100 text-gray-800' : ''
+                'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ring-1 ring-inset',
+                statusToneMap[violation.status] || 'bg-slate-100 text-slate-700 ring-slate-200'
               )}
-              title={statusMapping[violation.status]}
+              title={statusLabel}
             >
-              {statusMapping[violation.status]}
+              {statusLabel}
             </span>
-            {/* Mark as Abated button, only show if status is Current (0) and user is logged in */}
             {violation.status === 0 && user && (
               <button
+                type="button"
                 onClick={handleMarkAbated}
                 disabled={abatingViolation}
-                className="mt-2 px-4 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed text-xs font-semibold"
+                className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {abatingViolation ? 'Marking...' : 'Mark as Abated'}
+                {abatingViolation ? 'Marking…' : 'Mark as Abated'}
               </button>
             )}
-            {/* Reopen button, only show if status is Resolved (1) and user is logged in */}
             {violation.status === 1 && user && (
               <button
+                type="button"
                 onClick={handleReopen}
-                className="mt-2 px-4 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-xs font-semibold"
+                className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-400"
               >
                 Reopen Violation
               </button>
             )}
           </div>
         </div>
-        {/* Codes (if present) */}
-        {violation.codes && violation.codes.length > 0 && (
-          <div className="text-gray-700 text-sm mt-1">
-            <span className="font-medium">Codes:</span>
-            <ul className="list-disc ml-6">
-              {violation.codes.map((code) => (
-                <li key={code.id} title={code.description}>
-                  <CodeDrawerLink
-                    codeId={code.id}
-                    title={code.description || code.name}
-                  >
-                    {code.chapter}{code.section ? `.${code.section}` : ''}: {code.name}
-                  </CodeDrawerLink>
-                  {code.description
-                    ? ` - ${
-                        code.description.length > 80
-                          ? code.description.slice(0, 80) + "..."
-                          : code.description
-                      }`
-                    : ''}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {/* Attachments (if any) */}
-        {attachments.length > 0 && (
-          <div className="mt-3">
-            <div className="flex items-center justify-start mb-2">
-              <button
-                type="button"
-                className="text-indigo-600 hover:underline text-sm font-medium disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed"
-                onClick={() => {
-                  if (firstImageAttachment) {
-                    setSelectedPhotoUrl(firstImageAttachment.url || firstImageAttachment);
-                  }
-                }}
-                disabled={!firstImageAttachment}
-              >
-                View attachments ({attachments.length})
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-3 mt-2">
-              {attachments.map((attachment, index) => {
-                const url = attachment?.url || attachment;
-                const filename = getAttachmentFilename(attachment, `Violation attachment ${index + 1}`);
-                const isImage = isImageAttachment(attachment);
-                const extensionLabel = getAttachmentDisplayLabel(attachment);
 
-                return (
-                  <div key={index} className="w-24 flex flex-col items-center">
-                    {isImage ? (
-                      <img
-                        src={url}
-                        alt={filename}
-                        className="w-24 h-24 object-cover rounded-md shadow cursor-pointer"
-                        onClick={() => setSelectedPhotoUrl(url)}
-                      />
-                    ) : (
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-24 h-24 flex flex-col items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-gray-600 shadow hover:bg-gray-100 transition-colors"
-                        title={filename}
-                      >
-                        <span className="text-2xl">📄</span>
-                        <span className="mt-1 text-[10px] font-medium uppercase">{extensionLabel}</span>
-                      </a>
-                    )}
-                    <span className="mt-1 text-[10px] text-gray-600 text-center break-words" title={filename}>
-                      {filename}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+        <div className="grid gap-6 border-b border-gray-100 px-6 py-6 lg:grid-cols-2 xl:grid-cols-3">
+          <div className="rounded-2xl border border-dashed border-indigo-200 bg-indigo-50/60 p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">Assignment</p>
+            {user?.role === 3 ? (
+              <div className="mt-4 space-y-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <select
+                    value={assigneeId}
+                    onChange={(e) => setAssigneeId(e.target.value)}
+                    className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+                  >
+                    <option value="">Select an inspector</option>
+                    {assignmentOptions.map((ons) => (
+                      <option key={ons.id} value={String(ons.id)}>
+                        {ons.name || ons.email || `User ${ons.id}`}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleAssigneeUpdate}
+                    disabled={assignSaving || !assigneeId}
+                    className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {assignSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+                {assignError && <p className="text-sm text-rose-600">{assignError}</p>}
+                {!assignError && assignSuccess && <p className="text-sm text-emerald-600">{assignSuccess}</p>}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-gray-700">
+                <span className="font-medium text-gray-900">Assigned to:</span> {displayAssignee}
+              </p>
+            )}
           </div>
-        )}
-      {violation.comment && (
-        <p className="text-sm text-gray-500">Comment: {violation.comment}</p>
-      )}
-      {/* Created/Updated info and User Email */}
-      <div className="flex justify-between mt-4 text-xs">
-        <div />
-        <div className="text-right">
-          {violation.user && (
-            <p className="text-gray-500 font-semibold mb-1">{violation.user.email}</p>
+
+          <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/60 p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-amber-600">Deadline</p>
+            {deadlineMeta ? (
+              <>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <p className="text-base font-semibold text-gray-900">{deadlineMeta.formatted}</p>
+                  {deadlineMeta.badgeLabel && (
+                    <span
+                      className={classNames(
+                        'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ring-1 ring-inset',
+                        deadlineMeta.badgeClass || 'bg-slate-100 text-slate-700 ring-slate-200'
+                      )}
+                    >
+                      {deadlineMeta.badgeLabel}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-4 space-y-3">
+                  {!extendingDeadline && user && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExtendDays('');
+                        setExtendingDeadline(true);
+                      }}
+                      className="inline-flex items-center gap-2 rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-400"
+                    >
+                      Extend Deadline
+                    </button>
+                  )}
+                  {extendingDeadline && (
+                    <form onSubmit={handleExtendDeadline} className="flex flex-wrap items-center gap-3">
+                      <label htmlFor="extend-days" className="sr-only">
+                        Days to extend
+                      </label>
+                      <input
+                        id="extend-days"
+                        type="number"
+                        min="1"
+                        value={extendDays}
+                        onChange={(e) => setExtendDays(e.target.value)}
+                        className="h-10 w-24 rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                        placeholder="Days"
+                        required
+                      />
+                      <button
+                        type="submit"
+                        disabled={deadlineSubmitting}
+                        className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {deadlineSubmitting ? 'Saving…' : 'Save'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setExtendingDeadline(false)}
+                        disabled={deadlineSubmitting}
+                        className="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-200 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Cancel
+                      </button>
+                    </form>
+                  )}
+                  {extendError && <p className="text-sm text-rose-600">{extendError}</p>}
+                </div>
+              </>
+            ) : (
+              <p className="mt-4 text-sm text-gray-600">No deadline recorded for this violation.</p>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">Details</p>
+            <dl className="mt-4 space-y-3 text-sm text-gray-700">
+              {violation.user?.email && (
+                <div>
+                  <dt className="font-medium text-gray-500">Created by</dt>
+                  <dd className="mt-1 text-gray-900">{violation.user.email}</dd>
+                </div>
+              )}
+              {createdLabel && (
+                <div>
+                  <dt className="font-medium text-gray-500">Created</dt>
+                  <dd className="mt-1 text-gray-900">{createdLabel}</dd>
+                </div>
+              )}
+              {updatedLabel && (
+                <div>
+                  <dt className="font-medium text-gray-500">Last updated</dt>
+                  <dd className="mt-1 text-gray-900">{updatedLabel}</dd>
+                </div>
+              )}
+              {violation.priority && (
+                <div>
+                  <dt className="font-medium text-gray-500">Priority</dt>
+                  <dd className="mt-1 text-gray-900">{violation.priority}</dd>
+                </div>
+              )}
+              {violation.unit && (
+                <div>
+                  <dt className="font-medium text-gray-500">Unit</dt>
+                  <dd className="mt-1 text-gray-900">{violation.unit}</dd>
+                </div>
+              )}
+            </dl>
+          </div>
+        </div>
+
+        <div className="space-y-8 px-6 py-6">
+          {violation.comment && (
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
+              <h3 className="text-sm font-semibold text-gray-900">Inspector Notes</h3>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-gray-700">{violation.comment}</p>
+            </div>
           )}
-          <p className="text-gray-500">Created on {new Date(violation.created_at).toLocaleDateString('en-US')}</p>
-          {violation.updated_at && (
-            <p className="text-gray-500">Updated on {new Date(violation.updated_at).toLocaleDateString('en-US')}</p>
+
+          {hasCodes && (
+            <div className="rounded-2xl border border-gray-100 bg-white/60 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-gray-900">Codes</h3>
+                <span className="text-xs uppercase tracking-wide text-gray-400">{violation.codes.length} {violation.codes.length === 1 ? 'entry' : 'entries'}</span>
+              </div>
+              <ul className="mt-4 space-y-3 text-sm text-gray-700">
+                {violation.codes.map((code) => {
+                  const description = code.description
+                    ? code.description.length > 160
+                      ? `${code.description.slice(0, 160)}…`
+                      : code.description
+                    : '';
+                  return (
+                    <li key={code.id} className="rounded-2xl border border-gray-200 bg-gray-50/80 px-4 py-3 shadow-sm">
+                      <div className="flex flex-col gap-2">
+                        <CodeDrawerLink
+                          codeId={code.id}
+                          title={code.description || code.name}
+                          className="text-sm font-semibold text-indigo-600 hover:text-indigo-500 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                        >
+                          {code.chapter}{code.section ? `.${code.section}` : ''}: {code.name}
+                        </CodeDrawerLink>
+                        {description && <p className="text-sm text-gray-600">{description}</p>}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          {hasAttachments && (
+            <div className="rounded-2xl border border-gray-100 bg-white/60 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">Attachments</h3>
+                  <p className="text-xs text-gray-500">Uploaded photos and supporting documents.</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (firstImageAttachment) {
+                        setSelectedPhotoUrl(firstImageAttachment.url || firstImageAttachment);
+                      }
+                    }}
+                    disabled={!firstImageAttachment}
+                    className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-inset ring-indigo-200 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    View Gallery
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadAttachments}
+                    className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500"
+                  >
+                    Download ({attachments.length})
+                  </button>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                {attachments.map((attachment, index) => {
+                  const url = attachment?.url || attachment;
+                  const filename = getAttachmentFilename(attachment, `Violation attachment ${index + 1}`);
+                  const isImage = isImageAttachment(attachment);
+                  const extensionLabel = getAttachmentDisplayLabel(attachment);
+                  return (
+                    <div key={index} className="group rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                      {isImage ? (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPhotoUrl(url)}
+                          className="relative block aspect-square w-full overflow-hidden rounded-lg"
+                        >
+                          <img
+                            src={url}
+                            alt={filename}
+                            className="h-full w-full object-cover transition duration-200 group-hover:scale-105"
+                          />
+                        </button>
+                      ) : (
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex h-28 w-full flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-gray-600 transition hover:border-indigo-200 hover:text-indigo-600"
+                          title={filename}
+                        >
+                          <span className="text-2xl">📄</span>
+                          <span className="mt-1 text-[10px] font-medium uppercase tracking-wide">{extensionLabel}</span>
+                        </a>
+                      )}
+                      <p className="mt-2 line-clamp-2 text-xs font-medium text-gray-600" title={filename}>
+                        {filename}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {showDocumentActions && (
+            <div className="rounded-2xl border border-gray-100 bg-white/60 p-5">
+              <h3 className="text-sm font-semibold text-gray-900">Notices & Letters</h3>
+              <div className="mt-4 flex flex-wrap gap-3">
+                {violation.status === 0 && isFormalNotice && (
+                  <button
+                    type="button"
+                    onClick={handleDownloadViolationNotice}
+                    disabled={isDownloadingNotice}
+                    className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isDownloadingNotice ? 'Preparing…' : 'Download Violation Notice'}
+                  </button>
+                )}
+                {violation.status === 1 && (
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadComplianceLetter()}
+                    disabled={isGeneratingCompliance}
+                    className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isGeneratingCompliance ? 'Generating…' : 'Download Compliance Letter'}
+                  </button>
+                )}
+              </div>
+            </div>
           )}
         </div>
-      </div>
-      {/* Download buttons above Violation Comments */}
-      {((violation.status === 0 || violation.status === 1) || attachments.length > 0) && (
-        <div className="mt-2 mb-4 flex items-center gap-2">
-          {violation.status === 0 && isFormalNotice && (
-            <button
-              className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-blue-800 disabled:bg-gray-400 text-xs font-semibold"
-              onClick={handleDownloadViolationNotice}
-              disabled={isDownloadingNotice}
-            >
-              {isDownloadingNotice ? 'Preparing...' : 'Download Violation Notice'}
-            </button>
-          )}
-          {violation.status === 1 && (
-            <button
-              className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-blue-800 disabled:bg-gray-400 text-xs font-semibold"
-              onClick={() => handleDownloadComplianceLetter()}
-              disabled={isGeneratingCompliance}
-            >
-              {isGeneratingCompliance ? 'Generating...' : 'Download Compliance Letter'}
-            </button>
-          )}
-          {attachments.length > 0 && (
-            <button
-              type="button"
-              className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-xs font-semibold"
-              onClick={handleDownloadAttachments}
-            >
-              Download attachments ({attachments.length})
-            </button>
-          )}
+      </section>
+
+      <section className="rounded-3xl border border-gray-200 bg-white shadow-sm">
+        <div className="border-b border-gray-100 px-6 py-6">
+          <div className="flex flex-col gap-1">
+            <h3 className="text-xl font-semibold text-gray-900">Violation Comments</h3>
+            <p className="text-sm text-gray-500">Collaborate with your team and track updates in one place.</p>
+          </div>
         </div>
-      )}
-      {/* Violation Comments */}
-      {violation.violation_comments && (
-        <div className="mt-4">
-          <span className="font-medium text-gray-700">Violation Comments:</span>
+        <div className="space-y-8 px-6 py-6">
           {user && (
-            <form onSubmit={handleCommentSubmit} className="mb-4 flex flex-col gap-2">
-              <textarea
-                value={newComment}
-                onChange={e => setNewComment(e.target.value)}
-                className="border rounded p-2 text-sm"
-                rows={2}
-                placeholder="Add a comment..."
-                disabled={submitting}
-              />
-              <div className="flex flex-col gap-2 w-full sm:w-auto">
+            <form onSubmit={handleCommentSubmit} className="space-y-4 rounded-2xl border border-dashed border-indigo-200 bg-indigo-50/50 p-5">
+              <div>
+                <label htmlFor="new-violation-comment" className="block text-sm font-semibold text-gray-900">
+                  Add a comment
+                </label>
+                <textarea
+                  id="new-violation-comment"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  rows={3}
+                  placeholder="Share an update or leave instructions for your team…"
+                  className="mt-2 w-full rounded-xl border border-indigo-100 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+                  disabled={submitting}
+                />
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <FileUploadInput
                   id="violation-comment-files"
                   name="attachments"
@@ -845,179 +989,160 @@ const ViolationDetail = () => {
                   onChange={handleCommentAttachmentsChange}
                   accept="image/*,application/pdf"
                   disabled={submitting}
-                  addFilesLabel={commentFiles.length > 0 ? 'Add files' : 'Choose files'}
+                  addFilesLabel={commentFiles.length > 0 ? 'Add more files' : 'Attach files'}
                 />
+                <button
+                  type="submit"
+                  className="inline-flex items-center justify-center rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={submitting || !newComment.trim()}
+                >
+                  {submitting ? 'Posting…' : 'Post Comment'}
+                </button>
               </div>
-              <button
-                type="submit"
-                className="self-end px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm"
-                disabled={submitting || !newComment.trim()}
-              >
-                {submitting ? "Posting..." : "Post Comment"}
-              </button>
             </form>
           )}
-          <ul className="list-disc ml-6 mt-1">
-            {violation.violation_comments.length > 0 ? (
-              [...violation.violation_comments]
-                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-                .map((c) => {
-                  let displayName = 'User';
-                  if (c.user && c.user.email) {
-                    displayName = c.user.email.split('@')[0];
-                  }
-                  return (
-                    <li key={c.id} className="text-sm text-gray-700">
-                      <span className="font-semibold">{displayName}:</span> {c.content}
-                      {c.created_at && (
-                        <span className="ml-2 text-xs text-gray-400">
-                          ({new Date(c.created_at).toLocaleString('en-US', { timeZone: 'America/New_York', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })})
-                        </span>
-                      )}
-                      {(commentAttachments[c.id]?.length || 0) > 0 && (
-                        <div className="mt-1 ml-6">
-                          <div className="flex items-center justify-start gap-3">
-                            <button
-                              type="button"
-                              className="text-indigo-600 hover:underline text-xs font-medium disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed"
-                              onClick={() => {
-                                const firstImage = commentAttachments[c.id].find((att) => isImageAttachment(att));
-                                if (firstImage) {
-                                  setSelectedPhotoUrl(firstImage.url || firstImage);
-                                }
-                              }}
-                              disabled={!commentAttachments[c.id].some((att) => isImageAttachment(att))}
-                            >
-                              View attachments ({commentAttachments[c.id].length})
-                            </button>
-                            <button
-                              type="button"
-                              className="text-indigo-600 hover:underline text-xs font-medium"
-                              onClick={() => handleDownloadCommentAttachments(c.id)}
-                            >
-                              Download attachments ({commentAttachments[c.id].length})
-                            </button>
-                          </div>
-                          <div className="flex flex-wrap gap-2 mt-1">
-                            {commentAttachments[c.id].map((att, idx) => {
-                              const url = att?.url || att;
-                              const filename = getAttachmentFilename(att, `Comment attachment ${idx + 1}`);
-                              const isImage = isImageAttachment(att);
-                              const extensionLabel = getAttachmentDisplayLabel(att);
 
-                              return (
-                                <div key={idx} className="w-20 flex flex-col items-center">
-                                  {isImage ? (
+          {sortedComments.length > 0 ? (
+            <ul className="space-y-4">
+              {sortedComments.map((c) => {
+                const commentList = commentAttachments[c.id] || [];
+                const hasCommentImages = commentList.some((att) => isImageAttachment(att));
+                let displayName = 'User';
+                if (c.user?.email) {
+                  displayName = c.user.email.split('@')[0];
+                }
+                return (
+                  <li key={c.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-5 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-sm font-semibold text-gray-900">{displayName}</div>
+                      {c.created_at && (
+                        <div className="text-xs text-gray-500">
+                          {formatDateLabel(c.created_at, { includeTime: true })}
+                        </div>
+                      )}
+                    </div>
+                    {c.content && (
+                      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-gray-700">{c.content}</p>
+                    )}
+                    {commentList.length > 0 && (
+                      <div className="mt-4 space-y-3">
+                        <div className="flex flex-wrap items-center gap-3 text-xs font-semibold">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!hasCommentImages) return;
+                              const firstImage = commentList.find((att) => isImageAttachment(att));
+                              if (firstImage) {
+                                setSelectedPhotoUrl(firstImage.url || firstImage);
+                              }
+                            }}
+                            disabled={!hasCommentImages}
+                            className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-indigo-600 shadow-sm ring-1 ring-inset ring-indigo-200 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            View attachments ({commentList.length})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadCommentAttachments(c.id)}
+                            className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500"
+                          >
+                            Download attachments ({commentList.length})
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                          {commentList.map((att, idx) => {
+                            const url = att?.url || att;
+                            const filename = getAttachmentFilename(att, `Comment attachment ${idx + 1}`);
+                            const isImage = isImageAttachment(att);
+                            const extensionLabel = getAttachmentDisplayLabel(att);
+                            return (
+                              <div key={idx} className="group rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                                {isImage ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedPhotoUrl(url)}
+                                    className="relative block aspect-square w-full overflow-hidden rounded-lg"
+                                  >
                                     <img
                                       src={url}
                                       alt={filename}
-                                      className="w-20 h-20 object-cover rounded-md shadow cursor-pointer"
-                                      onClick={() => setSelectedPhotoUrl(url)}
+                                      className="h-full w-full object-cover transition duration-200 group-hover:scale-105"
                                     />
-                                  ) : (
-                                    <a
-                                      href={url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="w-20 h-20 flex flex-col items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-gray-600 shadow hover:bg-gray-100 transition-colors"
-                                      title={filename}
-                                    >
-                                      <span className="text-2xl">📄</span>
-                                      <span className="mt-1 text-[10px] font-medium uppercase">{extensionLabel}</span>
-                                    </a>
-                                  )}
+                                  </button>
+                                ) : (
                                   <a
                                     href={url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="mt-1 text-[10px] text-gray-600 text-center break-words hover:text-indigo-600"
+                                    className="flex h-24 w-full flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 text-gray-600 transition hover:border-indigo-200 hover:text-indigo-600"
                                     title={filename}
                                   >
-                                    {filename}
+                                    <span className="text-2xl">📄</span>
+                                    <span className="mt-1 text-[10px] font-medium uppercase tracking-wide">{extensionLabel}</span>
                                   </a>
-                                </div>
-                              );
-                            })}
-                          </div>
+                                )}
+                                <p className="mt-2 line-clamp-2 text-xs font-medium text-gray-600" title={filename}>
+                                  {filename}
+                                </p>
+                              </div>
+                            );
+                          })}
                         </div>
-                      )}
-                    </li>
-                  );
-                })
-            ) : (
-              <li className="text-sm text-gray-500">No comments yet.</li>
-            )}
-          </ul>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-500">No comments yet.</p>
+          )}
         </div>
-      )}
-        {/* Created/Updated info moved above */}
+      </section>
 
-      </div>
-      <div className="mt-8">
-        {/* Citations Heading and Toggle Button */}
-        {user ? (
-          <>
-            {/* When form is hidden, show heading and button side by side */}
-            {!showCitationForm ? (
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-semibold text-gray-800">Citations</h3>
-                <ToggleCitationForm
-                  violationId={id}
-                  onCitationAdded={refreshCitations}
-                  codes={violation.codes || []}
-                  showCitationForm={showCitationForm}
-                  setShowCitationForm={setShowCitationForm}
-                  user={user}
-                  violationStatus={violation.status}
-                />
-              </div>
-            ) : (
-              <div className="mb-4">
-                <h3 className="text-2xl font-semibold text-gray-800 mb-2">Citations</h3>
-                <ToggleCitationForm
-                  violationId={id}
-                  onCitationAdded={refreshCitations}
-                  codes={violation.codes || []}
-                  showCitationForm={showCitationForm}
-                  setShowCitationForm={setShowCitationForm}
-                  user={user}
-                />
-              </div>
-            )}
-          </>
-        ) : (
-          <h3 className="text-2xl font-semibold text-gray-800 mb-4">Citations</h3>
-        )}
-        <CitationsList
-          citations={citations}
-          submitting={submitting}
-          refreshCitations={refreshCitations}
-        />
-      </div>
+      <section className="rounded-3xl border border-gray-200 bg-white shadow-sm">
+        <div className="border-b border-gray-100 px-6 py-6">
+          <div className="flex flex-col gap-1">
+            <h3 className="text-xl font-semibold text-gray-900">Citations</h3>
+            <p className="text-sm text-gray-500">Manage enforcement activity for this violation.</p>
+          </div>
+        </div>
+        <div className="space-y-6 px-6 py-6">
+          <ToggleCitationForm
+            violationId={id}
+            onCitationAdded={refreshCitations}
+            codes={violation.codes || []}
+            showCitationForm={showCitationForm}
+            setShowCitationForm={setShowCitationForm}
+            user={user}
+            violationStatus={violation.status}
+          />
+          <CitationsList
+            citations={citations}
+            submitting={submitting}
+            refreshCitations={refreshCitations}
+          />
+        </div>
+      </section>
     </div>
   );
+
 }
 
 // Toggleable citation form component
 function ToggleCitationForm({ violationId, onCitationAdded, codes, showCitationForm, setShowCitationForm, user, violationStatus }) {
-  // Accept violationStatus as a prop
   const [localShowForm, setLocalShowForm] = useState(false);
   const showForm = typeof showCitationForm === 'boolean' ? showCitationForm : localShowForm;
   const setShowForm = setShowCitationForm || setLocalShowForm;
-  // Get violationStatus from props (directly from prop)
-  // Remove arguments hack, use violationStatus prop
-  // violationStatus is now passed as a named prop
-  // If not provided, default to undefined
-  // (no need for arguments[] hack)
-  // Already handled by parent
-  // Use violationStatus directly
+
   return (
-    <div className="mt-6 w-full">
+    <div className="w-full space-y-4">
       {!showForm ? (
         <div className="flex justify-end">
           {typeof violationStatus !== 'undefined' && violationStatus === 0 && (
             <button
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-semibold"
+              type="button"
+              className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500"
               onClick={() => setShowForm(true)}
             >
               Add New Citation
@@ -1025,10 +1150,12 @@ function ToggleCitationForm({ violationId, onCitationAdded, codes, showCitationF
           )}
         </div>
       ) : (
-        <div className="w-full">
-          <div className="flex justify-end">
+        <div className="space-y-4 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-5">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-gray-900">New Citation</h4>
             <button
-              className="mb-2 text-sm px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 border border-gray-300 transition-colors duration-150"
+              type="button"
+              className="text-sm font-semibold text-indigo-600 transition hover:text-indigo-500"
               onClick={() => setShowForm(false)}
             >
               Cancel
