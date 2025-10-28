@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import useVisibilityAwareInterval from '../Hooks/useVisibilityAwareInterval';
 import {
   Dialog,
   DialogBackdrop,
@@ -176,6 +177,26 @@ export default function Sidebar({ children }) {
     return () => {
       controller.abort();
     };
+  }, [token, fetchNotifications]);
+
+  // Poll notifications while the tab is visible. Don't run immediately here because
+  // the initial fetch is handled in the effect above. Poll interval: 60s.
+  useVisibilityAwareInterval(() => {
+    if (!token) return;
+    // Only poll after we've done the initial fetch once
+    if (!hasFetchedNotificationsRef.current) return;
+    fetchNotifications({ showSpinner: false });
+  }, 60_000, { immediate: false });
+
+  // When the visibility changes to visible, do an immediate refresh (only after initial fetch)
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible' && token && hasFetchedNotificationsRef.current) {
+        fetchNotifications({ showSpinner: false });
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [token, fetchNotifications]);
 
   useEffect(() => {

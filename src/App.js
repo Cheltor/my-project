@@ -1,5 +1,6 @@
 // src/App.js
 import React, { useEffect } from 'react';
+import useVisibilityAwareInterval from './Hooks/useVisibilityAwareInterval';
 import { AuthProvider, useAuth } from './AuthContext';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
@@ -69,20 +70,23 @@ function MainApp() {
   const { user } = useAuth(); // Get user data from context
   const [chatEnabled, setChatEnabled] = React.useState(true);
 
-  useEffect(() => {
-    // Load global chat setting from backend
-    (async () => {
-      try {
-        const resp = await fetch(`${process.env.REACT_APP_API_URL}/settings/chat`);
-        if (resp.ok) {
-          const data = await resp.json();
-          if (typeof data.enabled === 'boolean') setChatEnabled(data.enabled);
-        }
-      } catch (e) {
-        // ignore and default to true
+  // Poll the chat-enabled setting while the tab is visible. Pause when hidden.
+  const fetchChatSetting = React.useCallback(async () => {
+    try {
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/settings/chat`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (typeof data.enabled === 'boolean') setChatEnabled(data.enabled);
       }
-    })();
+    } catch (e) {
+      // ignore and leave current value
+    }
+  }, []);
 
+  // run every 60s while visible; run immediately on mount/when visibility resumes
+  useVisibilityAwareInterval(fetchChatSetting, 60_000, { immediate: true });
+
+  useEffect(() => {
     // subscribe to server-sent events for settings updates
     let es;
     try {
