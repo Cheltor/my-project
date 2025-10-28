@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toEasternLocaleString } from '../utils';
 
+const detailRowClasses =
+  'px-4 py-5 text-sm sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 sm:py-6';
+
 export default function PermitDetail() {
   const { id } = useParams();
   const [permit, setPermit] = useState(null);
@@ -23,51 +26,96 @@ export default function PermitDetail() {
     })();
   }, [id]);
 
-  if (loading) return <div className="p-6">Loading…</div>;
-  if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
-  if (!permit) return <div className="p-6">Not found</div>;
+  if (loading) return <div className="px-4 py-6 text-sm text-gray-600">Loading…</div>;
+  if (error) return <div className="px-4 py-6 text-sm text-red-600">Error: {error}</div>;
+  if (!permit) return <div className="px-4 py-6 text-sm text-gray-600">Not found</div>;
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8">
-      <div className="sm:flex sm:items-center mb-6">
-        <div className="sm:flex-auto">
-          <h1 className="text-base font-semibold leading-6 text-gray-900">Permit #{permit.id}</h1>
-          <p className="mt-2 text-sm text-gray-700">Details about this permit.</p>
-        </div>
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-xl font-semibold text-gray-900">Permit #{permit.id}</h1>
+        <p className="text-sm text-gray-600">Comprehensive overview of the permit details.</p>
       </div>
 
-      <div className="bg-white shadow rounded-lg divide-y divide-gray-200">
-        <div className="px-4 py-5 sm:px-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="text-sm font-medium text-gray-500">Type</div>
-          <div className="sm:col-span-2">{permit.permit_type || '—'}</div>
+      <div className="mt-6 rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
+        <dl className="divide-y divide-gray-100">
+          <div className={detailRowClasses}>
+            <dt className="font-medium text-gray-500">Type</dt>
+            <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+              {permit.permit_type || '—'}
+            </dd>
+          </div>
 
-          <div className="text-sm font-medium text-gray-500">Paid</div>
-          <div className="sm:col-span-2">{permit.paid ? 'Paid' : 'Not Paid'}</div>
+          <div className={detailRowClasses}>
+            <dt className="font-medium text-gray-500">Paid</dt>
+            <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+              <span
+                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ${
+                  permit.paid
+                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                    : 'bg-rose-50 text-rose-700 ring-rose-200'
+                }`}
+              >
+                {permit.paid ? 'Paid' : 'Not Paid'}
+              </span>
+            </dd>
+          </div>
 
-          <div className="text-sm font-medium text-gray-500">Permit Number</div>
-          <div className="sm:col-span-2">{permit.permit_number || '—'}</div>
+          <div className={detailRowClasses}>
+            <dt className="font-medium text-gray-500">Permit Number</dt>
+            <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+              {permit.permit_number || '—'}
+            </dd>
+          </div>
 
-          <div className="text-sm font-medium text-gray-500">Date Issued</div>
-          <div className="sm:col-span-2">{permit.date_issued ? new Date(permit.date_issued).toLocaleDateString() : '—'}</div>
+          <div className={detailRowClasses}>
+            <dt className="font-medium text-gray-500">Date Issued</dt>
+            <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+              {permit.date_issued ? new Date(permit.date_issued).toLocaleDateString() : '—'}
+            </dd>
+          </div>
 
-          <div className="text-sm font-medium text-gray-500">Expiration Date</div>
-          <div className="sm:col-span-2">{permit.expiration_date ? new Date(permit.expiration_date).toLocaleDateString() : '—'}</div>
+          <div className={detailRowClasses}>
+            <dt className="font-medium text-gray-500">Expiration Date</dt>
+            <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+              {permit.expiration_date ? new Date(permit.expiration_date).toLocaleDateString() : '—'}
+            </dd>
+          </div>
 
-          <div className="text-sm font-medium text-gray-500">Conditions</div>
-          <div className="sm:col-span-2">{permit.conditions || '—'}</div>
+          <div className={detailRowClasses}>
+            <dt className="font-medium text-gray-500">Conditions</dt>
+            <dd className="mt-1 whitespace-pre-wrap text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+              {permit.conditions || '—'}
+            </dd>
+          </div>
 
-          <div className="text-sm font-medium text-gray-500">Created</div>
-          <div className="sm:col-span-2">{permit.created_at ? toEasternLocaleString(permit.created_at) : '—'}</div>
+          <div className={detailRowClasses}>
+            <dt className="font-medium text-gray-500">Created</dt>
+            <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+              {permit.created_at ? toEasternLocaleString(permit.created_at) : '—'}
+            </dd>
+          </div>
 
-          <div className="text-sm font-medium text-gray-500">Updated</div>
-          <div className="sm:col-span-2">{permit.updated_at ? toEasternLocaleString(permit.updated_at) : '—'}</div>
-        </div>
+          <div className={detailRowClasses}>
+            <dt className="font-medium text-gray-500">Updated</dt>
+            <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+              {permit.updated_at ? toEasternLocaleString(permit.updated_at) : '—'}
+            </dd>
+          </div>
+        </dl>
       </div>
 
-      <div className="mt-6 flex gap-4">
-        <Link to="/permits" className="text-indigo-600 hover:text-indigo-800">Back to permits</Link>
+      <div className="mt-6 flex flex-wrap items-center gap-4 text-sm font-medium">
+        <Link to="/permits" className="text-indigo-600 transition hover:text-indigo-500">
+          Back to permits
+        </Link>
         {permit.inspection_id && (
-          <Link to={`/inspection/${permit.inspection_id}`} className="text-indigo-600 hover:text-indigo-800">Related inspection #{permit.inspection_id}</Link>
+          <Link
+            to={`/inspection/${permit.inspection_id}`}
+            className="inline-flex items-center text-indigo-600 transition hover:text-indigo-500"
+          >
+            Related inspection #{permit.inspection_id}
+          </Link>
         )}
       </div>
     </div>
