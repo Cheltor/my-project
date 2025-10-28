@@ -6,83 +6,147 @@ import { toEasternLocaleString } from '../utils';
 export default function Violations() {
   const { user } = useAuth();
   const [violations, setViolations] = useState([]);
+  const [totalViolations, setTotalViolations] = useState(0);
+  const [printViolations, setPrintViolations] = useState(null);
+  const [isPrintLoading, setIsPrintLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('all');
   const [emailFilter, setEmailFilter] = useState('');
   const [showMyViolations, setShowMyViolations] = useState(false);
-  const [onsUsers, setOnsUsers] = useState([]); // <-- Add state for ONS users
+  const [onsUsers, setOnsUsers] = useState([]);
   const [printGeneratedAt, setPrintGeneratedAt] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [editingPage, setEditingPage] = useState(false);
+  const [pageInput, setPageInput] = useState('');
   const violationsPerPage = 10;
 
-
-  // Map status integer to string for display
   const statusMapping = {
     0: 'current',
     1: 'resolved',
     2: 'pending trial',
-    3: 'dismissed'
+    3: 'dismissed',
   };
 
-  // Utility function for capitalizing first letter
-  function capitalize(str) {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-  }
+  const capitalize = (str) => (str ? str.charAt(0).toUpperCase() + str.slice(1) : '');
+
+  const buildQueryParams = (includePagination = true) => {
+    const params = new URLSearchParams();
+    if (includePagination) {
+      const offset = Math.max(0, (currentPage - 1) * violationsPerPage);
+      params.set('skip', String(offset));
+      params.set('limit', String(violationsPerPage));
+    }
+    if (statusFilter !== 'all') {
+      params.set('status', statusFilter);
+    }
+    if (user?.role === 1 && showMyViolations && user?.id) {
+      params.set('assigned_user_id', String(user.id));
+    } else if (emailFilter) {
+      params.set('user_email', emailFilter);
+    }
+    return params;
+  };
 
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/violations/`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch violations');
-        }
-        return response.json();
-      })
-      .then((data) => {
-        setViolations(data);
-        setLoading(false);
-      })
-      .catch((error) => {
-        setError(error.message);
-        setLoading(false);
-      });
-    // Fetch ONS users for dropdown
-    fetch(`${process.env.REACT_APP_API_URL}/users/ons/`)
-      .then((response) => {
+    let isActive = true;
+
+    const loadOnsUsers = async () => {
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/users/ons/`);
         if (!response.ok) {
           throw new Error('Failed to fetch ONS users');
         }
-        return response.json();
-      })
-      .then((data) => {
-        setOnsUsers(data);
-      })
-      .catch(() => {
-        setOnsUsers([]);
-      });
+        const data = await response.json();
+        if (isActive) {
+          setOnsUsers(data);
+        }
+      } catch {
+        if (isActive) {
+          setOnsUsers([]);
+        }
+      }
+    };
+
+    loadOnsUsers();
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
-  // Filter by status, ONS user email, and "my violations" for role 1
-  const filteredViolations = violations.filter(violation => {
-    const statusMatch = statusFilter === 'all' || statusMapping[violation.status] === statusFilter;
-    let emailMatch = true;
-    if (user?.role === 1 && showMyViolations) {
-      emailMatch = violation.user && violation.user.email === user.email;
-    } else {
-      emailMatch = !emailFilter || (violation.user && violation.user.email === emailFilter);
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadViolations = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const params = buildQueryParams(true);
+        const query = params.toString();
+        const response = await fetch(
+          `${process.env.REACT_APP_API_URL}/violations/${query ? `?${query}` : ''}`,
+          { signal: controller.signal }
+        );
+        if (!response.ok) {
+          throw new Error('Failed to fetch violations');
+        }
+
+        const data = await response.json();
+        const totalHeader = response.headers.get('X-Total-Count');
+        const parsedTotal = totalHeader !== null ? parseInt(totalHeader, 10) : data.length;
+        const nextTotal = Number.isNaN(parsedTotal) ? data.length : parsedTotal;
+
+        if (!controller.signal.aborted) {
+          setTotalViolations(nextTotal);
+          if (nextTotal === 0 && currentPage !== 1) {
+            setViolations(data);
+            setCurrentPage(1);
+            return;
+          }
+          const nextTotalPages = Math.max(1, Math.ceil(nextTotal / violationsPerPage));
+          if (nextTotal > 0 && currentPage > nextTotalPages) {
+            setViolations(data);
+            setCurrentPage(nextTotalPages);
+            return;
+          }
+          setViolations(data);
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          return;
+        }
+        if (!controller.signal.aborted) {
+          setViolations([]);
+          setError(err.message || 'Failed to fetch violations');
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    if (user?.role === 1 && showMyViolations && !user?.id) {
+      setLoading(false);
+      return () => controller.abort();
     }
-    return statusMatch && emailMatch;
-  });
 
-  const totalPages = Math.ceil(filteredViolations.length / violationsPerPage);
-  const indexOfLastViolation = currentPage * violationsPerPage;
-  const indexOfFirstViolation = indexOfLastViolation - violationsPerPage;
-  const currentViolations = filteredViolations.slice(indexOfFirstViolation, indexOfLastViolation);
+    loadViolations();
 
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  const [editingPage, setEditingPage] = useState(false);
-  const [pageInput, setPageInput] = useState('');
+    return () => controller.abort();
+  }, [currentPage, statusFilter, emailFilter, showMyViolations, user]);
+
+  const totalPages = Math.max(1, Math.ceil(totalViolations / violationsPerPage));
+
+  const paginate = (pageNumber) => {
+    if (pageNumber < 1 || pageNumber > totalPages) {
+      return;
+    }
+    setCurrentPage(pageNumber);
+  };
 
   const startEditPage = () => {
     setPageInput(String(currentPage));
@@ -91,7 +155,7 @@ export default function Violations() {
 
   const applyPageInput = () => {
     const n = parseInt(pageInput, 10);
-    if (!Number.isNaN(n) && n >= 1 && n <= totalPages) {
+    if (!Number.isNaN(n)) {
       paginate(n);
     }
     setEditingPage(false);
@@ -108,14 +172,35 @@ export default function Violations() {
     if (emailFilter) return `Inspector: ${emailFilter}`;
     return 'All inspectors';
   })();
+  const printableViolations = printViolations ?? violations;
+  const printableResultsCount = printableViolations.length;
   const printableResultsLabel =
-    filteredViolations.length === 1 ? '1 result' : `${filteredViolations.length} results`;
+    printableResultsCount === 1 ? '1 result' : `${printableResultsCount} results`;
   const resolvedPrintTimestamp = printGeneratedAt || toEasternLocaleString(new Date(), 'en-US');
 
-  const handlePrint = () => {
-    setPrintGeneratedAt(toEasternLocaleString(new Date(), 'en-US'));
-    // allow state to flush before invoking print
-    setTimeout(() => window.print(), 0);
+  const handlePrint = async () => {
+    setIsPrintLoading(true);
+    try {
+      const params = buildQueryParams(false);
+      const query = params.toString();
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/violations/${query ? `?${query}` : ''}`
+      );
+      if (!response.ok) {
+        throw new Error('Failed to prepare printable violations');
+      }
+      const data = await response.json();
+      setPrintViolations(data);
+      setPrintGeneratedAt(toEasternLocaleString(new Date(), 'en-US'));
+      setTimeout(() => {
+        window.print();
+        setPrintViolations(null);
+      }, 0);
+    } catch (err) {
+      console.error('Unable to prepare printable violations:', err);
+    } finally {
+      setIsPrintLoading(false);
+    }
   };
 
   if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
@@ -141,15 +226,15 @@ export default function Violations() {
             </button>
             <button
               type="button"
-              className="rounded bg-slate-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-500"
+              className="rounded bg-slate-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-500 disabled:opacity-70"
               onClick={handlePrint}
+              disabled={isPrintLoading}
             >
-              Print Results
+              {isPrintLoading ? 'Preparing...' : 'Print Results'}
             </button>
           </div>
         </div>
 
-        {/* Filter UI */}
         {showFilters && (
           <div className="mt-4 bg-white rounded-lg shadow p-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -179,13 +264,16 @@ export default function Violations() {
                   <select
                     id="email-filter"
                     value={emailFilter}
-                    onChange={e => { setEmailFilter(e.target.value); setCurrentPage(1); }}
+                    onChange={(e) => {
+                      setEmailFilter(e.target.value);
+                      setCurrentPage(1);
+                    }}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                   >
                     <option value="">All</option>
-                    {onsUsers.map(user => (
-                      <option key={user.id} value={user.email}>
-                        {user.email}
+                    {onsUsers.map((onsUser) => (
+                      <option key={onsUser.id} value={onsUser.email}>
+                        {onsUser.email}
                       </option>
                     ))}
                   </select>
@@ -197,7 +285,9 @@ export default function Violations() {
                   <div className="mt-1">
                     <button
                       type="button"
-                      className={`${showMyViolations ? 'bg-blue-800' : 'bg-blue-600'} rounded px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500`}
+                      className={`${
+                        showMyViolations ? 'bg-blue-800' : 'bg-blue-600'
+                      } rounded px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500`}
                       onClick={() => {
                         setShowMyViolations(!showMyViolations);
                         setCurrentPage(1);
@@ -210,14 +300,11 @@ export default function Violations() {
               )}
             </div>
             <div className="mt-3 flex items-center justify-between text-sm text-gray-600">
-              <span>Showing {filteredViolations.length} results</span>
+              <span>Showing {totalViolations} results</span>
             </div>
           </div>
         )}
 
-        
-
-        {/* Responsive Table Container */}
         <div className="mt-8 overflow-x-auto rounded-lg shadow-md">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -240,11 +327,14 @@ export default function Violations() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {currentViolations.map((violation) => (
+              {violations.map((violation) => (
                 <tr key={violation.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    <Link to={`/violation/${violation.id}`} className="text-indigo-600 hover:text-indigo-900">
-                      {violation && violation.violation_type ? capitalize(violation.violation_type) : ''}
+                    <Link
+                      to={`/violation/${violation.id}`}
+                      className="text-indigo-600 hover:text-indigo-900"
+                    >
+                      {violation?.violation_type ? capitalize(violation.violation_type) : ''}
                     </Link>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -257,12 +347,17 @@ export default function Violations() {
                         'px-2 py-1 rounded'
                       )}
                     >
-                      {capitalize(statusMapping[violation.status])}
+                      {statusMapping[violation.status]
+                        ? capitalize(statusMapping[violation.status])
+                        : 'Unknown'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {violation.combadd ? (
-                      <Link to={`/address/${violation.address_id}`} className="text-indigo-600 hover:text-indigo-900">
+                      <Link
+                        to={`/address/${violation.address_id}`}
+                        className="text-indigo-600 hover:text-indigo-900"
+                      >
                         {violation.combadd}
                       </Link>
                     ) : (
@@ -270,7 +365,9 @@ export default function Violations() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(violation.deadline_date).toLocaleDateString('en-US')}
+                    {violation.deadline_date
+                      ? new Date(violation.deadline_date).toLocaleDateString('en-US')
+                      : '—'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {(() => {
@@ -280,9 +377,25 @@ export default function Violations() {
                       const diffMs = deadline - now;
                       const diffDays = diffMs / (1000 * 60 * 60 * 24);
                       if (violation.status === 1) return '';
-                      if (diffDays < 0) return <span className="bg-red-200 text-red-800 px-2 py-0.5 rounded font-semibold">Past Due</span>;
-                      if (diffDays <= 3) return <span className="bg-yellow-200 text-yellow-900 px-2 py-0.5 rounded font-semibold">Approaching</span>;
-                      return <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded font-semibold">Plenty of Time</span>;
+                      if (diffDays < 0) {
+                        return (
+                          <span className="bg-red-200 text-red-800 px-2 py-0.5 rounded font-semibold">
+                            Past Due
+                          </span>
+                        );
+                      }
+                      if (diffDays <= 3) {
+                        return (
+                          <span className="bg-yellow-200 text-yellow-900 px-2 py-0.5 rounded font-semibold">
+                            Approaching
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded font-semibold">
+                          Plenty of Time
+                        </span>
+                      );
                     })()}
                   </td>
                 </tr>
@@ -291,51 +404,51 @@ export default function Violations() {
           </table>
         </div>
 
-        {/* Pagination Controls */}
-            <div className="mt-4 flex justify-between items-center">
-              <button
-                onClick={() => paginate(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-500 disabled:bg-gray-300"
-              >
-                Previous
+        <div className="mt-4 flex justify-between items-center">
+          <button
+            onClick={() => paginate(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-500 disabled:bg-gray-300"
+          >
+            Previous
+          </button>
+          <div className="text-sm text-gray-700">
+            {editingPage ? (
+              <input
+                type="number"
+                min={1}
+                max={totalPages}
+                value={pageInput}
+                onChange={(e) => setPageInput(e.target.value)}
+                onBlur={applyPageInput}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') applyPageInput();
+                  if (e.key === 'Escape') setEditingPage(false);
+                }}
+                className="w-20 px-2 py-1 border rounded"
+                autoFocus
+              />
+            ) : (
+              <button onClick={startEditPage} className="underline">
+                Page {currentPage} of {totalPages}
               </button>
-              <div className="text-sm text-gray-700">
-                {editingPage ? (
-                  <input
-                    type="number"
-                    min={1}
-                    max={totalPages}
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                    onBlur={applyPageInput}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') applyPageInput();
-                      if (e.key === 'Escape') setEditingPage(false);
-                    }}
-                    className="w-20 px-2 py-1 border rounded"
-                    autoFocus
-                  />
-                ) : (
-                  <button onClick={startEditPage} className="underline">
-                    Page {currentPage} of {totalPages}
-                  </button>
-                )}
-              </div>
-              <button
-                onClick={() => paginate(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-500 disabled:bg-gray-300"
-              >
-                Next
-              </button>
-            </div>
+            )}
+          </div>
+          <button
+            onClick={() => paginate(currentPage + 1)}
+            disabled={currentPage === totalPages || totalViolations === 0}
+            className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-500 disabled:bg-gray-300"
+          >
+            Next
+          </button>
+        </div>
       </div>
 
       <div className="print-only">
         <h1 className="text-2xl font-semibold text-gray-900">Violations Report</h1>
         <p className="mt-2 text-sm text-gray-700">
-          Generated {resolvedPrintTimestamp} · {statusFilterLabel} · {inspectorFilterLabel} · {printableResultsLabel}
+          Generated {resolvedPrintTimestamp} · {statusFilterLabel} · {inspectorFilterLabel} ·{' '}
+          {printableResultsLabel}
         </p>
         <table className="print-table mt-6">
           <thead>
@@ -349,25 +462,27 @@ export default function Violations() {
             </tr>
           </thead>
           <tbody>
-            {filteredViolations.length === 0 ? (
+            {printableViolations.length === 0 ? (
               <tr>
                 <td colSpan={6}>No results match the active filters.</td>
               </tr>
             ) : (
-              filteredViolations.map((violation) => (
+              printableViolations.map((violation) => (
                 <tr key={`print-${violation.id}`}>
                   <td>{violation.combadd || 'No address'}</td>
                   <td>{violation.violation_type ? capitalize(violation.violation_type) : ''}</td>
                   <td>
                     {Array.isArray(violation.codes) && violation.codes.length > 0
                       ? violation.codes
-                          .map(code => {
+                          .map((code) => {
                             if (!code) return null;
                             const chapter = code.chapter || '';
                             const section = code.section || '';
                             const name = code.name || '';
                             if (chapter || section) {
-                              const chSec = `${chapter}${chapter && section ? '-' : ''}${section}`.trim();
+                              const chSec = `${chapter}${
+                                chapter && section ? '-' : ''
+                              }${section}`.trim();
                               return `${chSec}${name ? ' ' + name : ''}`.trim();
                             }
                             return name || '';

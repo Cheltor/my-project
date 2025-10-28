@@ -20,7 +20,7 @@ import {
   MapIcon,
 } from '@heroicons/react/24/outline';
 import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
-import { Link, useNavigate } from 'react-router-dom'; // Import Link and useNavigate
+import { Link, useNavigate, useLocation } from 'react-router-dom'; // Import Link, useNavigate, and useLocation
 import Logout from '../Components/Logout'; // Import the Logout component
 import { useAuth } from '../AuthContext'; // Import useAuth hook
 import { toEasternLocaleString } from '../utils';
@@ -68,7 +68,9 @@ export default function Sidebar({ children }) {
   const notificationsRef = useRef(null); // Anchor element for notifications dropdown
 
   const navigate = useNavigate(); // To navigate programmatically
+  const location = useLocation(); // Track current location to refresh notifications on navigation
   const { user, token } = useAuth(); // Get user data and token from context
+  const hasFetchedNotificationsRef = useRef(false); // Track if we've already performed the initial fetch
 
   const fetchNotifications = useCallback(
     async ({ showSpinner = false, signal } = {}) => {
@@ -156,27 +158,32 @@ export default function Sidebar({ children }) {
   }, [searchQuery]);
 
   useEffect(() => {
-    const controller = new AbortController();
-
     if (!token) {
       setShowNotificationsDropdown(false);
       setNotifications([]);
       setNotificationsError(null);
       setNotificationsLoading(false);
-      return () => controller.abort();
+      hasFetchedNotificationsRef.current = false;
+      return;
     }
 
-    fetchNotifications({ showSpinner: true, signal: controller.signal });
+    const controller = new AbortController();
 
-    const intervalId = setInterval(() => {
-      fetchNotifications({ signal: controller.signal });
-    }, 60000);
+    fetchNotifications({ showSpinner: true, signal: controller.signal }).finally(() => {
+      hasFetchedNotificationsRef.current = true;
+    });
 
     return () => {
       controller.abort();
-      clearInterval(intervalId);
     };
   }, [token, fetchNotifications]);
+
+  useEffect(() => {
+    if (!token || !hasFetchedNotificationsRef.current) {
+      return;
+    }
+    fetchNotifications({ showSpinner: false });
+  }, [location.pathname, token, fetchNotifications]);
 
   // Listen for app-wide notifications refresh events (e.g., after posting a comment that mentions someone)
   useEffect(() => {
