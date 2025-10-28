@@ -3,6 +3,27 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import NewUnit from './NewUnit';
 import { toEasternLocaleTimeString } from '../../utils';
 
+const formatStatusLabel = (status) => {
+  if (!status) return 'Pending';
+  return status
+    .toString()
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+const getStatusBadgeClasses = (status) => {
+  const normalized = (status || '').toString().toLowerCase();
+  if (normalized.includes('pending')) return 'bg-slate-100 text-slate-800 ring-slate-500/20';
+  if (normalized.includes('completed')) return 'bg-emerald-100 text-emerald-800 ring-emerald-500/20';
+  if (normalized.includes('progress')) return 'bg-indigo-100 text-indigo-800 ring-indigo-500/20';
+  if (normalized.includes('review')) return 'bg-amber-100 text-amber-800 ring-amber-500/20';
+  if (normalized.includes('schedule')) return 'bg-blue-100 text-blue-800 ring-blue-500/20';
+  if (normalized.includes('cancel')) return 'bg-rose-100 text-rose-800 ring-rose-500/20';
+  return 'bg-slate-100 text-slate-800 ring-slate-500/20';
+};
+
 export default function Conduct() {
   const { id } = useParams(); // inspection ID
   const navigate = useNavigate(); // For redirecting 
@@ -14,7 +35,7 @@ export default function Conduct() {
   const [unitAreaCounts, setUnitAreaCounts] = useState({});
   const [searchQuery, setSearchQuery] = useState(''); // For searching units
   const [showNewUnitForm, setShowNewUnitForm] = useState(false);
-  const [showUnitsCard, setShowUnitsCard] = useState(false); // Toggle for entire Units card
+  const [showUnitsCard, setShowUnitsCard] = useState(true);
   const [newAreaName, setNewAreaName] = useState(''); // State for new area name
   const [rooms, setRooms] = useState([]); // State for rooms
   const [selectedRoomId, setSelectedRoomId] = useState(''); // State for selected room
@@ -46,9 +67,9 @@ export default function Conduct() {
         if (!response.ok) {
           throw new Error('Failed to fetch inspection');
         }
-  const data = await response.json();
-  setInspection(data);
-  setStatusValue(canonicalStatus(data.status));
+        const data = await response.json();
+        setInspection(data);
+        setStatusValue(canonicalStatus(data.status));
       } catch (error) {
         setError(error.message);
       } finally {
@@ -140,9 +161,13 @@ export default function Conduct() {
       }
       const updated = await res.json();
       setInspection(updated);
-      setStatusValue(updated.status || '');
+      setStatusValue(canonicalStatus(updated.status));
       setStatusSavedAt(new Date());
-  if (updated.status_message) setStatusMessage(updated.status_message); else setStatusMessage('');
+      if (updated.status_message) {
+        setStatusMessage(updated.status_message);
+      } else {
+        setStatusMessage('');
+      }
     } catch (e) {
       setStatusError(e.message);
     } finally {
@@ -175,6 +200,14 @@ export default function Conduct() {
     unit.number.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const generalAreas = areas.filter((area) => area.unit_id === null);
+  const statusDisplay = formatStatusLabel(statusValue || inspection?.status);
+  const savedAtLabel = statusSavedAt ? toEasternLocaleTimeString(statusSavedAt) : '';
+  const reviewCountLabel = potentialCount === null ? '…' : potentialCount;
+  const selectedRoom = rooms.find((r) => String(r.id) === String(selectedRoomId));
+  const selectedRoomName = selectedRoom?.name || '';
+  const canAddArea = Boolean(selectedRoomId || (newAreaName || '').trim());
+
   const handleAddArea = async (e) => {
     e.preventDefault(); // Prevent the form from refreshing the page
     let areaName = newAreaName;  // This captures the custom area name, if any
@@ -183,7 +216,6 @@ export default function Conduct() {
     // Check if a room is selected
     if (selectedRoomId) {
       const selectedRoom = rooms.find((room) => room.id === parseInt(selectedRoomId)); // Ensure correct comparison
-      console.log('Selected Room:', selectedRoom);  // Debugging log
       if (selectedRoom) {
         areaName = selectedRoom.name;  // Set the area name to the selected room's name
         roomId = selectedRoom.id;  // Set the room ID
@@ -232,221 +264,256 @@ export default function Conduct() {
   }
 
   return (
-    <div>
-      <div className="px-4 sm:px-0">
-        <h3 className="text-base font-semibold leading-7 text-gray-900 text-center">Conduct Inspection for {inspection.source} - #{inspection.id}</h3>
-        {inspection.address && (
-          <div className="mt-2 text-center">
-            <Link
-              to={`/address/${inspection.address.id}`}
-              className="text-indigo-600 hover:text-indigo-900"
-              title="View address details"
-            >
-              {inspection.address.combadd}
-            </Link>
-          </div>
-        )}
-        {/* Status updater */}
-        <div className="mt-3 flex items-center justify-center gap-2">
-          <label className="text-sm text-gray-700">Status:</label>
-          <select
-            className="mt-1 block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-            value={statusValue}
-            onChange={(e) => setStatusValue(e.target.value)}
-          >
-            <option value="Pending">Pending</option>
-            <option value="Scheduled">Scheduled</option>
-            <option value="In Progress">In Progress</option>
-            <option value="under review">Under Review</option>
-            <option value="Completed">Completed</option>
-            <option value="Cancelled">Cancelled</option>
-          </select>
-          <button
-            type="button"
-            onClick={saveStatus}
-            disabled={savingStatus}
-            className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
-          >
-            {savingStatus ? 'Saving…' : 'Save'}
-          </button>
-        </div>
-        {statusError && (
-          <div className="mt-1 text-center text-sm text-red-600">{statusError}</div>
-        )}
-        {statusSavedAt && !statusError && (
-          <div className="mt-1 text-center text-xs text-green-700">Status updated {toEasternLocaleTimeString(statusSavedAt)}</div>
-        )}
-        {statusMessage && !statusError && (
-          <div className="mt-2 text-center text-sm text-indigo-700">{statusMessage}</div>
-        )}
-      </div>
-
-      {/* Review button directly under status */}
-      <div className="mt-4 flex items-center justify-center">
-        <Link
-          to={`/inspections/${id}/review`}
-          className="inline-flex items-center px-6 py-3 border border-transparent text-base leading-6 font-semibold rounded-lg text-white bg-emerald-600 hover:bg-emerald-500 shadow-sm"
-        >
-          <span>Review Potential Violations</span>
-          <span className="ml-3 inline-flex items-center justify-center rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold min-w-[1.5rem]">
-            {potentialCount === null ? '…' : potentialCount}
-          </span>
-        </Link>
-      </div>
-
-      {/* Two-column layout: Units (left) and Areas (right) */}
-      <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-        {/* Left: Units */}
-        <div className="p-4 sm:p-6 rounded-md bg-white shadow">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-semibold leading-5 text-gray-900">Units</h4>
-            <button
-              type="button"
-              onClick={() => setShowUnitsCard(!showUnitsCard)}
-              className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-gray-700 hover:bg-gray-600"
-            >
-              {showUnitsCard ? 'Hide' : 'Show'}
-            </button>
-          </div>
-          {/* Search input for filtering units */}
-          {showUnitsCard && (
-          <div className="mt-3">
-            <label htmlFor="search" className="block text-sm font-medium text-gray-700">Search Existing Units</label>
-            <input
-              type="text"
-              id="search"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              placeholder="Search for a unit number"
-            />
-          </div>
-          )}
-
-          {/* Units list */}
-          {showUnitsCard && (
-          <div className="mt-4">
-            {filteredUnits.length > 0 ? (
-              <ul>
-                {filteredUnits.map((unit) => (
-                  <li key={unit.id} className="mb-2">
-                    <Link
-                      to={`/inspections/${id}/unit/${unit.id}`}
-                      className="block px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-                    >
-                      Unit {unit.number} ({unitAreaCounts[unit.id] || '0'} areas)
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No units found matching your search.</p>
-            )}
-          </div>
-          )}
-
-          {/* New Unit form toggle and form */}
-          {showUnitsCard && (
-            <>
-              <div className="mt-4">
-                <button
-                  onClick={() => setShowNewUnitForm(!showNewUnitForm)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500"
-                >
-                  {showNewUnitForm ? 'Hide New Unit Form' : 'Add New Unit'}
-                </button>
-              </div>
-              {showNewUnitForm && (
-                <div className="mt-4">
-                  <NewUnit addressId={inspection.address.id} inspectionId={id} />
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Right: Areas */}
-  <div className="p-4 sm:p-6 rounded-md bg-white shadow">
-          <h4 className="text-sm font-semibold leading-5 text-gray-900">Areas</h4>
-          {/* A list of areas not associated with a unit */}
-          <div className="mt-3">
-            {areas.filter(area => area.unit_id === null).length > 0 ? (
-              <ul className="mt-2 divide-y divide-gray-200 rounded-md">
-                {areas.filter(area => area.unit_id === null).map((area) => (
-                  <li key={area.id} className="mb-2">
-                    <Link
-                      to={`/inspections/${id}/area/${area.id}`}
-                      className="block px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex w-0 flex-1 items-center">
-                          <span className="ml-2 flex-1 w-0 truncate">{area.name}</span>
-                        </div>
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-sm leading-5 text-gray-500">No general areas inspected.</p>
-            )}
-          </div>
-
-          {/* Add a new area form at the bottom of the Areas column */}
-          <div className="mt-6 pt-4 border-t">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold leading-5 text-gray-900">Add General/Common Area</h4>
-              <button
-                type="button"
-                onClick={() => setShowNewAreaForm(!showNewAreaForm)}
-                className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500"
+    <div className="max-w-6xl mx-auto space-y-8 px-4 pb-12 sm:px-6 lg:px-8">
+      <header className="rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-indigo-600">Conduct Inspection</p>
+            <h1 className="text-2xl font-semibold text-gray-900">{inspection.source || 'Inspection'} #{inspection.id}</h1>
+            {inspection.address && (
+              <Link
+                to={`/address/${inspection.address.id}`}
+                className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-500"
               >
-                {showNewAreaForm ? 'Hide Area Form' : 'Add Area'}
-              </button>
+                {inspection.address.combadd}
+              </Link>
+            )}
+          </div>
+          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${getStatusBadgeClasses(statusDisplay)}`}>
+            {statusDisplay}
+          </span>
+        </div>
+      </header>
+
+      <div className="grid gap-6 lg:grid-cols-[3fr,2fr]">
+        <div className="space-y-6">
+          <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">Status & Review</h2>
+                <p className="mt-1 text-xs text-gray-500">Update the inspection status and review any potential violations.</p>
+              </div>
+              <Link
+                to={`/inspections/${id}/review`}
+                className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500"
+              >
+                <span>Review Potential Violations</span>
+                <span className="inline-flex min-w-[1.5rem] items-center justify-center rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
+                  {reviewCountLabel}
+                </span>
+              </Link>
             </div>
-            {showNewAreaForm && (
-            <form className="mt-2" onSubmit={handleAddArea}>
-              <div className="mt-4">
-                <label htmlFor="roomSelect" className="block text-sm font-medium text-gray-700">
-                  Select Room as Area
+            <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end">
+              <div className="sm:flex-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500" htmlFor="inspection-status">
+                  Status
                 </label>
                 <select
-                  id="roomSelect"
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  value={selectedRoomId}
-                  onChange={(e) => setSelectedRoomId(e.target.value)}
+                  id="inspection-status"
+                  className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  value={statusValue}
+                  onChange={(e) => setStatusValue(e.target.value)}
                 >
-                  <option value="">-- Select Room --</option>
-                  {rooms.map((room) => (
-                    <option key={room.id} value={room.id}>
-                      {room.name}
-                    </option>
-                  ))}
+                  <option value="Pending">Pending</option>
+                  <option value="Scheduled">Scheduled</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="under review">Under Review</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
                 </select>
               </div>
-
-              <div className="mt-4">
-                <label htmlFor="areaName" className="block text-sm font-medium leading-5 text-gray-700">Custom Area Name</label>
-                <input
-                  id="areaName"
-                  className="form-input block w-full sm:text-sm sm:leading-5"
-                  value={newAreaName}
-                  onChange={(e) => setNewAreaName(e.target.value)}
-                  placeholder="Type in a custom area name"
-                />
-              </div>
-
-              <div className="mt-6">
-                <button
-                  type="submit"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:border-indigo-700 focus:shadow-outline-indigo active:bg-indigo-700 transition ease-in-out duration-150"
-                >
-                  Add Area
-                </button>
-              </div>
-            </form>
+              <button
+                type="button"
+                onClick={saveStatus}
+                disabled={savingStatus}
+                className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {savingStatus ? 'Saving…' : 'Save Status'}
+              </button>
+            </div>
+            {statusError && <div className="mt-3 text-xs text-rose-600">{statusError}</div>}
+            {!statusError && savedAtLabel && (
+              <div className="mt-3 text-xs text-emerald-700">Status updated {savedAtLabel}</div>
             )}
-          </div>
+            {statusMessage && !statusError && (
+              <div className="mt-3 rounded-md border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+                {statusMessage}
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-gray-900">General Areas</h2>
+              <button
+                type="button"
+                onClick={() => setShowNewAreaForm((prev) => !prev)}
+                className="text-xs font-semibold text-indigo-600 transition hover:text-indigo-500"
+              >
+                {showNewAreaForm ? 'Hide area form' : 'Add new area'}
+              </button>
+            </div>
+            <div className="mt-4 space-y-2">
+              {generalAreas.length > 0 ? (
+                generalAreas.map((area) => (
+                  <Link
+                    key={area.id}
+                    to={`/inspections/${id}/area/${area.id}`}
+                    className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-800 transition hover:border-gray-300 hover:bg-gray-100"
+                  >
+                    <span className="truncate">{area.name || `Area #${area.id}`}</span>
+                    <span className="text-xs text-gray-500">Open</span>
+                  </Link>
+                ))
+              ) : (
+                <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-3 py-4 text-sm text-gray-500">
+                  No general or common areas logged yet.
+                </div>
+              )}
+            </div>
+
+            {showNewAreaForm && (
+              <form className="mt-6 space-y-4" onSubmit={handleAddArea}>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="roomSelect" className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Choose a room
+                    </label>
+                    <select
+                      id="roomSelect"
+                      className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                      value={selectedRoomId}
+                      onChange={(e) => setSelectedRoomId(e.target.value)}
+                    >
+                      <option value="">-- Select Room --</option>
+                      {rooms.map((room) => (
+                        <option key={room.id} value={room.id}>
+                          {room.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">Pick a room from the list. If the room isn't listed, enter a custom area name.</p>
+                  </div>
+
+                  <div>
+                    <label htmlFor="areaName" className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Custom area name
+                    </label>
+                    <input
+                      id="areaName"
+                      className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                      value={selectedRoomId ? selectedRoomName : newAreaName}
+                      onChange={(e) => setNewAreaName(e.target.value)}
+                      placeholder={selectedRoomId ? 'Using selected room name — use "Use custom name" to override' : 'Type a custom area name (if room not listed)'}
+                      readOnly={Boolean(selectedRoomId)}
+                    />
+                    {selectedRoomId ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // clear selection and make the custom input editable
+                          setSelectedRoomId('');
+                          setNewAreaName('');
+                        }}
+                        className="mt-2 text-xs font-semibold text-indigo-600 hover:text-indigo-500"
+                      >
+                        Use custom name instead
+                      </button>
+                    ) : (
+                      <p className="mt-1 text-xs text-gray-500">If your room is not listed above, enter a custom area name here.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center gap-3">
+                  <button
+                    type="submit"
+                    disabled={!canAddArea}
+                    className={`inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm transition ${canAddArea ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-gray-300 cursor-not-allowed'}`}
+                  >
+                    Add Area
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowNewAreaForm(false);
+                      setNewAreaName('');
+                      setSelectedRoomId('');
+                    }}
+                    className="text-xs font-semibold text-gray-500 transition hover:text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+          </section>
+        </div>
+
+        <div className="space-y-6">
+          <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold text-gray-900">Units</h2>
+              <button
+                type="button"
+                onClick={() => setShowUnitsCard((prev) => !prev)}
+                className="text-xs font-semibold text-indigo-600 transition hover:text-indigo-500"
+              >
+                {showUnitsCard ? 'Collapse' : 'Expand'}
+              </button>
+            </div>
+
+            {showUnitsCard && (
+              <>
+                <div className="mt-4">
+                  <label htmlFor="unit-search" className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Search Units
+                  </label>
+                  <input
+                    id="unit-search"
+                    type="text"
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    placeholder="Search for a unit number"
+                    className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {filteredUnits.length > 0 ? (
+                    filteredUnits.map((unit) => (
+                      <Link
+                        key={unit.id}
+                        to={`/inspections/${id}/unit/${unit.id}`}
+                        className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-800 transition hover:border-gray-300 hover:bg-gray-100"
+                      >
+                        <span>Unit {unit.number}</span>
+                        <span className="text-xs text-gray-500">{unitAreaCounts[unit.id] || 0} areas</span>
+                      </Link>
+                    ))
+                  ) : (
+                    <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-500">
+                      No units found matching your search.
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-6 border-t border-gray-100 pt-4">
+                  <button
+                    onClick={() => setShowNewUnitForm((prev) => !prev)}
+                    className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500"
+                  >
+                    {showNewUnitForm ? 'Hide new unit form' : 'Add new unit'}
+                  </button>
+                  {showNewUnitForm && inspection.address?.id && (
+                    <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                      <NewUnit addressId={inspection.address.id} inspectionId={id} />
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </section>
         </div>
       </div>
     </div>

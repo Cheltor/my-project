@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import { useAuth } from "../../AuthContext";
+import CodeSelect from "../CodeSelect";
 import NewViolationForm from "./NewViolationForm";
 import FullScreenPhotoViewer from "../FullScreenPhotoViewer";
 import { toEasternLocaleString } from "../../utils";
@@ -7,6 +9,8 @@ import { toEasternLocaleString } from "../../utils";
 export default function Review() {
   const { id } = useParams(); // inspection id
   const navigate = useNavigate();
+  const { user, token } = useAuth();
+  const authToken = token || user?.token;
   const [inspection, setInspection] = useState(null);
   const [potentials, setPotentials] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,6 +19,11 @@ export default function Review() {
   const [areasById, setAreasById] = useState({});
   const [violationCodes, setViolationCodes] = useState([]); // codes to prefill violation form
   const [viewerUrl, setViewerUrl] = useState(null);
+  const [editingById, setEditingById] = useState({}); // { [obsId]: true }
+  const [editedCodesById, setEditedCodesById] = useState({}); // { [obsId]: CodeSelectOption[] }
+  const [savingById, setSavingById] = useState({}); // { [obsId]: boolean }
+  const [rowErrorById, setRowErrorById] = useState({}); // { [obsId]: string }
+  const [justUpdatedAtById, setJustUpdatedAtById] = useState({}); // { [obsId]: timestamp }
 
   useEffect(() => {
     let cancelled = false;
@@ -65,6 +74,12 @@ export default function Review() {
     else setSelectedIds(new Set(potentials.map(p => p.id)));
   };
 
+  const toCodeOption = (c) => ({
+    label: `Ch. ${c.chapter} Sec. ${c.section} - ${c.name}`,
+    value: c.id,
+    code: c,
+  });
+
   const pushCodesFromSelected = () => {
     // Collect de-duplicated codes across selected observations
     const map = new Map();
@@ -75,17 +90,82 @@ export default function Review() {
       });
     });
     // Transform to CodeSelect option shape
-    const toOption = (c) => ({
-      label: `Ch. ${c.chapter} Sec. ${c.section} - ${c.name}`,
-      value: c.id,
-      code: c,
-    });
-    const merged = Array.from(map.values()).map(toOption);
+    const merged = Array.from(map.values()).map(toCodeOption);
     setViolationCodes(merged);
+  };
+
+  const startEditCodes = (p) => {
+    setRowErrorById((prev) => ({ ...prev, [p.id]: "" }));
+    setEditingById((prev) => ({ ...prev, [p.id]: true }));
+    setEditedCodesById((prev) => ({ ...prev, [p.id]: (p.codes || []).map(toCodeOption) }));
+  };
+
+  const cancelEditCodes = (obsId) => {
+    setEditingById((prev) => { const n = { ...prev }; delete n[obsId]; return n; });
+    setEditedCodesById((prev) => { const n = { ...prev }; delete n[obsId]; return n; });
+    setRowErrorById((prev) => { const n = { ...prev }; delete n[obsId]; return n; });
+  };
+
+  const saveEditedCodes = async (obsId) => {
+    const options = editedCodesById[obsId] || [];
+    const codeIds = options.map((o) => (o.code?.id ?? o.value));
+    setSavingById((prev) => ({ ...prev, [obsId]: true }));
+    setRowErrorById((prev) => ({ ...prev, [obsId]: "" }));
+    try {
+      const headers = { "Content-Type": "application/json" };
+      if (authToken) headers.Authorization = `Bearer ${authToken}`;
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/observations/${obsId}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ codes: codeIds }),
+      });
+      if (!resp.ok) throw new Error("Failed to update suspected codes");
+      const updated = await resp.json();
+      setPotentials((prev) => prev.map((p) => (p.id === obsId ? { ...p, codes: updated.codes || [] } : p)));
+      cancelEditCodes(obsId);
+      // Mark as recently updated and auto-clear after 6s
+      const now = Date.now();
+      setJustUpdatedAtById((prev) => ({ ...prev, [obsId]: now }));
+      setTimeout(() => {
+        setJustUpdatedAtById((prev) => {
+          const next = { ...prev };
+          if (next[obsId] && next[obsId] === now) delete next[obsId];
+          return next;
+        });
+      }, 6000);
+    } catch (e) {
+      setRowErrorById((prev) => ({ ...prev, [obsId]: e.message || "Failed to update suspected codes" }));
+    } finally {
+      setSavingById((prev) => ({ ...prev, [obsId]: false }));
+    }
   };
 
   const initialAddressId = inspection?.address?.id;
   const initialAddressLabel = inspection?.address?.combadd;
+
+  // When a violation is created from this page, mark the inspection as Completed
+  const markInspectionCompleted = async () => {
+    try {
+      const form = new FormData();
+      form.append('status', 'Completed');
+      const headers = {};
+      if (authToken) headers.Authorization = `Bearer ${authToken}`;
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/status`, {
+        method: 'PATCH',
+        headers,
+        body: form,
+      });
+      if (resp.ok) {
+        const updated = await resp.json();
+        setInspection(updated);
+      }
+    } catch (e) {
+      // ignore — best-effort status update
+    } finally {
+      // After attempting the status update, go back to the Conduct view
+      navigate(`/inspections/${id}/conduct`);
+    }
+  };
 
   if (loading) return <div className="p-4">Loading review…</div>;
   if (error) return <div className="p-4 text-red-600">Error: {error}</div>;
@@ -95,9 +175,19 @@ export default function Review() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Review Potential Violations</h1>
         <div className="flex gap-2">
-          <Link className="text-sm text-indigo-600 hover:underline" to={`/inspections/${id}/conduct`}>Back to Conduct</Link>
+          <Link
+            to={`/inspections/${id}/conduct`}
+            className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500"
+          >
+            Back to Conduct
+          </Link>
           {inspection?.address?.id && (
-            <Link className="text-sm text-blue-600 hover:underline" to={`/address/${inspection.address.id}`}>View Address</Link>
+            <Link
+              to={`/address/${inspection.address.id}`}
+              className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50"
+            >
+              View Address
+            </Link>
           )}
         </div>
       </div>
@@ -128,6 +218,7 @@ export default function Review() {
                     {p.unit_number && <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-800">Unit {p.unit_number}</span>}
                   </div>
                   <div className="mt-1 text-gray-900">{p.content}</div>
+                  
                   {p.codes && p.codes.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
                       {p.codes.map((c) => (
@@ -137,6 +228,48 @@ export default function Review() {
                           <span className="text-gray-500">{c.name}</span>
                         </span>
                       ))}
+                    </div>
+                  )}
+                  {editingById[p.id] ? (
+                    <div className="mt-2">
+                      <CodeSelect
+                        isMulti={true}
+                        value={editedCodesById[p.id] || []}
+                        onChange={(opts) => setEditedCodesById((prev) => ({ ...prev, [p.id]: opts || [] }))}
+                      />
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => saveEditedCodes(p.id)}
+                          disabled={!!savingById[p.id]}
+                          className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:opacity-60"
+                        >
+                          {savingById[p.id] ? "Saving…" : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => cancelEditCodes(p.id)}
+                          className="text-xs font-semibold text-gray-600 hover:text-gray-800"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                      {rowErrorById[p.id] && <div className="mt-1 text-xs text-red-600">{rowErrorById[p.id]}</div>}
+                    </div>
+                  ) : (
+                    <div className="mt-2 flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => startEditCodes(p)}
+                        className="text-xs font-semibold text-indigo-600 hover:text-indigo-500"
+                      >
+                        Edit suspected codes
+                      </button>
+                      {justUpdatedAtById[p.id] && (
+                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                          Codes updated
+                        </span>
+                      )}
                     </div>
                   )}
           {p.photos && p.photos.length > 0 && (
@@ -174,7 +307,7 @@ export default function Review() {
       <div className="mt-8">
         <h2 className="text-base font-semibold leading-6 text-gray-900 mb-2">Create Violation Notice</h2>
         <NewViolationForm
-          onCreated={() => navigate(`/inspection/${id}`)}
+          onCreated={markInspectionCompleted}
           initialAddressId={inspection?.address_id}
           initialAddressLabel={inspection?.address?.combadd}
           lockAddress={true}
