@@ -5,7 +5,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-gray-100 px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl text-center">
-        <h1 className="text-4xl font-semibold text-gray-900">Welcome to CiviCode</h1>
+        <h1 className="text-4xl font-semibold text-gray-900">Welcome to CodeSoft</h1>
         <p className="mt-4 text-base text-gray-600">
           Sign in to manage inspections, or submit a resident concern without an account.
         </p>

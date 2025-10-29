@@ -34,7 +34,7 @@ const ForgotPassword = () => {
             Forgot your password?
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Enter the email you use for CiviCode and we&apos;ll send you a reset link.
+            Enter the email you use for CodeSoft and we&apos;ll send you a reset link.
           </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 shadow-sm rounded-lg">
