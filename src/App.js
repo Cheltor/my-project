@@ -4,6 +4,7 @@ import useVisibilityAwareInterval from './Hooks/useVisibilityAwareInterval';
 import { apiFetch } from './api';
 import { AuthProvider, useAuth } from './AuthContext';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react'; // added import
 import './App.css';
 import Sidebar from './Layouts/Sidebar';  // Adjust path based on your project structure
 import Home from './Components/Home';
@@ -127,65 +128,63 @@ function MainApp() {
       {user ? (
         <>
           {chatEnabled && <ChatWidget />}
-          {/* If the user is logged in, show the Sidebar and main content */}
           <Sidebar>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/due-list" element={<DueList />} />
-            <Route path="/sir" element={<Sir />} />
-            <Route path="/address/:id" element={<AddressDetail />} />
-            <Route path="/contacts" element={<Contacts />} />
-            <Route path="/contacts/:id" element={<ContactDetail />} />
-            <Route path="/violations" element={<Violations />} />
-            <Route path="/inspections" element={<Inspections />} />
-            <Route path="/businesses" element={<Businesses />} />
-            <Route path="/business/:id" element={<BusinessDetail />} />
-            <Route path="/calendar" element={<ScheduleCalendar />} />
-            <Route path="/map" element={<MapPage />} />
-            <Route path="/codes" element={<Codes />} />
-            <Route path="/code/:id" element={<CodeDetail />} />
-            <Route path="/code/:id/edit" element={<CodeEdit />} />
-            <Route path="/licenses" element={<Licenses />} />
-            <Route path="/license/:id" element={<LicenseDetail />} />
-            <Route path="/permits" element={<Permits />} />
-            <Route path="/permit/:id" element={<PermitDetail />} />
-            <Route path="/complaints" element={<Complaints />} />
-            <Route path="/complaint/:id" element={<ComplaintDetail />} />
-            <Route path="/citations" element={<Citations />} />
-            <Route path="/citation/:id" element={<CitationDetailsPage />} />
-            <Route path="/violation/:id" element={<ViolationDetail />} />
-            <Route path="/inspection/:id" element={<InspectionDetail />} />
-            <Route path="/inspections/:id/conduct" element={<Conduct />} />
-            <Route path="/inspections/:id/review" element={<Review />} />
-            <Route path="/inspections/:id/unit/:unitId" element={<UnitDetail />} />
-            <Route path="/inspections/:id/new-unit" element={<NewUnit />} />
-            <Route path="/inspections/:id/area/:areaId" element={<AreaDetail />} />
-            <Route path="/inspections/:id/unit/:unitId/area/:areaId" element={<UnitAreaDetail />} />
-            <Route path="/rooms" element={<Rooms />} />
-            <Route path="/rooms/:id" element={<RoomDetail />} />
-            <Route path="/users" element={<Users />} />
-            <Route path="/users/:id" element={<UserDetail />} />
-            <Route path="/address/:addressId/unit/:unitId" element={<AddressUnitDetail />} />
-            <Route path="/helpful" element={<Helpful />} />
-            <Route path="/new-address" element={<NewAddressPage />} />
-            <Route path="/vacancy-statuses" element={<VacancyStatusList />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/code-sync" element={<AdminCodeSync />} />
-            <Route path="/admin/comments/:commentId/edit" element={<AdminCommentEditor />} />
-            <Route path="/admin/contact-comments/:commentId/edit" element={<AdminContactCommentEditor />} />
-            <Route path="/admin-chat" element={<AdminChat user={user} chatEnabled={chatEnabled} setChatEnabled={setChatEnabled} />} />
-            <Route path="/notifications" element={<NotificationsPage />} />
-            <Route path="/resident-concern" element={<ResidentConcern />} />
-            <Route path="/login" element={<Navigate to="/" replace />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            {/* Add more routes as needed */}
-          </Routes>
-        </Sidebar>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/due-list" element={<DueList />} />
+              <Route path="/sir" element={<Sir />} />
+              <Route path="/address/:id" element={<AddressDetail />} />
+              <Route path="/contacts" element={<Contacts />} />
+              <Route path="/contacts/:id" element={<ContactDetail />} />
+              <Route path="/violations" element={<Violations />} />
+              <Route path="/inspections" element={<Inspections />} />
+              <Route path="/businesses" element={<Businesses />} />
+              <Route path="/business/:id" element={<BusinessDetail />} />
+              <Route path="/calendar" element={<ScheduleCalendar />} />
+              <Route path="/map" element={<MapPage />} />
+              <Route path="/codes" element={<Codes />} />
+              <Route path="/code/:id" element={<CodeDetail />} />
+              <Route path="/code/:id/edit" element={<CodeEdit />} />
+              <Route path="/licenses" element={<Licenses />} />
+              <Route path="/license/:id" element={<LicenseDetail />} />
+              <Route path="/permits" element={<Permits />} />
+              <Route path="/permit/:id" element={<PermitDetail />} />
+              <Route path="/complaints" element={<Complaints />} />
+              <Route path="/complaint/:id" element={<ComplaintDetail />} />
+              <Route path="/citations" element={<Citations />} />
+              <Route path="/citation/:id" element={<CitationDetailsPage />} />
+              <Route path="/violation/:id" element={<ViolationDetail />} />
+              <Route path="/inspection/:id" element={<InspectionDetail />} />
+              <Route path="/inspections/:id/conduct" element={<Conduct />} />
+              <Route path="/inspections/:id/review" element={<Review />} />
+              <Route path="/inspections/:id/unit/:unitId" element={<UnitDetail />} />
+              <Route path="/inspections/:id/new-unit" element={<NewUnit />} />
+              <Route path="/inspections/:id/area/:areaId" element={<AreaDetail />} />
+              <Route path="/inspections/:id/unit/:unitId/area/:areaId" element={<UnitAreaDetail />} />
+              <Route path="/rooms" element={<Rooms />} />
+              <Route path="/rooms/:id" element={<RoomDetail />} />
+              <Route path="/users" element={<Users />} />
+              <Route path="/users/:id" element={<UserDetail />} />
+              <Route path="/address/:addressId/unit/:unitId" element={<AddressUnitDetail />} />
+              <Route path="/helpful" element={<Helpful />} />
+              <Route path="/new-address" element={<NewAddressPage />} />
+              <Route path="/vacancy-statuses" element={<VacancyStatusList />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/code-sync" element={<AdminCodeSync />} />
+              <Route path="/admin/comments/:commentId/edit" element={<AdminCommentEditor />} />
+              <Route path="/admin/contact-comments/:commentId/edit" element={<AdminContactCommentEditor />} />
+              <Route path="/admin-chat" element={<AdminChat user={user} chatEnabled={chatEnabled} setChatEnabled={setChatEnabled} />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/resident-concern" element={<ResidentConcern />} />
+              <Route path="/login" element={<Navigate to="/" replace />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              {/* Add more routes as needed */}
+            </Routes>
+          </Sidebar>
         </>
       ) : (
-        // If the user is not logged in, show the Login page
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/resident-concern" element={<ResidentConcern />} />
@@ -195,6 +194,7 @@ function MainApp() {
           <Route path="*" element={<LandingPage />} /> {/* Redirect any other route to landing if not authenticated */}
         </Routes>
       )}
+      <Analytics /> {/* render here so it's always mounted while Router is active */}
     </Router>
   );
 }
