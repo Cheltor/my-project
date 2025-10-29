@@ -231,36 +231,26 @@ export default function LicenseDetail() {
               Detailed view of the license record, including billing and renewal information.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            {isEditing ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(false)}
-                  className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
-                  disabled={saving}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:bg-indigo-300"
-                  disabled={saving}
-                >
-                  {saving ? 'Saving…' : 'Save Changes'}
-                </button>
-              </>
-            ) : (
+          {isEditing && (
+            <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setIsEditing(true)}
-                className="inline-flex items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+                onClick={() => setIsEditing(false)}
+                className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+                disabled={saving}
               >
-                Edit Details
+                Cancel
               </button>
-            )}
-          </div>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:bg-indigo-300"
+                disabled={saving}
+              >
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[2fr_1fr]">
