@@ -47,22 +47,42 @@ const statusPillClass = (label) => {
 
 const PAGE_LIMIT = 10;
 
-const TableSection = ({ title, description, viewAllHref, columns, rows, emptyMessage, footnote }) => (
+const TableSection = ({ title, description, viewAllHref, columns, rows, emptyMessage, footnote, topStat }) => (
   <div className="rounded-lg bg-white shadow">
     <div className="flex flex-col gap-1 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
         {description && <p className="text-xs text-gray-500">{description}</p>}
       </div>
-      {viewAllHref && (
-        <Link to={viewAllHref} className="text-xs font-medium text-indigo-600 hover:text-indigo-500">
-          View all
-        </Link>
+      {topStat && (
+        <div className="mt-2 sm:mt-0">
+          <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800">
+            <span className="mr-2 text-xs text-gray-500">{topStat.label}</span>
+            <span className="text-sm font-semibold">{topStat.value}</span>
+          </span>
+        </div>
       )}
     </div>
 
     {rows.length === 0 ? (
-      <p className="px-4 py-6 text-sm text-gray-500">{emptyMessage}</p>
+      <>
+        <p className="px-4 py-6 text-sm text-gray-500">{emptyMessage}</p>
+        {footnote && (
+          <div className="border-t border-gray-100 px-4 py-3 text-xs text-gray-500">
+            {footnote}
+          </div>
+        )}
+        {viewAllHref && (
+          <div className="px-4 py-3">
+            <Link
+              to={viewAllHref}
+              className="block w-full text-center rounded-md border border-indigo-600 px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
+            >
+              View all
+            </Link>
+          </div>
+        )}
+      </>
     ) : (
       <>
         <div className="overflow-x-auto">
@@ -95,6 +115,16 @@ const TableSection = ({ title, description, viewAllHref, columns, rows, emptyMes
         {footnote && (
           <div className="border-t border-gray-100 px-4 py-3 text-xs text-gray-500">
             {footnote}
+          </div>
+        )}
+        {viewAllHref && (
+          <div className="px-4 py-3">
+            <Link
+              to={viewAllHref}
+              className="block w-full text-center rounded-md border border-indigo-600 px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
+            >
+              View all
+            </Link>
           </div>
         )}
       </>
@@ -279,6 +309,7 @@ const OasOverview = () => {
         viewAll: '/violations',
         empty: 'There are no active violations.',
         rows: violationRows,
+  topStat: { label: 'Total', value: (data.active_violations_count ?? (data.active_violations || []).length) },
         columns: [
           {
             header: 'Violation',
@@ -316,6 +347,7 @@ const OasOverview = () => {
         viewAll: '/licenses',
         empty: 'No licenses require follow-up.',
         rows: licenseRows,
+        topStat: { label: 'Needs action', value: (data.licenses_needing_action_count ?? licenseRows.length) },
         columns: [
           {
             header: 'License',
@@ -387,6 +419,7 @@ const OasOverview = () => {
             rows={section.rows}
             emptyMessage={section.empty}
             footnote={section.footnote}
+            topStat={section.topStat}
           />
         ))}
       </div>

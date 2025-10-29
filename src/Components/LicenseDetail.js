@@ -133,6 +133,12 @@ export default function LicenseDetail() {
     return preferred || null;
   }, [business, license?.business_id]);
 
+  // Show the business row only for business-type licenses. When editing,
+  // prefer the form value so the UI updates as the user changes the type.
+  // Guard against `license` being null and avoid treating empty string as 0.
+  const licenseTypeValue = isEditing ? form.license_type : (license?.license_type ?? '');
+  const showBusinessRow = licenseTypeValue !== '' && [0, 1].includes(Number(licenseTypeValue));
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     // Special handling: selecting a fiscal year sets the expiration date to June 29 of the end year
@@ -304,25 +310,43 @@ export default function LicenseDetail() {
                   </dd>
                 </div>
 
-                <div className="grid gap-4 px-6 py-5 sm:grid-cols-3 sm:items-start">
-                  <dt className="text-sm font-medium text-slate-600">Business</dt>
-                  <dd className="sm:col-span-2">
-                    {license?.business_id ? (
-                      businessLoading ? (
-                        <span className="text-sm text-slate-500">Loading business…</span>
+                {showBusinessRow && (
+                  <div className="grid gap-4 px-6 py-5 sm:grid-cols-3 sm:items-start">
+                    <dt className="text-sm font-medium text-slate-600">Business</dt>
+                    <dd className="sm:col-span-2">
+                      {license?.business_id ? (
+                        businessLoading ? (
+                          <span className="text-sm text-slate-500">Loading business…</span>
+                        ) : (
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <Link
+                              to={`/businesses/${license.business_id}`}
+                              className="inline-flex items-center text-sm font-medium text-indigo-600 transition hover:text-indigo-500"
+                            >
+                              {businessLabel || `Business #${license.business_id}`}
+                            </Link>
+                            {businessError && (
+                              <span className="text-xs font-medium text-rose-600">{businessError}</span>
+                            )}
+                          </div>
+                        )
                       ) : (
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <Link
-                            to={`/businesses/${license.business_id}`}
-                            className="inline-flex items-center text-sm font-medium text-indigo-600 transition hover:text-indigo-500"
-                          >
-                            {businessLabel || `Business #${license.business_id}`}
-                          </Link>
-                          {businessError && (
-                            <span className="text-xs font-medium text-rose-600">{businessError}</span>
-                          )}
-                        </div>
-                      )
+                        <span className="text-sm text-slate-500">Not linked</span>
+                      )}
+                    </dd>
+                  </div>
+                )}
+
+                <div className="grid gap-4 px-6 py-5 sm:grid-cols-3 sm:items-start">
+                  <dt className="text-sm font-medium text-slate-600">Address</dt>
+                  <dd className="sm:col-span-2">
+                    {license?.address_id ? (
+                      <Link
+                        to={`/address/${license.address_id}`}
+                        className="inline-flex items-center text-sm font-medium text-indigo-600 transition hover:text-indigo-500"
+                      >
+                        {license.combadd || `Address #${license.address_id}`}
+                      </Link>
                     ) : (
                       <span className="text-sm text-slate-500">Not linked</span>
                     )}
