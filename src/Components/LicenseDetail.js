@@ -74,6 +74,23 @@ export default function LicenseDetail() {
     });
   }, [license?.fiscal_year]);
 
+  // Format a fiscal year string like "2021-2022" into a short label like "FY22".
+  const formatFiscalYear = (fy) => {
+    if (!fy) return '';
+    try {
+      const parts = String(fy).split('-');
+      if (parts[1]) {
+        const end = parts[1];
+        const endYY = String(end).slice(-2);
+        return `FY${endYY}`;
+      }
+      // If it's not the expected format, just return the original value.
+      return String(fy);
+    } catch (e) {
+      return String(fy);
+    }
+  };
+
   useEffect(() => {
     if (!license) return;
     // Initialize form from loaded license
@@ -467,7 +484,9 @@ export default function LicenseDetail() {
                         ))}
                       </select>
                     ) : (
-                      <span className="text-sm text-slate-900">{license.fiscal_year || '—'}</span>
+                      <span className="text-sm text-slate-900">
+                        {license.fiscal_year ? formatFiscalYear(license.fiscal_year) : '—'}
+                      </span>
                     )}
                   </dd>
                 </div>
