@@ -211,7 +211,7 @@ export default function Example() {
         </>
       )}
       
-      {user.role === 2 && (
+      {(user.role === 2 || user.role === 3) && (
         <div className="mt-6">
           <OasOverview />
         </div>
