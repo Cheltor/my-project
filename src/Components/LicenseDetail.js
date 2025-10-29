@@ -189,202 +189,312 @@ export default function LicenseDetail() {
     }
   };
 
-  if (loading) return <div className="p-6">Loading…</div>;
-  if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
-  if (!license) return <div className="p-6">Not found</div>;
+  if (loading)
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center bg-slate-50 px-4">
+        <span className="text-sm font-medium text-slate-600">Loading…</span>
+      </div>
+    );
+  if (error)
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center bg-slate-50 px-4">
+        <div className="rounded-lg border border-rose-200 bg-white/80 px-6 py-5 text-sm text-rose-600 shadow-sm">
+          Error: {error}
+        </div>
+      </div>
+    );
+  if (!license)
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center bg-slate-50 px-4">
+        <span className="text-sm font-medium text-slate-600">Not found</span>
+      </div>
+    );
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8">
-      <div className="sm:flex sm:items-center mb-6">
-        <div className="sm:flex-auto">
-          <h1 className="text-base font-semibold leading-6 text-gray-900">License #{license.id}</h1>
-          <p className="mt-2 text-sm text-gray-700">Details about this license.</p>
-        </div>
-        <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-          {isEditing ? (
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                disabled={saving}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 disabled:bg-green-300"
-                disabled={saving}
-              >
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setIsEditing(true)}
-              className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white py-10">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-wrap items-start justify-between gap-6">
+          <div>
+            <Link
+              to="/licenses"
+              className="inline-flex items-center text-sm font-medium text-indigo-600 transition hover:text-indigo-500"
             >
-              Edit
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="bg-white shadow rounded-lg divide-y divide-gray-200">
-        <div className="px-4 py-5 sm:px-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="text-sm font-medium text-gray-500">Type</div>
-          <div className="sm:col-span-2">
+              <span aria-hidden="true" className="mr-1">
+                ←
+              </span>
+              Back to licenses
+            </Link>
+            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">
+              License #{license.id}
+            </h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Detailed view of the license record, including billing and renewal information.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
             {isEditing ? (
-              <select
-                name="license_type"
-                value={form.license_type}
-                onChange={handleChange}
-                className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:bg-indigo-300"
+                  disabled={saving}
+                >
+                  {saving ? 'Saving…' : 'Save Changes'}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                className="inline-flex items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
               >
-                <option value="">Select type</option>
-                <option value={1}>Business License</option>
-                <option value={2}>Single Family License</option>
-                <option value={3}>Multifamily License</option>
-              </select>
-            ) : (
-              LICENSE_TYPE_LABELS[license.license_type] || String(license.license_type)
+                Edit Details
+              </button>
             )}
           </div>
-
-          <div className="text-sm font-medium text-gray-500">License Number</div>
-          <div className="sm:col-span-2">
-            {isEditing ? (
-              <input
-                type="text"
-                name="license_number"
-                value={form.license_number}
-                onChange={handleChange}
-                className="mt-1 block w-full rounded-md border-gray-300 text-sm"
-                placeholder="e.g. BL-12345"
-              />
-            ) : (
-              license.license_number || 'N/A'
-            )}
-          </div>
-
-          {/* Business link row (read-only) */}
-          <div className="text-sm font-medium text-gray-500">Business</div>
-          <div className="sm:col-span-2">
-            {license?.business_id ? (
-              businessLoading ? (
-                <span className="text-sm text-gray-500">Loading business...</span>
-              ) : (
-                <>
-                  <Link to={`/businesses/${license.business_id}`} className="text-indigo-600 hover:text-indigo-800">
-                    {businessLabel || `Business #${license.business_id}`}
-                  </Link>
-                  {businessError && (
-                    <span className="ml-2 text-xs text-red-600">{businessError}</span>
-                  )}
-                </>
-              )
-            ) : (
-              'N/A'
-            )}
-          </div>
-
-          <div className="text-sm font-medium text-gray-500">Paid</div>
-          <div className="sm:col-span-2">
-            {isEditing ? (
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  name="paid"
-                  checked={form.paid}
-                  onChange={handleChange}
-                  className="rounded border-gray-300"
-                />
-                <span>Paid</span>
-              </label>
-            ) : (
-              license.paid ? 'Paid' : 'Not Paid'
-            )}
-          </div>
-
-          <div className="text-sm font-medium text-gray-500">Sent</div>
-          <div className="sm:col-span-2">
-            {isEditing ? (
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  name="sent"
-                  checked={form.sent}
-                  onChange={handleChange}
-                  className="rounded border-gray-300"
-                />
-                <span>Sent</span>
-              </label>
-            ) : (
-              license.sent ? 'Sent' : 'Not Sent'
-            )}
-          </div>
-
-          <div className="text-sm font-medium text-gray-500">Date Issued</div>
-          <div className="sm:col-span-2">
-            {isEditing ? (
-              <input
-                type="date"
-                name="date_issued"
-                value={form.date_issued}
-                onChange={handleChange}
-                className="mt-1 block w-full rounded-md border-gray-300 text-sm"
-              />
-            ) : (
-              license.date_issued ? new Date(license.date_issued).toLocaleDateString() : '—'
-            )}
-          </div>
-
-          <div className="text-sm font-medium text-gray-500">Expiration Date</div>
-          <div className="sm:col-span-2">
-            {isEditing ? (
-              <input
-                type="date"
-                name="expiration_date"
-                value={form.expiration_date}
-                onChange={handleChange}
-                className="mt-1 block w-full rounded-md border-gray-300 text-sm"
-              />
-            ) : (
-              license.expiration_date ? new Date(license.expiration_date).toLocaleDateString() : '—'
-            )}
-          </div>
-
-          <div className="text-sm font-medium text-gray-500">Fiscal Year</div>
-          <div className="sm:col-span-2">
-            {isEditing ? (
-              <select
-                name="fiscal_year"
-                value={form.fiscal_year}
-                onChange={handleChange}
-                className="mt-1 block w-full rounded-md border-gray-300 text-sm"
-              >
-                <option value="">Select fiscal year</option>
-                {fiscalYearOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            ) : (
-              license.fiscal_year || '—'
-            )}
-          </div>
-
-          <div className="text-sm font-medium text-gray-500">Created</div>
-          <div className="sm:col-span-2">{toEasternLocaleString(license.created_at)}</div>
-
-          <div className="text-sm font-medium text-gray-500">Updated</div>
-          <div className="sm:col-span-2">{toEasternLocaleString(license.updated_at)}</div>
         </div>
-      </div>
 
-      <div className="mt-6">
-        <Link to="/licenses" className="text-indigo-600 hover:text-indigo-800">Back to licenses</Link>
+        <div className="mt-8 grid gap-6 lg:grid-cols-[2fr_1fr]">
+          <section className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-lg shadow-slate-200/40">
+            <div className="border-b border-slate-100 bg-slate-50/60 px-6 py-4">
+              <h2 className="text-base font-semibold text-slate-900">License overview</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Update the key details for this license or review its current status.
+              </p>
+            </div>
+            <div className="divide-y divide-slate-100">
+              <dl className="divide-y divide-slate-100">
+                <div className="grid gap-4 px-6 py-5 sm:grid-cols-3 sm:items-start">
+                  <dt className="text-sm font-medium text-slate-600">License type</dt>
+                  <dd className="sm:col-span-2">
+                    {isEditing ? (
+                      <select
+                        name="license_type"
+                        value={form.license_type}
+                        onChange={handleChange}
+                        className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="">Select type</option>
+                        <option value={1}>Business License</option>
+                        <option value={2}>Single Family License</option>
+                        <option value={3}>Multifamily License</option>
+                      </select>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700 ring-1 ring-indigo-100">
+                        {LICENSE_TYPE_LABELS[license.license_type] || String(license.license_type)}
+                      </span>
+                    )}
+                  </dd>
+                </div>
+
+                <div className="grid gap-4 px-6 py-5 sm:grid-cols-3 sm:items-start">
+                  <dt className="text-sm font-medium text-slate-600">License number</dt>
+                  <dd className="sm:col-span-2">
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        name="license_number"
+                        value={form.license_number}
+                        onChange={handleChange}
+                        placeholder="e.g. BL-12345"
+                        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    ) : (
+                      <span className="text-sm text-slate-900">{license.license_number || 'N/A'}</span>
+                    )}
+                  </dd>
+                </div>
+
+                <div className="grid gap-4 px-6 py-5 sm:grid-cols-3 sm:items-start">
+                  <dt className="text-sm font-medium text-slate-600">Business</dt>
+                  <dd className="sm:col-span-2">
+                    {license?.business_id ? (
+                      businessLoading ? (
+                        <span className="text-sm text-slate-500">Loading business…</span>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <Link
+                            to={`/businesses/${license.business_id}`}
+                            className="inline-flex items-center text-sm font-medium text-indigo-600 transition hover:text-indigo-500"
+                          >
+                            {businessLabel || `Business #${license.business_id}`}
+                          </Link>
+                          {businessError && (
+                            <span className="text-xs font-medium text-rose-600">{businessError}</span>
+                          )}
+                        </div>
+                      )
+                    ) : (
+                      <span className="text-sm text-slate-500">Not linked</span>
+                    )}
+                  </dd>
+                </div>
+
+                <div className="grid gap-4 px-6 py-5 sm:grid-cols-3 sm:items-start">
+                  <dt className="text-sm font-medium text-slate-600">Billing status</dt>
+                  <dd className="sm:col-span-2">
+                    <div className="flex flex-wrap gap-3">
+                      <div className="inline-flex items-center gap-2">
+                        {isEditing ? (
+                          <label className="flex items-center gap-2 text-sm text-slate-700">
+                            <input
+                              type="checkbox"
+                              name="paid"
+                              checked={form.paid}
+                              onChange={handleChange}
+                              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <span>Paid</span>
+                          </label>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                              license.paid
+                                ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200'
+                                : 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200'
+                            }`}
+                          >
+                            {license.paid ? 'Paid' : 'Pending payment'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="inline-flex items-center gap-2">
+                        {isEditing ? (
+                          <label className="flex items-center gap-2 text-sm text-slate-700">
+                            <input
+                              type="checkbox"
+                              name="sent"
+                              checked={form.sent}
+                              onChange={handleChange}
+                              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <span>Notice sent</span>
+                          </label>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                              license.sent
+                                ? 'bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200'
+                                : 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200'
+                            }`}
+                          >
+                            {license.sent ? 'Notice sent' : 'Notice not sent'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </dd>
+                </div>
+
+                <div className="grid gap-4 px-6 py-5 sm:grid-cols-3 sm:items-start">
+                  <dt className="text-sm font-medium text-slate-600">Date issued</dt>
+                  <dd className="sm:col-span-2">
+                    {isEditing ? (
+                      <input
+                        type="date"
+                        name="date_issued"
+                        value={form.date_issued}
+                        onChange={handleChange}
+                        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    ) : (
+                      <span className="text-sm text-slate-900">
+                        {license.date_issued ? new Date(license.date_issued).toLocaleDateString() : '—'}
+                      </span>
+                    )}
+                  </dd>
+                </div>
+
+                <div className="grid gap-4 px-6 py-5 sm:grid-cols-3 sm:items-start">
+                  <dt className="text-sm font-medium text-slate-600">Expiration date</dt>
+                  <dd className="sm:col-span-2">
+                    {isEditing ? (
+                      <input
+                        type="date"
+                        name="expiration_date"
+                        value={form.expiration_date}
+                        onChange={handleChange}
+                        className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    ) : (
+                      <span className="text-sm text-slate-900">
+                        {license.expiration_date
+                          ? new Date(license.expiration_date).toLocaleDateString()
+                          : '—'}
+                      </span>
+                    )}
+                  </dd>
+                </div>
+
+                <div className="grid gap-4 px-6 py-5 sm:grid-cols-3 sm:items-start">
+                  <dt className="text-sm font-medium text-slate-600">Fiscal year</dt>
+                  <dd className="sm:col-span-2">
+                    {isEditing ? (
+                      <select
+                        name="fiscal_year"
+                        value={form.fiscal_year}
+                        onChange={handleChange}
+                        className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="">Select fiscal year</option>
+                        {fiscalYearOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-sm text-slate-900">{license.fiscal_year || '—'}</span>
+                    )}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </section>
+
+          <aside className="space-y-6">
+            <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-lg shadow-slate-200/40">
+              <div className="border-b border-slate-100 bg-slate-50/60 px-5 py-3">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Key dates</h3>
+              </div>
+              <dl className="divide-y divide-slate-100 px-5 py-4 text-sm text-slate-700">
+                <div className="flex items-start justify-between gap-3 py-2">
+                  <dt className="font-medium text-slate-600">Created</dt>
+                  <dd className="text-right text-slate-900">{toEasternLocaleString(license.created_at)}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3 py-2">
+                  <dt className="font-medium text-slate-600">Last updated</dt>
+                  <dd className="text-right text-slate-900">{toEasternLocaleString(license.updated_at)}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div className="rounded-2xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50 via-white to-white px-6 py-5 text-sm text-slate-700 shadow-lg shadow-indigo-100">
+              <p className="font-semibold text-indigo-700">Need to make more changes?</p>
+              <p className="mt-1 text-sm text-slate-600">
+                You can edit the license details to update billing status, renewal dates, and fiscal year information.
+              </p>
+              {!isEditing && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="mt-4 inline-flex items-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+                >
+                  Start editing
+                </button>
+              )}
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   );
