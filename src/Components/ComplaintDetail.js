@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { formatPhoneNumber, toEasternLocaleString } from "../utils";
 import FileUploadInput from "./Common/FileUploadInput";
+import MentionsTextarea from "./MentionsTextarea";
 import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
 import NewViolationForm from "./Inspection/NewViolationForm";
 
@@ -54,6 +55,13 @@ const ComplaintDetail = () => {
   const [complaint, setComplaint] = useState(null);
   const [unit, setUnit] = useState(null);
   const [attachments, setAttachments] = useState([]);
+  const [inspectionComments, setInspectionComments] = useState([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [commentError, setCommentError] = useState(null);
+  const [mentionIds, setMentionIds] = useState([]);
+  const [contactMentionIds, setContactMentionIds] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -322,6 +330,82 @@ const ComplaintDetail = () => {
       setStatusMessage(e.message || "Failed to save status");
     } finally {
       setSavingStatus(false);
+    }
+  };
+
+  // Load inspection comments for this complaint
+  useEffect(() => {
+    if (!id) return;
+    let mounted = true;
+    const loadComments = async () => {
+      setCommentsLoading(true);
+      try {
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/comments`);
+        if (!resp.ok) throw new Error("Failed to load comments");
+        const data = await resp.json();
+        if (!mounted) return;
+        setInspectionComments(Array.isArray(data) ? data : []);
+      } catch (err) {
+        if (!mounted) return;
+        setInspectionComments([]);
+      } finally {
+        if (mounted) setCommentsLoading(false);
+      }
+    };
+    loadComments();
+    return () => {
+      mounted = false;
+    };
+  }, [id]);
+
+  const handleSubmitComment = async (e) => {
+    e && e.preventDefault();
+    if (!commentText || !commentText.trim()) return;
+    setCommentSubmitting(true);
+    setCommentError(null);
+    try {
+      const userId = user?.id || (user && user.user && user.user.id) || "";
+      const fd = new FormData();
+      fd.append("content", commentText.trim());
+      fd.append("user_id", String(userId));
+      if (mentionIds && mentionIds.length > 0) {
+        fd.append("mentioned_user_ids", mentionIds.join(","));
+      }
+      if (contactMentionIds && contactMentionIds.length > 0) {
+        fd.append("mentioned_contact_ids", contactMentionIds.join(","));
+      }
+
+      const headers = authToken ? { Authorization: `Bearer ${authToken}` } : undefined;
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/comments`, {
+        method: "POST",
+        headers,
+        body: fd,
+      });
+      if (!resp.ok) {
+        let msg = "Failed to post comment";
+        try {
+          const payload = await resp.json();
+          if (payload?.detail) msg = payload.detail;
+        } catch (_) {}
+        throw new Error(msg);
+      }
+      const created = await resp.json();
+      // prepend optimistic
+      setInspectionComments((prev) => [created, ...(Array.isArray(prev) ? prev : [])]);
+      setCommentText("");
+      setMentionIds([]);
+      setContactMentionIds([]);
+      try {
+        if (created && Array.isArray(created.mentions) && created.mentions.length > 0) {
+          window.dispatchEvent(new Event('notifications:refresh'));
+        }
+      } catch (_) {
+        /* ignore */
+      }
+    } catch (err) {
+      setCommentError(err.message || "Failed to submit comment");
+    } finally {
+      setCommentSubmitting(false);
     }
   };
 
@@ -642,6 +726,81 @@ const ComplaintDetail = () => {
                   <span className="text-xs text-slate-500">{uploadFiles.length} file(s) ready to upload.</span>
                 )}
               </div>
+            </div>
+          </section>
+        </div>
+
+        <div className="mx-auto max-w-6xl mt-8 px-4 sm:px-6 lg:px-8">
+          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+            <h2 className="text-lg font-semibold text-slate-900">Inspection Comments</h2>
+            <p className="mt-1 text-sm text-slate-500">Leave an internal note about this inspection.</p>
+
+            <form className="mt-4" onSubmit={handleSubmitComment}>
+              <MentionsTextarea
+                value={commentText}
+                onChange={setCommentText}
+                onMentionsChange={setMentionIds}
+                onContactMentionsChange={setContactMentionIds}
+                rows={4}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                placeholder="Add a note for inspectors / admins..."
+                disabled={commentSubmitting}
+              />
+              <div className="mt-3 flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={commentSubmitting}
+                  className="inline-flex items-center justify-center rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {commentSubmitting ? "Saving…" : "Add Comment"}
+                </button>
+                {commentError && <span className="text-sm text-rose-600">{commentError}</span>}
+              </div>
+            </form>
+
+            <div className="mt-6">
+              {commentsLoading ? (
+                <p className="text-sm text-slate-500">Loading comments…</p>
+              ) : inspectionComments.length === 0 ? (
+                <p className="text-sm text-slate-500">No inspection comments yet.</p>
+              ) : (
+                <ul className="space-y-4">
+                  {inspectionComments.map((c) => (
+                    <li key={c.id} className="rounded-xl border border-slate-100 p-3">
+                      <div className="flex items-start justify-between">
+                        <div className="w-full">
+                          <div className="text-sm text-slate-700">{c.content}</div>
+
+                          {(Array.isArray(c.mentions) && c.mentions.length > 0) || (Array.isArray(c.contact_mentions) && c.contact_mentions.length > 0) ? (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {Array.isArray(c.mentions) && c.mentions.map((u) => (
+                                <span
+                                  key={`mention-user-${u.id}`}
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium border border-indigo-100"
+                                >
+                                  @{u.name || u.email || `User ${u.id}`}
+                                </span>
+                              ))}
+                              {Array.isArray(c.contact_mentions) && c.contact_mentions.map((ct) => (
+                                <span
+                                  key={`mention-contact-${ct.id}`}
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-100"
+                                >
+                                  %{ct.name || ct.email || `Contact ${ct.id}`}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+
+                        <div className="text-xs text-slate-500 ml-4">
+                          {c.user?.name || c.user?.email || `User ${c.user_id}`} · {formatMetaDate(c.created_at)}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </section>
         </div>
