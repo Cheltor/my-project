@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
 import { toEasternLocaleString } from '../utils';
 
 export default function LicenseDetail() {
@@ -150,6 +151,38 @@ export default function LicenseDetail() {
     return preferred || null;
   }, [business, license?.business_id]);
 
+  const { user, token } = useAuth();
+  const [isDownloadingLicense, setIsDownloadingLicense] = useState(false);
+
+  const handleDownloadLicense = async () => {
+    try {
+      setIsDownloadingLicense(true);
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/license/${id}/download`, { headers });
+      if (!resp.ok) throw new Error('Failed to download license');
+      const blob = await resp.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const label = businessLabel || license?.combadd || `license_${id}`;
+      const sanitize = (s) => s.replace(/[^a-zA-Z0-9]+/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+      const safe = sanitize(label) || `license_${id}`;
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const yy = String(now.getFullYear()).slice(-2);
+      a.download = `${safe}_license_${mm}_${dd}_${yy}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message || 'Failed to download');
+    } finally {
+      setIsDownloadingLicense(false);
+    }
+  };
+
   // Show the business row only for business-type licenses. When editing,
   // prefer the form value so the UI updates as the user changes the type.
   // Guard against `license` being null and avoid treating empty string as 0.
@@ -254,26 +287,37 @@ export default function LicenseDetail() {
               Detailed view of the license record, including billing and renewal information.
             </p>
           </div>
-          {isEditing && (
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
+            {isEditing ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:bg-indigo-300"
+                  disabled={saving}
+                >
+                  {saving ? 'Saving…' : 'Save Changes'}
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
-                onClick={() => setIsEditing(false)}
-                className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
-                disabled={saving}
+                onClick={handleDownloadLicense}
+                disabled={isDownloadingLicense}
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Cancel
+                {isDownloadingLicense ? 'Preparing…' : 'Download License'}
               </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:bg-indigo-300"
-                disabled={saving}
-              >
-                {saving ? 'Saving…' : 'Save Changes'}
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[2fr_1fr]">
