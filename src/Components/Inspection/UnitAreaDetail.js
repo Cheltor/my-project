@@ -21,6 +21,7 @@ export default function UnitAreaDetail() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pendingPhotoIds, setPendingPhotoIds] = useState([]); // Track observations still receiving photos
 
   useEffect(() => {
     const fetchInspectionDetails = async () => {
@@ -83,6 +84,8 @@ export default function UnitAreaDetail() {
   const handleCreateObservation = async (e) => {
     e.preventDefault();
     if (!newObservation.trim()) return;
+
+    let createdObservation = null;
     try {
       const observationData = {
         content: newObservation,
@@ -96,13 +99,17 @@ export default function UnitAreaDetail() {
         body: JSON.stringify(observationData),
       });
       if (!observationResponse.ok) throw new Error('Failed to create observation');
-      const createdObservation = await observationResponse.json();
+
+      createdObservation = await observationResponse.json();
       setObservations((prev) => [...prev, createdObservation]);
       setNewObservation('');
       setMarkPotential(false);
       setSelectedCodes([]);
 
       if (photos.length > 0) {
+        setPendingPhotoIds((prev) =>
+          prev.includes(createdObservation.id) ? prev : [...prev, createdObservation.id]
+        );
         const formData = new FormData();
         photos.forEach((p) => formData.append('files', p));
         const photoUploadResponse = await fetch(`${process.env.REACT_APP_API_URL}/observations/${createdObservation.id}/photos`, {
@@ -117,11 +124,17 @@ export default function UnitAreaDetail() {
             const list = await refreshed.json();
             setObservations(list);
           }
-        } catch (_) {}
+        } catch (_) {
+        } finally {
+          setPendingPhotoIds((prev) => prev.filter((oid) => oid !== createdObservation.id));
+        }
         setPhotos([]);
       }
     } catch (err) {
       console.error('Error creating observation:', err);
+      if (createdObservation?.id) {
+        setPendingPhotoIds((prev) => prev.filter((oid) => oid !== createdObservation.id));
+      }
     }
   };
 
@@ -260,6 +273,31 @@ export default function UnitAreaDetail() {
                               <img src={photo.url} alt={`Observation ${index + 1}`} className="h-28 w-full object-cover" />
                             </button>
                           ))}
+                        </div>
+                      ) : pendingPhotoIds.includes(observation.id) ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <svg
+                            className="h-4 w-4 animate-spin text-indigo-500"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                            ></path>
+                          </svg>
+                          <span>Uploading photos&hellip;</span>
                         </div>
                       ) : (
                         <p className="text-sm italic text-gray-500">No photos attached</p>

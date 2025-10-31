@@ -20,6 +20,7 @@ export default function AreaDetail() {
   const [isModalOpen, setIsModalOpen] = useState(false); // State to toggle the modal
   const [loading, setLoading] = useState(true); // State to track loading
   const [error, setError] = useState(null); // State to handle errors
+  const [pendingPhotoIds, setPendingPhotoIds] = useState([]); // Track observations still receiving photos
 
   useEffect(() => {
     // Fetch inspection details
@@ -102,6 +103,7 @@ export default function AreaDetail() {
         return; // Don't submit empty observation
     }
 
+    let createdObservation = null;
     try {
       // Step 1: Create Observation (Without Photos)
       const observationData = {
@@ -111,62 +113,71 @@ export default function AreaDetail() {
         codes: (selectedCodes || []).map((opt) => opt.code.id),
       };
 
-    const observationResponse = await fetch(`${process.env.REACT_APP_API_URL}/areas/${areaId}/observations`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-      },
-      body: JSON.stringify(observationData),
-    });
+      const observationResponse = await fetch(`${process.env.REACT_APP_API_URL}/areas/${areaId}/observations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        body: JSON.stringify(observationData),
+      });
 
-  if (!observationResponse.ok) {
-    throw new Error('Failed to create observation');
-  }
+      if (!observationResponse.ok) {
+        throw new Error('Failed to create observation');
+      }
 
-  const createdObservation = await observationResponse.json();
-  setObservations([...observations, createdObservation]); // Add new observation to the list
-  setNewObservation(''); // Clear the input field
-  setMarkPotential(false);
-  setSelectedCodes([]);
+      createdObservation = await observationResponse.json();
+      setObservations((prev) => [...prev, createdObservation]); // Add new observation to the list
+      setNewObservation(''); // Clear the input field
+      setMarkPotential(false);
+      setSelectedCodes([]);
 
-        // Step 2: Upload Photos for the Created Observation
-        if (photos.length > 0) {
-            const formData = new FormData();
-            photos.forEach((photo) => {
-                formData.append('files', photo);
-            });
+      // Step 2: Upload Photos for the Created Observation
+      if (photos.length > 0) {
+        setPendingPhotoIds((prev) =>
+          prev.includes(createdObservation.id) ? prev : [...prev, createdObservation.id]
+        );
+        const formData = new FormData();
+        photos.forEach((photo) => {
+          formData.append('files', photo);
+        });
 
-            const photoUploadResponse = await fetch(
-              `${process.env.REACT_APP_API_URL}/observations/${createdObservation.id}/photos`,
-              {
-                method: 'POST',
-                headers: {
-                  ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-                },
-                body: formData,
-              }
-            );
+        const photoUploadResponse = await fetch(
+          `${process.env.REACT_APP_API_URL}/observations/${createdObservation.id}/photos`,
+          {
+            method: 'POST',
+            headers: {
+              ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+            },
+            body: formData,
+          }
+        );
 
-            if (!photoUploadResponse.ok) {
-                throw new Error('Failed to upload photos');
-            }
-
-            // Refresh observations to include newly attached photos
-            try {
-              const refreshed = await fetch(`${process.env.REACT_APP_API_URL}/areas/${areaId}/observations`);
-              if (refreshed.ok) {
-                const list = await refreshed.json();
-                setObservations(list);
-              }
-            } catch (_) {}
-
-            setPhotos([]); // Clear the selected photos
+        if (!photoUploadResponse.ok) {
+          throw new Error('Failed to upload photos');
         }
+
+        // Refresh observations to include newly attached photos
+        try {
+          const refreshed = await fetch(`${process.env.REACT_APP_API_URL}/areas/${areaId}/observations`);
+          if (refreshed.ok) {
+            const list = await refreshed.json();
+            setObservations(list);
+          }
+        } catch (_) {
+        } finally {
+          setPendingPhotoIds((prev) => prev.filter((oid) => oid !== createdObservation.id));
+        }
+
+        setPhotos([]); // Clear the selected photos
+      }
     } catch (error) {
-        console.error('Error creating observation:', error);
+      console.error('Error creating observation:', error);
+      if (createdObservation?.id) {
+        setPendingPhotoIds((prev) => prev.filter((oid) => oid !== createdObservation.id));
+      }
     }
-};
+  };
 
   
   // Function to handle image click
@@ -315,6 +326,31 @@ export default function AreaDetail() {
                               <img src={photo.url} alt={`Observation ${index + 1}`} className="h-28 w-full object-cover" />
                             </button>
                           ))}
+                        </div>
+                      ) : pendingPhotoIds.includes(observation.id) ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <svg
+                            className="h-4 w-4 animate-spin text-indigo-500"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                            ></path>
+                          </svg>
+                          <span>Uploading photos&hellip;</span>
                         </div>
                       ) : (
                         <p className="text-sm italic text-gray-500">No photos attached</p>
