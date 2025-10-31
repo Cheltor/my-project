@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 import { formatPhoneNumber, toEasternLocaleString } from "../utils";
@@ -6,6 +6,7 @@ import FileUploadInput from "./Common/FileUploadInput";
 import MentionsTextarea from "./MentionsTextarea";
 import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
 import NewViolationForm from "./Inspection/NewViolationForm";
+import AsyncSelect from "react-select/async";
 
 const pickDescription = (payload) => {
   if (!payload || typeof payload !== "object") return "";
@@ -86,6 +87,167 @@ const ComplaintDetail = () => {
   const [uploadFiles, setUploadFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [contactMode, setContactMode] = useState("existing");
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [newContact, setNewContact] = useState({ name: "", email: "", phone: "" });
+  const [contactSaving, setContactSaving] = useState(false);
+  const [contactError, setContactError] = useState(null);
+  const [contactSuccess, setContactSuccess] = useState("");
+
+  const buildContactOption = useCallback((contact) => {
+    if (!contact || contact.id == null) return null;
+    const parts = [];
+    if (contact.name) parts.push(contact.name);
+    if (contact.email) parts.push(contact.email);
+    if (contact.phone) {
+      const formatted = formatPhoneNumber(contact.phone);
+      parts.push(formatted || contact.phone);
+    }
+    return {
+      value: String(contact.id),
+      label: parts.length ? parts.join(" · ") : `Contact #${contact.id}`,
+    };
+  }, []);
+
+  const loadContactOptions = useCallback(
+    async (inputValue = "") => {
+      try {
+        const resp = await fetch(
+          `${process.env.REACT_APP_API_URL}/contacts/search?query=${encodeURIComponent(inputValue)}&limit=10`
+        );
+        if (!resp.ok) return [];
+        const data = await resp.json();
+        return (Array.isArray(data) ? data : [])
+          .map((contact) => buildContactOption(contact))
+          .filter(Boolean);
+      } catch (_) {
+        return [];
+      }
+    },
+    [buildContactOption]
+  );
+
+  const canSaveContact = useMemo(() => {
+    if (contactMode === "new") {
+      return Boolean((newContact.name || "").trim());
+    }
+    return Boolean(selectedContact?.value);
+  }, [contactMode, newContact, selectedContact]);
+
+  const handleContactFormToggle = () => {
+    setShowContactForm((prev) => !prev);
+    setContactError(null);
+    setContactSuccess("");
+  };
+
+  const handleContactModeToggle = () => {
+    setContactError(null);
+    setContactSuccess("");
+    setContactMode((prev) => {
+      const next = prev === "existing" ? "new" : "existing";
+      if (next === "existing") {
+        setNewContact({ name: "", email: "", phone: "" });
+      } else {
+        setSelectedContact(null);
+      }
+      return next;
+    });
+  };
+
+  const handleNewContactChange = (event) => {
+    const { name, value } = event.target;
+    setNewContact((prev) => ({ ...prev, [name]: value }));
+    setContactError(null);
+    setContactSuccess("");
+  };
+
+  const assignContactToComplaint = async (contactId) => {
+    const fd = new FormData();
+    fd.append("contact_id", String(contactId));
+    const headers = authToken ? { Authorization: `Bearer ${authToken}` } : undefined;
+    const resp = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/contact`, {
+      method: "PATCH",
+      headers,
+      body: fd,
+    });
+    if (!resp.ok) {
+      let msg = "Failed to update contact";
+      try {
+        const payload = await resp.json();
+        if (payload?.detail) msg = payload.detail;
+      } catch (_) {
+        /* ignore */
+      }
+      throw new Error(msg);
+    }
+    const updated = await resp.json();
+    setComplaint(updated);
+    return updated;
+  };
+
+  const handleContactSave = async () => {
+    setContactError(null);
+    setContactSuccess("");
+    if (!authToken) {
+      setContactError("You must be signed in to update contact information");
+      return;
+    }
+    try {
+      setContactSaving(true);
+      if (contactMode === "new") {
+        const name = (newContact.name || "").trim();
+        if (!name) {
+          setContactError("Name is required to create a contact");
+          return;
+        }
+        const payload = {
+          name,
+          email: (newContact.email || "").trim() || null,
+          phone: (newContact.phone || "").trim() || null,
+        };
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/contacts/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!resp.ok) {
+          let msg = "Failed to create contact";
+          try {
+            const errPayload = await resp.json();
+            if (errPayload?.detail) msg = errPayload.detail;
+          } catch (_) {
+            /* ignore */
+          }
+          throw new Error(msg);
+        }
+        const created = await resp.json();
+        const option = buildContactOption(created);
+        if (option) {
+          setSelectedContact(option);
+        }
+        await assignContactToComplaint(created.id);
+        setContactSuccess("Contact created and assigned");
+        setContactMode("existing");
+        setNewContact({ name: "", email: "", phone: "" });
+      } else {
+        if (!selectedContact?.value) {
+          setContactError("Select a contact to assign");
+          return;
+        }
+        await assignContactToComplaint(Number(selectedContact.value));
+        setContactSuccess("Contact updated");
+      }
+    } catch (err) {
+      setContactError(err.message || "Failed to update contact");
+    } finally {
+      setContactSaving(false);
+    }
+  };
 
   useEffect(() => {
     const fetchComplaint = async () => {
@@ -176,6 +338,17 @@ const ComplaintDetail = () => {
       }
     })();
   }, [complaint]);
+
+  useEffect(() => {
+    if (complaint?.contact) {
+      const option = buildContactOption(complaint.contact);
+      setSelectedContact(option);
+      setContactMode("existing");
+      setNewContact({ name: "", email: "", phone: "" });
+    } else {
+      setSelectedContact(null);
+    }
+  }, [complaint?.contact, buildContactOption]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -503,6 +676,94 @@ const ComplaintDetail = () => {
                   <span className="text-sm text-slate-500">No contact information provided.</span>
                 )}
               </dd>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleContactFormToggle}
+                  className="inline-flex items-center justify-center rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-100"
+                >
+                  {showContactForm
+                    ? "Hide update form"
+                    : complaint.contact
+                    ? "Change contact"
+                    : "Assign contact"}
+                </button>
+              </div>
+              {showContactForm && (
+                <div className="mt-4 space-y-4 rounded-2xl border border-slate-200 bg-white/70 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-800">Update Primary Contact</p>
+                    <button
+                      type="button"
+                      onClick={handleContactModeToggle}
+                      disabled={contactSaving}
+                      className="text-xs font-semibold text-indigo-600 transition hover:text-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {contactMode === "existing" ? "Create new contact instead" : "Use existing contact"}
+                    </button>
+                  </div>
+                  {contactMode === "existing" ? (
+                    <AsyncSelect
+                      cacheOptions
+                      defaultOptions
+                      loadOptions={loadContactOptions}
+                      value={selectedContact}
+                      onChange={(option) => {
+                        setSelectedContact(option);
+                        setContactError(null);
+                        setContactSuccess("");
+                      }}
+                      isClearable
+                      placeholder="Search contacts by name, email, or phone"
+                      className="text-sm"
+                    />
+                  ) : (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <input
+                        type="text"
+                        name="name"
+                        value={newContact.name}
+                        onChange={handleNewContactChange}
+                        placeholder="Name"
+                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 sm:col-span-2"
+                      />
+                      <input
+                        type="email"
+                        name="email"
+                        value={newContact.email}
+                        onChange={handleNewContactChange}
+                        placeholder="Email (optional)"
+                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                      />
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={newContact.phone}
+                        onChange={handleNewContactChange}
+                        placeholder="Phone (optional)"
+                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                      />
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleContactSave}
+                      disabled={contactSaving || !authToken || !canSaveContact}
+                      className="inline-flex items-center justify-center rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {contactSaving ? "Saving…" : "Save Contact"}
+                    </button>
+                    {!authToken && (
+                      <span className="text-xs text-amber-600">Sign in to make changes</span>
+                    )}
+                  </div>
+                  {contactError && <p className="text-sm text-rose-600">{contactError}</p>}
+                  {!contactError && contactSuccess && (
+                    <p className="text-sm text-emerald-600">{contactSuccess}</p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="rounded-2xl bg-slate-50 p-5">
