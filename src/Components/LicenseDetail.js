@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { toEasternLocaleString } from '../utils';
+import { toEasternLocaleString, formatPhoneNumber } from '../utils';
 
 export default function LicenseDetail() {
   const { id } = useParams();
@@ -13,6 +13,9 @@ export default function LicenseDetail() {
   const [business, setBusiness] = useState(null);
   const [businessLoading, setBusinessLoading] = useState(false);
   const [businessError, setBusinessError] = useState(null);
+  const [inspection, setInspection] = useState(null);
+  const [inspectionLoading, setInspectionLoading] = useState(false);
+  const [inspectionError, setInspectionError] = useState(null);
   const [form, setForm] = useState({
     license_type: '',
     license_number: '',
@@ -144,6 +147,45 @@ export default function LicenseDetail() {
       cancelled = true;
     };
   }, [license?.business_id]);
+
+  useEffect(() => {
+    if (!license?.inspection_id) {
+      setInspection(null);
+      setInspectionError(null);
+      setInspectionLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setInspectionLoading(true);
+    setInspectionError(null);
+    setInspection(null);
+    (async () => {
+      try {
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${license.inspection_id}`);
+        if (!resp.ok) {
+          const message = await resp.text();
+          throw new Error(message || 'Failed to load inspection details');
+        }
+        const data = await resp.json();
+        if (!cancelled) {
+          setInspection(data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          const message = (err && err.message && err.message.trim()) || 'Unable to load inspection details';
+          setInspectionError(message);
+          setInspection(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setInspectionLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [license?.inspection_id]);
 
   const businessLabel = useMemo(() => {
     if (!license?.business_id || !business) return null;
@@ -397,6 +439,67 @@ export default function LicenseDetail() {
                     </dd>
                   </div>
                 )}
+
+                <div className="grid gap-4 px-6 py-5 sm:grid-cols-3 sm:items-start">
+                  <dt className="text-sm font-medium text-slate-600">Inspection contact</dt>
+                  <dd className="sm:col-span-2">
+                    {!license.inspection_id ? (
+                      <span className="text-sm text-slate-500">Inspection not linked</span>
+                    ) : inspectionLoading ? (
+                      <span className="text-sm text-slate-500">Loading inspection contact…</span>
+                    ) : inspectionError ? (
+                      <span className="text-sm font-medium text-rose-600">{inspectionError}</span>
+                    ) : inspection?.contact ? (
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          {inspection.contact.id ? (
+                            <Link
+                              to={`/contacts/${inspection.contact.id}`}
+                              className="text-sm font-medium text-indigo-600 transition hover:text-indigo-500"
+                            >
+                              {inspection.contact.name || `Contact #${inspection.contact.id}`}
+                            </Link>
+                          ) : (
+                            <span className="text-sm font-medium text-slate-900">
+                              {inspection.contact.name || 'Inspection contact'}
+                            </span>
+                          )}
+                          {inspection.contact.email ? (
+                            <a
+                              href={`mailto:${inspection.contact.email}`}
+                              className="text-xs font-medium text-indigo-600 transition hover:text-indigo-500"
+                            >
+                              {inspection.contact.email}
+                            </a>
+                          ) : (
+                            <span className="text-xs text-slate-500">No email on file</span>
+                          )}
+                          {inspection.contact.phone ? (
+                            <a
+                              href={`tel:${inspection.contact.phone}`}
+                              className="text-xs font-medium text-emerald-600 transition hover:text-emerald-500"
+                            >
+                              {formatPhoneNumber(inspection.contact.phone)}
+                            </a>
+                          ) : (
+                            <span className="text-xs text-slate-500">No phone on file</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          From inspection{' '}
+                          <Link
+                            to={`/inspection/${license.inspection_id}`}
+                            className="font-medium text-indigo-600 transition hover:text-indigo-500"
+                          >
+                            #{license.inspection_id}
+                          </Link>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-slate-500">No contact information available from inspection</span>
+                    )}
+                  </dd>
+                </div>
 
                 <div className="grid gap-4 px-6 py-5 sm:grid-cols-3 sm:items-start">
                   <dt className="text-sm font-medium text-slate-600">Address</dt>
