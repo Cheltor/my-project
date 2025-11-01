@@ -214,7 +214,7 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
         {/* Address Search */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="nvf-address">
-            Address <span className="text-red-600" aria-hidden> *</span>
+            Address <span className="text-red-600 required-indicator" aria-hidden> *</span>
           </label>
           <div className={`${addressError ? 'border border-red-500 rounded' : ''} mb-2`} aria-invalid={!!addressError} aria-describedby={addressError ? 'nvf-address-error' : undefined}> 
             <AsyncSelect
@@ -267,7 +267,7 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
         {/* Violation Code Selection (multi) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="nvf-codes">
-            Violation Codes <span className="text-red-600" aria-hidden> *</span>
+            Violation Codes <span className="text-red-600 required-indicator" aria-hidden> *</span>
           </label>
           <div className={`${codesError ? 'border border-red-500 rounded p-1' : ''}`} aria-invalid={!!codesError} aria-describedby={codesError ? 'nvf-codes-error' : undefined}>
             <CodeSelect

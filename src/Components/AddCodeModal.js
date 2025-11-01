@@ -110,7 +110,7 @@ export default function AddCodeModal({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Chapter (67, 10, 15, etc.)<span className="text-red-600">*</span>
+                Chapter (67, 10, 15, etc.)<span className="text-red-600 required-indicator">*</span>
               </label>
               <input
                 name="chapter"
@@ -123,7 +123,7 @@ export default function AddCodeModal({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Section (1, 10, 302.2, etc.)<span className="text-red-600">*</span>
+                Section (1, 10, 302.2, etc.)<span className="text-red-600 required-indicator">*</span>
               </label>
               <input
                 name="section"
@@ -138,7 +138,7 @@ export default function AddCodeModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Name <span className="text-red-600">*</span>
+              Name <span className="text-red-600 required-indicator">*</span>
             </label>
             <input
               name="name"
@@ -152,7 +152,7 @@ export default function AddCodeModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Description <span className="text-red-600">*</span>
+              Description <span className="text-red-600 required-indicator">*</span>
             </label>
             <textarea
               name="description"

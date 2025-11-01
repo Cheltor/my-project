@@ -106,7 +106,7 @@ export default function NewBusinessForm({ onCancel, onCreated, embedded = false 
         {formError && <div className="mb-4 text-sm text-red-600">{formError}</div>}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Business Name*</label>
+            <label className="block text-sm font-medium text-gray-700">Business Name<span className="required-indicator" aria-hidden="true">*</span></label>
             <input
               type="text"
               name="name"
@@ -117,7 +117,7 @@ export default function NewBusinessForm({ onCancel, onCreated, embedded = false 
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Address*</label>
+            <label className="block text-sm font-medium text-gray-700">Address<span className="required-indicator" aria-hidden="true">*</span></label>
             <AsyncSelect
               cacheOptions
               defaultOptions
@@ -238,7 +238,7 @@ export default function NewBusinessForm({ onCancel, onCreated, embedded = false 
       {formError && <div className="mb-4 text-sm text-red-600">{formError}</div>}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Business Name*</label>
+          <label className="block text-sm font-medium text-gray-700">Business Name<span className="required-indicator" aria-hidden="true">*</span></label>
           <input
             type="text"
             name="name"
@@ -249,7 +249,7 @@ export default function NewBusinessForm({ onCancel, onCreated, embedded = false 
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">Address*</label>
+          <label className="block text-sm font-medium text-gray-700">Address<span className="required-indicator" aria-hidden="true">*</span></label>
           <AsyncSelect
             cacheOptions
             defaultOptions
