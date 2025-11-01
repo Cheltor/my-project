@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { Link } from "react-router-dom";
+import { toEasternLocaleDateString } from "../../utils";
 
 const CODE_CACHE = new Map();
 
@@ -150,7 +151,7 @@ export default function CodeDrawerLink({
                             <span className="font-medium text-gray-900">Created</span>
                             <p>
                               {code.created_at
-                                ? new Date(code.created_at).toLocaleDateString()
+                                ? toEasternLocaleDateString(code.created_at) || "—"
                                 : "—"}
                             </p>
                           </div>
@@ -158,7 +159,7 @@ export default function CodeDrawerLink({
                             <span className="font-medium text-gray-900">Updated</span>
                             <p>
                               {code.updated_at
-                                ? new Date(code.updated_at).toLocaleDateString()
+                                ? toEasternLocaleDateString(code.updated_at) || "—"
                                 : "—"}
                             </p>
                           </div>

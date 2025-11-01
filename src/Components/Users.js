@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom'; // Import Link for navigation
-import { getRoleName, formatPhoneNumber } from './../utils'; // Import utility functions
+import { getRoleName, formatPhoneNumber, toEasternLocaleDateString } from './../utils'; // Import utility functions
 
 const Users = () => {
   const [users, setUsers] = useState([]); // State to store all users
@@ -197,7 +197,7 @@ const Users = () => {
                         'whitespace-nowrap px-3 py-4 text-sm text-gray-500',
                       )}
                     >
-                      {new Date(user.created_at).toLocaleDateString()}
+                      {toEasternLocaleDateString(user.created_at) || '—'}
                     </td>
                   </tr>
                 ))}

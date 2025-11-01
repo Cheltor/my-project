@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { toEasternLocaleString } from '../../utils';
+import { toEasternLocaleDateString, toEasternLocaleString } from '../../utils';
 
 const LICENSE_TYPE_LABELS = {
   0: 'Business License',
@@ -17,9 +17,7 @@ const formatDateTime = (iso) => {
 
 const formatDate = (iso) => {
   if (!iso) return null;
-  const value = new Date(iso);
-  if (Number.isNaN(value.getTime())) return null;
-  return value.toLocaleDateString();
+  return toEasternLocaleDateString(iso);
 };
 
 const AdminRecentActivity = ({ limit = 5, className = '' }) => {
@@ -101,7 +99,8 @@ const AdminRecentActivity = ({ limit = 5, className = '' }) => {
           const metaParts = [];
           if (item.deadline_date) {
             try {
-              metaParts.push('Due ' + new Date(item.deadline_date).toLocaleDateString());
+              const due = toEasternLocaleDateString(item.deadline_date);
+              metaParts.push('Due ' + (due || item.deadline_date));
             } catch (err) {
               metaParts.push('Due ' + item.deadline_date);
             }

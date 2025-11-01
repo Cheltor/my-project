@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { toEasternLocaleString } from '../utils';
+import { toEasternLocaleDateString, toEasternLocaleString } from '../utils';
 // import CitationDetails from './CitationDetails';
 
 export default function Citations() {
@@ -289,7 +289,7 @@ export default function Citations() {
                           badgeClass = 'bg-green-100 text-green-800';
                         }
                         return <>
-                          {deadline.toLocaleDateString('en-US')}
+                        {toEasternLocaleDateString(deadline, 'en-US')}
                           {deadlineStatus && (
                             <span className={`ml-2 px-2 py-0.5 rounded text-xs font-semibold align-middle ${badgeClass}`}>
                               {deadlineStatus}
@@ -390,7 +390,7 @@ export default function Citations() {
                     <tr key={`print-${citation.id}`}>
                       <td>{citation.citationid || 'Missing'}</td>
                       <td>{citation.combadd || 'No Address'}</td>
-                      <td>{citation.deadline ? new Date(citation.deadline).toLocaleDateString('en-US') : 'N/A'}</td>
+                      <td>{citation.deadline ? toEasternLocaleDateString(citation.deadline, 'en-US') : 'N/A'}</td>
                       <td>{statusLabel}</td>
                     </tr>
                   );

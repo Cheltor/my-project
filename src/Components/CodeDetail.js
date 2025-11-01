@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { toEasternLocaleDateString } from '../utils';
 
 const CodeDetail = () => {
   const { id } = useParams();
@@ -122,11 +123,11 @@ const CodeDetail = () => {
               <div className="px-6 py-4 text-sm text-slate-700">
                 <div className="flex items-center justify-between py-2">
                   <span className="font-medium text-slate-600">Created at</span>
-                  <span className="text-slate-900">{new Date(code.created_at).toLocaleDateString()}</span>
+                  <span className="text-slate-900">{toEasternLocaleDateString(code.created_at) || '—'}</span>
                 </div>
                 <div className="flex items-center justify-between py-2">
                   <span className="font-medium text-slate-600">Updated at</span>
-                  <span className="text-slate-900">{new Date(code.updated_at).toLocaleDateString()}</span>
+                  <span className="text-slate-900">{toEasternLocaleDateString(code.updated_at) || '—'}</span>
                 </div>
               </div>
             </section>
@@ -171,8 +172,8 @@ const CodeDetail = () => {
                                   )}
                                 </td>
                                 <td className="px-4 py-3 text-sm text-gray-600">{statusMapping[violation.status] || 'Unknown'}</td>
-                                <td className="px-4 py-3 text-sm text-gray-600">{createdDate ? createdDate.toLocaleDateString() : '—'}</td>
-                                <td className="px-4 py-3 text-sm text-gray-600">{deadlineDate ? deadlineDate.toLocaleDateString() : '—'}</td>
+                                <td className="px-4 py-3 text-sm text-gray-600">{createdDate ? toEasternLocaleDateString(createdDate) : '—'}</td>
+                                <td className="px-4 py-3 text-sm text-gray-600">{deadlineDate ? toEasternLocaleDateString(deadlineDate) : '—'}</td>
                               </tr>
                             );
                           })}

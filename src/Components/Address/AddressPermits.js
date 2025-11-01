@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toEasternLocaleDateString } from '../../utils';
 
 // Address-scoped Permits list, styled like the main list but filtered to one address
 export default function AddressPermits({ addressId }) {
@@ -91,7 +92,7 @@ export default function AddressPermits({ addressId }) {
                   {permit.paid ? 'Paid' : 'Not Paid'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {permit.created_at ? new Date(permit.created_at).toLocaleDateString() : '—'}
+                  {permit.created_at ? toEasternLocaleDateString(permit.created_at) : '—'}
                 </td>
               </tr>
             ))

@@ -82,6 +82,18 @@ export const toEasternLocaleTimeString = (value, locales, options) => {
   });
 };
 
+export const toEasternLocaleDateString = (value, locales, options) => {
+  const date = normalizeDateInput(value);
+  if (!date) return '';
+
+  const { locales: resolvedLocales, options: resolvedOptions } = normalizeLocaleArgs(locales, options);
+
+  return date.toLocaleDateString(resolvedLocales, {
+    ...resolvedOptions,
+    timeZone: EASTERN_TIME_ZONE
+  });
+};
+
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'heic', 'heif', 'tif', 'tiff', 'svg']);
 
 const extractFilename = (value) => {

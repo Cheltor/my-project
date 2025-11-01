@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toEasternLocaleDateString } from '../../utils';
 
 // Address-scoped Licenses list, styled like the main list but filtered to one address
 export default function AddressLicenses({ addressId }) {
@@ -108,7 +109,7 @@ export default function AddressLicenses({ addressId }) {
                   {license.sent ? 'Sent' : 'Not Sent'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {license.expiration_date ? new Date(license.expiration_date).toLocaleDateString() : '—'}
+                  {license.expiration_date ? toEasternLocaleDateString(license.expiration_date) : '—'}
                 </td>
               </tr>
             ))

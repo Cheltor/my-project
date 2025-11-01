@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { toEasternLocaleDateString } from '../../utils';
 
 // Helpers resembling Citations.js
 // Status helpers to accept numeric, numeric strings, or human labels
@@ -225,7 +226,7 @@ const AddressCitations = ({ addressId }) => {
                     }
                     return (
                       <>
-                        {deadline.toLocaleDateString('en-US')}
+                        {toEasternLocaleDateString(deadline)}
                         {deadlineStatus && (
                           <span className={`ml-2 px-2 py-0.5 rounded text-xs font-semibold align-middle ${badgeClass}`}>
                             {deadlineStatus}

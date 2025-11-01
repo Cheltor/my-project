@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { formatPhoneNumber } from '../utils';
+import { formatPhoneNumber, toEasternLocaleDateString } from '../utils';
 
 const BusinessDetails = () => {
   const { id } = useParams();
@@ -390,7 +390,7 @@ const BusinessDetails = () => {
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
                           <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Opened On</dt>
-                          <dd className="mt-2 text-sm font-medium text-slate-800">{business.opened_on ? new Date(business.opened_on).toLocaleDateString() : 'N/A'}</dd>
+                          <dd className="mt-2 text-sm font-medium text-slate-800">{business.opened_on ? toEasternLocaleDateString(business.opened_on) : 'N/A'}</dd>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
                           <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Employee Count</dt>
@@ -481,11 +481,11 @@ const BusinessDetails = () => {
                     <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
                         <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Created</dt>
-                        <dd className="mt-2 text-sm font-medium text-slate-800">{new Date(business.created_at).toLocaleDateString()}</dd>
+                        <dd className="mt-2 text-sm font-medium text-slate-800">{toEasternLocaleDateString(business.created_at)}</dd>
                       </div>
                       <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
                         <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Last Updated</dt>
-                        <dd className="mt-2 text-sm font-medium text-slate-800">{new Date(business.updated_at).toLocaleDateString()}</dd>
+                        <dd className="mt-2 text-sm font-medium text-slate-800">{toEasternLocaleDateString(business.updated_at)}</dd>
                       </div>
                     </dl>
                   </section>

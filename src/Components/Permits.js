@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AddPermitModal from './AddPermitModal';
+import { toEasternLocaleDateString } from '../utils';
 
 // Feature flag: hide Add Permit for now
 const ENABLE_ADD_PERMIT = false;
@@ -215,7 +216,7 @@ export default function Permits() {
                     {permit.paid ? 'Paid' : 'Not Paid'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {permit.created_at ? new Date(permit.created_at).toLocaleDateString() : '—'}
+                    {permit.created_at ? toEasternLocaleDateString(permit.created_at) || '—' : '—'}
                   </td>
                 </tr>
               ))

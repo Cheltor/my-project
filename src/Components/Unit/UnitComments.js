@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import NewUnitComment from './NewUnitComment';
 import FullScreenPhotoViewer from '../FullScreenPhotoViewer';
+import { toEasternLocaleString } from '../../utils';
 
 // Utility function to format the date
 const formatDate = (dateString) => {
   const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-  return new Date(dateString).toLocaleDateString(undefined, options);
+  return toEasternLocaleString(dateString, undefined, options);
 };
 
 const UnitComments = ({ unitId, addressId }) => {
