@@ -162,7 +162,11 @@ export default function NewMFLicense({ defaultAddressId, defaultAddressLabel, on
       try {
         created = await response.json();
       } catch (_) {}
-      if (onCreated) onCreated(created);
+      if (typeof onCreated === 'function') {
+        onCreated(created);
+      } else {
+        alert('Multifamily license inspection created successfully.');
+      }
     } catch (error) {
       console.error("Error creating inspection:", error);
       alert("Error creating inspection.");

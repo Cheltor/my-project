@@ -154,7 +154,11 @@ export default function NewSFLicense({ defaultAddressId, defaultAddressLabel, on
         created = await response.json();
       } catch (_) {}
 
-      if (onCreated) onCreated(created);
+      if (typeof onCreated === 'function') {
+        onCreated(created);
+      } else {
+        alert('Single family license inspection created successfully.');
+      }
     } catch (error) {
       console.error("Error creating inspection:", error);
       alert("Error creating inspection.");

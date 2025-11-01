@@ -175,7 +175,11 @@ export default function NewBuildingPermit({ defaultAddressId, defaultAddressLabe
             // ignore JSON parse errors
           }
 
-          if (onCreated) onCreated(created);
+          if (typeof onCreated === 'function') {
+            onCreated(created);
+          } else {
+            alert('Building permit inspection created successfully.');
+          }
       // Optionally reset form
       setFormData((prev) => ({
         ...prev,

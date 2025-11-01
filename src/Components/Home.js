@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import Welcome from './Dashboard/Welcome';
 import WeeklyStats from './Dashboard/WeeklyStats';
 import RecentComments from './Dashboard/RecentComments';
@@ -26,6 +26,27 @@ export default function Example() {
   const [emailTestStatus, setEmailTestStatus] = useState(null);
   const [emailTestLoading, setEmailTestLoading] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false); // Collapse the quick action buttons when not needed
+
+  const [formToast, setFormToast] = useState({ show: false, message: '', variant: 'success' });
+  const toastTimeoutRef = useRef(null);
+
+  const showSubmissionToast = (message, variant = 'success') => {
+    if (toastTimeoutRef.current) {
+      window.clearTimeout(toastTimeoutRef.current);
+    }
+    setFormToast({ show: true, message, variant });
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setFormToast((prev) => ({ ...prev, show: false }));
+    }, 4000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) {
+        window.clearTimeout(toastTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const closeAllForms = () => {
     setShowNewComplaint(false);
@@ -103,6 +124,12 @@ export default function Example() {
     });
   };
 
+  const handleQuickActionCreated = (message) => {
+    closeAllForms();
+    setShowQuickActions(false);
+    showSubmissionToast(message, 'success');
+  };
+
   const sendTestEmail = async () => {
     setEmailTestLoading(true);
     setEmailTestStatus(null);
@@ -171,6 +198,19 @@ export default function Example() {
     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
       <Welcome />
 
+      {formToast.show && (
+        <div
+          role="status"
+          className={`mt-4 mb-2 rounded-lg border px-4 py-3 text-sm font-medium shadow-sm ${
+            formToast.variant === 'error'
+              ? 'border-red-200 bg-red-50 text-red-700'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+          }`}
+        >
+          {formToast.message}
+        </div>
+      )}
+
       {(user.role === 2 || user.role === 1 || user.role === 3) && (
         <>
           <div className="mt-5 mb-4 flex justify-end">
@@ -200,12 +240,36 @@ export default function Example() {
                 ))}
               </div>
 
-              {showNewViolationForm && <NewViolationForm />}
-              {showNewComplaint && <NewComplaint />}
-              {showNewMFLicense && <NewMFLicense />}
-              {showNewSFLicense && <NewSFLicense />}
-              {showNewBuildingPermit && <NewBuildingPermit />}
-              {showNewBusinessLicense && <NewBusinessLicense />}
+              {showNewViolationForm && (
+                <NewViolationForm
+                  onCreated={() => handleQuickActionCreated('Violation submitted successfully.')}
+                />
+              )}
+              {showNewComplaint && (
+                <NewComplaint
+                  onCreated={() => handleQuickActionCreated('Complaint submitted successfully.')}
+                />
+              )}
+              {showNewMFLicense && (
+                <NewMFLicense
+                  onCreated={() => handleQuickActionCreated('Multifamily license inspection submitted successfully.')}
+                />
+              )}
+              {showNewSFLicense && (
+                <NewSFLicense
+                  onCreated={() => handleQuickActionCreated('Single family license inspection submitted successfully.')}
+                />
+              )}
+              {showNewBuildingPermit && (
+                <NewBuildingPermit
+                  onCreated={() => handleQuickActionCreated('Building permit inspection submitted successfully.')}
+                />
+              )}
+              {showNewBusinessLicense && (
+                <NewBusinessLicense
+                  onCreated={() => handleQuickActionCreated('Business license inspection submitted successfully.')}
+                />
+              )}
             </>
           )}
         </>

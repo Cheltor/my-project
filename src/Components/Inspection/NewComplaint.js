@@ -7,7 +7,7 @@ import BusinessSelection from "../Business/BusinessSelection"; // Import the new
 import NewUnit from "../Inspection/NewUnit"; // Import NewUnit instead of NewUnitForm
 import FileUploadInput from "../Common/FileUploadInput";
 
-export default function NewComplaint() {
+export default function NewComplaint({ onCreated }) {
   const { user, token } = useAuth();
   const navigate = useNavigate();
   const [units, setUnits] = useState([]);
@@ -195,7 +195,11 @@ export default function NewComplaint() {
       }
 
       const createdComplaint = await complaintResponse.json();
-      alert("Complaint created successfully!");
+      if (typeof onCreated === 'function') {
+        onCreated(createdComplaint);
+      } else {
+        alert('Complaint created successfully!');
+      }
       if (createdComplaint?.id) {
         navigate(`/complaint/${createdComplaint.id}`);
       }
