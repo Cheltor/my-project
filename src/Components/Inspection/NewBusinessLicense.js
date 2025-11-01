@@ -125,6 +125,7 @@ export default function NewBusinessLicense({ defaultAddressId, defaultAddressLab
     }
     if (!resolvedAddressId) {
       setAddressError('Address is required. Select a business with a valid address.');
+      setSubmitting(false);
       return;
     }
 
@@ -198,7 +199,11 @@ export default function NewBusinessLicense({ defaultAddressId, defaultAddressLab
         created = await response.json();
       } catch (_) {}
       
-      if (onCreated) onCreated(created);
+      if (typeof onCreated === 'function') {
+        onCreated(created);
+      } else {
+        alert('Business license inspection created successfully.');
+      }
     } catch (error) {
       console.error("Error creating inspection:", error);
       alert("Error creating inspection.");
