@@ -18,6 +18,7 @@ export default function Review() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [areasById, setAreasById] = useState({});
   const [violationCodes, setViolationCodes] = useState([]); // codes to prefill violation form
+  const [violationFileUrls, setViolationFileUrls] = useState([]); // photo URLs to prefill attachments
   const [viewerUrl, setViewerUrl] = useState(null);
   const [editingById, setEditingById] = useState({}); // { [obsId]: true }
   const [editedCodesById, setEditedCodesById] = useState({}); // { [obsId]: CodeSelectOption[] }
@@ -92,6 +93,15 @@ export default function Review() {
     // Transform to CodeSelect option shape
     const merged = Array.from(map.values()).map(toCodeOption);
     setViolationCodes(merged);
+    // Collect photo URLs from selected observations and de-duplicate
+    const urlSet = new Set();
+    potentials.forEach(p => {
+      if (!selectedIds.has(p.id)) return;
+      (p.photos || []).forEach(ph => {
+        if (ph && ph.url) urlSet.add(ph.url);
+      });
+    });
+    setViolationFileUrls(Array.from(urlSet));
   };
 
   const startEditCodes = (p) => {
@@ -144,7 +154,8 @@ export default function Review() {
   const initialAddressLabel = inspection?.address?.combadd;
 
   // When a violation is created from this page, mark the inspection as Completed
-  const markInspectionCompleted = async () => {
+  // If a created violation object is provided, redirect to its detail page.
+  const markInspectionCompleted = async (createdViolation) => {
     try {
       const form = new FormData();
       form.append('status', 'Completed');
@@ -162,8 +173,13 @@ export default function Review() {
     } catch (e) {
       // ignore — best-effort status update
     } finally {
-      // After attempting the status update, go back to the Conduct view
-      navigate(`/inspections/${id}/conduct`);
+      // After attempting the status update, navigate to the violation detail if we have it,
+      // otherwise go back to the Conduct view.
+      if (createdViolation && createdViolation.id) {
+        navigate(`/violation/${createdViolation.id}`);
+      } else {
+        navigate(`/inspections/${id}/conduct`);
+      }
     }
   };
 
@@ -311,6 +327,9 @@ export default function Review() {
           initialAddressId={inspection?.address_id}
           initialAddressLabel={inspection?.address?.combadd}
           lockAddress={true}
+          initialViolationType={"Formal Notice"}
+          lockViolationType={true}
+          initialFileUrls={violationFileUrls}
           inspectionId={parseInt(id, 10)}
           selectedCodesValue={violationCodes}
           onSelectedCodesChange={setViolationCodes}
