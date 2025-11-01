@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NewContactComment from './NewContactComment';  // Assuming this is the component for adding a new comment
+import { toEasternLocaleString } from '../../utils';
 
 // Utility function to format the date
 const formatDate = (dateString) => {
   const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-  return new Date(dateString).toLocaleDateString(undefined, options);
+  return toEasternLocaleString(dateString, undefined, options);
 };
 
 export default function ContactComments({ contactId, contact }) {  // Accept contactId and optional contact context

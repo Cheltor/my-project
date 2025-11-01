@@ -2,12 +2,12 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { apiFetch } from '../api';
+import { toEasternLocaleString } from '../utils';
 
 function formatWhen(ts) {
   if (!ts) return '';
   try {
-    const d = new Date(ts);
-    return d.toLocaleString(undefined, {
+    return toEasternLocaleString(ts, undefined, {
       year: 'numeric', month: 'short', day: 'numeric',
       hour: '2-digit', minute: '2-digit', hour12: true,
     });

@@ -1,5 +1,6 @@
 import React from "react";
 import CodeDrawerLink from "./Codes/CodeDrawerLink";
+import { toEasternLocaleDateString, toEasternLocaleString } from "../utils";
 
 const statusOptions = [
   { value: 0, label: "Unpaid" },
@@ -51,7 +52,7 @@ function CitationsList({ citations, submitting, refreshCitations }) {
                       badgeClass = 'bg-green-100 text-green-800';
                     }
                     return <>
-                      {deadline.toLocaleDateString('en-US')}
+                      {toEasternLocaleDateString(deadline, 'en-US')}
                       {deadlineStatus && (
                         <span className={`ml-2 px-2 py-0.5 rounded text-xs font-semibold align-middle ${badgeClass}`}>
                           {deadlineStatus}
@@ -124,11 +125,11 @@ function CitationsList({ citations, submitting, refreshCitations }) {
               </div>
               <div className="flex flex-col items-end justify-end min-w-[160px]">
                 <p className="text-gray-500 text-xs">
-                  Created: {citation.created_at ? new Date(citation.created_at).toLocaleString('en-US', { timeZone: 'America/New_York', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                  Created: {citation.created_at ? toEasternLocaleString(citation.created_at, 'en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
                 </p>
                 {citation.updated_at && (
                   <p className="text-gray-500 text-xs">
-                    Updated: {new Date(citation.updated_at).toLocaleString('en-US', { timeZone: 'America/New_York', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    Updated: {toEasternLocaleString(citation.updated_at, 'en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </p>
                 )}
               </div>

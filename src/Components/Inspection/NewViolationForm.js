@@ -5,7 +5,7 @@ import CodeSelect from "../CodeSelect";
 import { useAuth } from "../../AuthContext";
 import FileUploadInput from "../Common/FileUploadInput";
 
-export default function NewViolationForm({ onCreated, initialAddressId, initialAddressLabel, lockAddress = false, inspectionId, selectedCodesValue, onSelectedCodesChange }) {
+export default function NewViolationForm({ onCreated, initialAddressId, initialAddressLabel, lockAddress = false, inspectionId, selectedCodesValue, onSelectedCodesChange, initialViolationType, lockViolationType = false, initialFileUrls = [], initialFiles = [] }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -13,6 +13,64 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
     address_id: initialAddressId || ""
   });
   const [files, setFiles] = useState([]);
+
+  // If parent provides File objects directly, merge them into files state
+  React.useEffect(() => {
+    if (!initialFiles || initialFiles.length === 0) return;
+    setFiles((prev) => {
+      const merged = [...prev];
+      for (const f of initialFiles) {
+        const duplicate = merged.find(
+          (existing) =>
+            existing.name === f.name &&
+            existing.size === f.size &&
+            existing.lastModified === f.lastModified &&
+            existing.type === f.type
+        );
+        if (!duplicate) merged.push(f);
+      }
+      return merged;
+    });
+  }, [initialFiles]);
+
+  // If parent provides file URLs (e.g., photos attached to observations), fetch them
+  // and convert to File objects so the FileUploadInput can display them.
+  React.useEffect(() => {
+    if (!initialFileUrls || initialFileUrls.length === 0) return;
+    let cancelled = false;
+    const fetchAndAdd = async () => {
+      for (const url of initialFileUrls) {
+        try {
+          // Skip if already present (by URL encoded in name)
+          const exists = files.find(f => f.name === url || f.name === decodeURIComponent(url.split('/').pop() || url));
+          if (exists) continue;
+          const resp = await fetch(url);
+          if (!resp.ok) continue;
+          const blob = await resp.blob();
+          const filename = decodeURIComponent((new URL(url)).pathname.split('/').pop() || 'photo');
+          const file = new File([blob], filename, { type: blob.type || 'application/octet-stream', lastModified: Date.now() });
+          if (cancelled) return;
+          setFiles((prev) => {
+            // avoid duplicates
+            const merged = [...prev];
+            const duplicate = merged.find(
+              (existing) =>
+                existing.name === file.name &&
+                existing.size === file.size &&
+                existing.type === file.type
+            );
+            if (!duplicate) merged.push(file);
+            return merged;
+          });
+        } catch (e) {
+          // ignore fetch errors per-file
+        }
+      }
+    };
+    fetchAndAdd();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFileUrls]);
   const [selectedCodes, setSelectedCodes] = useState([]); // internal when uncontrolled
   const [addressLabel, setAddressLabel] = useState(initialAddressLabel || "");
   // Admin assignment state
@@ -97,7 +155,12 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
     { value: "doorhanger", label: "Doorhanger" },
     { value: "Formal Notice", label: "Formal Notice" }
   ];
-  const [violationType, setViolationType] = useState(VIOLATION_TYPE_OPTIONS[0].value);
+  const [violationType, setViolationType] = useState(initialViolationType ?? VIOLATION_TYPE_OPTIONS[0].value);
+
+  React.useEffect(() => {
+    // Keep violation type in sync if parent forces an initial value
+    if (initialViolationType) setViolationType(initialViolationType);
+  }, [initialViolationType]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -254,15 +317,21 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
         {/* Violation Type Selection */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Violation Type</label>
-          <select
-            className="w-full border border-gray-300 rounded px-2 py-1"
-            value={violationType}
-            onChange={e => setViolationType(e.target.value)}
-          >
-            {VIOLATION_TYPE_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+          {lockViolationType ? (
+            <div className="w-full border border-gray-200 rounded px-2 py-1 bg-gray-50 text-gray-700">{
+              (VIOLATION_TYPE_OPTIONS.find(o => o.value === violationType) || { label: violationType }).label
+            }</div>
+          ) : (
+            <select
+              className="w-full border border-gray-300 rounded px-2 py-1"
+              value={violationType}
+              onChange={e => setViolationType(e.target.value)}
+            >
+              {VIOLATION_TYPE_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          )}
         </div>
         {/* Violation Code Selection (multi) */}
         <div>

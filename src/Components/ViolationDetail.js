@@ -9,7 +9,9 @@ import FileUploadInput from "./Common/FileUploadInput";
 import {
   getAttachmentDisplayLabel,
   getAttachmentFilename,
-  isImageAttachment
+  isImageAttachment,
+  toEasternLocaleDateString,
+  toEasternLocaleString
 } from "../utils";
 
 // Status mapping for display
@@ -42,10 +44,8 @@ const formatViolationType = (value) => {
 
 const formatDateLabel = (value, { includeTime = false } = {}) => {
   if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
   if (includeTime) {
-    return date.toLocaleString('en-US', {
+    return toEasternLocaleString(value, 'en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -53,7 +53,7 @@ const formatDateLabel = (value, { includeTime = false } = {}) => {
       minute: '2-digit',
     });
   }
-  return date.toLocaleDateString('en-US', {
+  return toEasternLocaleDateString(value, 'en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -525,7 +525,6 @@ const ViolationDetail = () => {
 
   // Handler for marking as abated (closed)
   const handleMarkAbated = async () => {
-    if (!window.confirm("Are you sure you want to mark this violation as abated (closed)?")) return;
     try {
       setAbatingViolation(true);
       const response = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/abate`, {

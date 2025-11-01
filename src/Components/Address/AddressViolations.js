@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import NewAddressViolation from './NewAddressViolation';
 import CodeDrawerLink from "../Codes/CodeDrawerLink";
+import { toEasternLocaleDateString, toEasternLocaleString } from '../../utils';
 
 // Utility function to format the date
 const formatDate = (dateString) => {
   const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-  return new Date(dateString).toLocaleDateString(undefined, options);
+  return toEasternLocaleString(dateString, undefined, options);
 };
 
 const AddressViolations = ({ addressId }) => {
@@ -203,7 +204,7 @@ const AddressViolations = ({ addressId }) => {
                     }
                     return (
                       <>
-                        <span className="text-gray-700 mr-2 text-base font-semibold">Deadline: {deadline.toLocaleDateString('en-US')}</span>
+                        <span className="text-gray-700 mr-2 text-base font-semibold">Deadline: {toEasternLocaleDateString(deadline, 'en-US')}</span>
                         {deadlineStatus && (
                           <span className={`ml-1 px-2 py-0.5 rounded text-xs font-semibold align-middle ${badgeClass}`}>
                             {deadlineStatus}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { Link } from 'react-router-dom';
-import { toEasternLocaleString } from '../utils';
+import { toEasternLocaleDateString, toEasternLocaleString } from '../utils';
 
 export default function Violations() {
   const { user } = useAuth();
@@ -366,7 +366,7 @@ export default function Violations() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {violation.deadline_date
-                      ? new Date(violation.deadline_date).toLocaleDateString('en-US')
+                      ? toEasternLocaleDateString(violation.deadline_date, 'en-US')
                       : '—'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -498,7 +498,7 @@ export default function Violations() {
                   </td>
                   <td>
                     {violation.deadline_date
-                      ? new Date(violation.deadline_date).toLocaleDateString('en-US')
+                      ? toEasternLocaleDateString(violation.deadline_date, 'en-US') || '—'
                       : '—'}
                   </td>
                   <td>{violation.user?.email || '—'}</td>

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { toEasternLocaleString } from '../utils';
+import { toEasternLocaleDateString, toEasternLocaleString } from '../utils';
 
 export default function PermitDetail() {
   const { id } = useParams();
@@ -370,7 +370,7 @@ export default function PermitDetail() {
                       />
                     ) : (
                       <span className="text-sm text-slate-900">
-                        {permit.date_issued ? new Date(permit.date_issued).toLocaleDateString() : '—'}
+                        {permit.date_issued ? toEasternLocaleDateString(permit.date_issued) || '—' : '—'}
                       </span>
                     )}
                   </dd>
@@ -389,7 +389,7 @@ export default function PermitDetail() {
                       />
                     ) : (
                       <span className="text-sm text-slate-900">
-                        {permit.expiration_date ? new Date(permit.expiration_date).toLocaleDateString() : '—'}
+                        {permit.expiration_date ? toEasternLocaleDateString(permit.expiration_date) || '—' : '—'}
                       </span>
                     )}
                   </dd>

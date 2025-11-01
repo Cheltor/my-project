@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import AsyncSelect from 'react-select/async';
 import { Link, useParams } from 'react-router-dom';
 import ContactComments from './Contact/ContactComments';
-import { formatPhoneNumber } from '../utils';
+import { formatPhoneNumber, toEasternLocaleDateString } from '../utils';
 
 const SECTION_KEYS = ['addresses', 'businesses', 'inspections', 'permits', 'complaints'];
 const createInitialSectionState = () => SECTION_KEYS.reduce((acc, key) => {
@@ -421,7 +421,7 @@ export default function ContactDetail() {
       emptyMessage: 'No related inspections.',
       renderItem: (inspection) => {
         const status = inspection.status || '—';
-        const created = inspection.created_at ? new Date(inspection.created_at).toLocaleDateString() : null;
+        const created = inspection.created_at ? toEasternLocaleDateString(inspection.created_at) || null : null;
         const location = (inspection.address && (inspection.address.combadd || inspection.address.property_name)) || null;
         return (
           <li
@@ -448,7 +448,7 @@ export default function ContactDetail() {
       items: contact.permits || [],
       emptyMessage: 'No permits linked to this contact.',
       renderItem: (permit) => {
-        const created = permit.created_at ? new Date(permit.created_at).toLocaleDateString() : null;
+        const created = permit.created_at ? toEasternLocaleDateString(permit.created_at) || null : null;
         return (
           <li
             key={`permit-${permit.id}`}
@@ -475,7 +475,7 @@ export default function ContactDetail() {
       emptyMessage: 'No complaints associated with this contact.',
       renderItem: (complaint) => {
         const status = complaint.status || '—';
-        const created = complaint.created_at ? new Date(complaint.created_at).toLocaleDateString() : null;
+        const created = complaint.created_at ? toEasternLocaleDateString(complaint.created_at) || null : null;
         const location = (complaint.address && (complaint.address.combadd || complaint.address.property_name)) || null;
         return (
           <li

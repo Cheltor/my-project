@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { formatPhoneNumber } from '../utils';
+import { formatPhoneNumber, toEasternLocaleDateString, toEasternLocaleString } from '../utils';
 import AddressPhotos from './Address/AddressPhotos'; // Update the import statement
 import Citations from './Address/AddressCitations';
 import Violations from './Address/AddressViolations';
@@ -146,7 +146,7 @@ const formatRecentDescriptor = (input) => {
     const relative = formatRelativeTimeFromNow(target);
     if (relative) return relative;
   }
-  return target.toLocaleString('en-US', {
+  return toEasternLocaleString(target, 'en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -2023,8 +2023,8 @@ const AddressDetails = () => {
                       </svg>
                       <span>
                         {mostRecentHousingLicenseStatus?.state === 'expired'
-                          ? `Expired ${mostRecentHousingLicenseStatus?.date ? mostRecentHousingLicenseStatus.date.toLocaleDateString() : ''}`
-                          : `Active${mostRecentHousingLicenseStatus?.date ? ` until ${mostRecentHousingLicenseStatus.date.toLocaleDateString()}` : ''}`}
+                          ? `Expired ${mostRecentHousingLicenseStatus?.date ? toEasternLocaleDateString(mostRecentHousingLicenseStatus.date) : ''}`
+                          : `Active${mostRecentHousingLicenseStatus?.date ? ` until ${toEasternLocaleDateString(mostRecentHousingLicenseStatus.date)}` : ''}`}
                         {(() => {
                           const t = mostRecentHousingLicense?.license_type;
                           const label = LICENSE_TYPE_LABELS?.[t] || (t != null ? String(t) : '');

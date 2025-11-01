@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AddLicenseModal from './AddLicenseModal';
+import { toEasternLocaleDateString } from '../utils';
 
 export default function Licenses() {
   const LICENSE_TYPE_LABELS = {
@@ -251,7 +252,7 @@ export default function Licenses() {
                   {license.sent ? 'Sent' : 'Not Sent'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {license.expiration_date ? new Date(license.expiration_date).toLocaleDateString() : 'N/A'}
+                  {license.expiration_date ? toEasternLocaleDateString(license.expiration_date) || 'N/A' : 'N/A'}
                 </td>
               </tr>
               ))

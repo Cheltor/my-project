@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { getRoleName, roles, formatPhoneNumber } from './../utils'; // Import the utility function and roles
+import { getRoleName, roles, formatPhoneNumber, toEasternLocaleDateString } from './../utils'; // Import the utility function and roles
 
 const UserDetail = () => {
   const { id } = useParams(); // Extract the user ID from the URL
@@ -137,8 +137,8 @@ const UserDetail = () => {
           </div>
           <div className="border-b pb-4">
             <h2 className="text-xl font-medium text-gray-700">Timestamps</h2>
-            <p className="text-sm text-gray-600"><strong>Created At:</strong> {new Date(user.created_at).toLocaleDateString()}</p>
-            <p className="text-sm text-gray-600"><strong>Updated At:</strong> {new Date(user.updated_at).toLocaleDateString()}</p>
+            <p className="text-sm text-gray-600"><strong>Created At:</strong> {toEasternLocaleDateString(user.created_at) || '—'}</p>
+            <p className="text-sm text-gray-600"><strong>Updated At:</strong> {toEasternLocaleDateString(user.updated_at) || '—'}</p>
           </div>
           {isEditing ? (
             <button

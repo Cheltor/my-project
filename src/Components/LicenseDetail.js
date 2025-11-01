@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { toEasternLocaleString, formatPhoneNumber } from '../utils';
+import { toEasternLocaleDateString, toEasternLocaleString, formatPhoneNumber } from '../utils';
 
 export default function LicenseDetail() {
   const { id } = useParams();
@@ -586,7 +586,7 @@ export default function LicenseDetail() {
                       />
                     ) : (
                       <span className="text-sm text-slate-900">
-                        {license.date_issued ? new Date(license.date_issued).toLocaleDateString() : '—'}
+                        {license.date_issued ? toEasternLocaleDateString(license.date_issued) || '—' : '—'}
                       </span>
                     )}
                   </dd>
@@ -606,7 +606,7 @@ export default function LicenseDetail() {
                     ) : (
                       <span className="text-sm text-slate-900">
                         {license.expiration_date
-                          ? new Date(license.expiration_date).toLocaleDateString()
+                          ? toEasternLocaleDateString(license.expiration_date) || '—'
                           : '—'}
                       </span>
                     )}

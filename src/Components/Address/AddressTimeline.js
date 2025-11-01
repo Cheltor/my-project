@@ -1,4 +1,5 @@
 import React from 'react';
+import { toEasternLocaleDateString } from '../../utils';
 
 const Timeline = ({ timeline }) => {
   if (timeline.length === 0) {
@@ -11,7 +12,7 @@ const Timeline = ({ timeline }) => {
       {timeline.map((item) => (
         <div key={item.id} className="mb-2">
           <p><strong>ID:</strong> {item.id}</p>
-          <p><strong>Date:</strong> {new Date(item.created_at).toLocaleDateString()}</p>
+          <p><strong>Date:</strong> {toEasternLocaleDateString(item.created_at)}</p>
         </div>
       ))}
     </div>
