@@ -144,7 +144,7 @@ export default function CodeEdit() {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Name <span className="text-red-600">*</span></label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Name <span className="text-red-600 required-indicator">*</span></label>
           <input
             type="text"
             name="name"
@@ -154,7 +154,7 @@ export default function CodeEdit() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Description <span className="text-red-600">*</span></label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Description <span className="text-red-600 required-indicator">*</span></label>
           <textarea
             name="description"
             value={form.description}

@@ -153,7 +153,7 @@ export default function Contacts() {
             )}
             <form onSubmit={handleCreateContact} className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Name<span className="text-red-600">*</span></label>
+                <label className="block text-sm font-medium text-gray-700">Name<span className="text-red-600 required-indicator">*</span></label>
                 <input
                   required
                   type="text"

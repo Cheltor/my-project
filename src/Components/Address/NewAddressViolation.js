@@ -163,7 +163,7 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Violation Codes <span className="text-red-600" aria-hidden> *</span>
+              Violation Codes <span className="text-red-600 required-indicator" aria-hidden> *</span>
             </label>
             <CodeSelect
               onChange={opts => setSelectedCodes(opts || [])}

@@ -58,6 +58,25 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+        label:has(+ input[required]):not(:has(.required-indicator))::after,
+        label:has(+ textarea[required]):not(:has(.required-indicator))::after,
+        label:has(+ select[required]):not(:has(.required-indicator))::after,
+        label:has(+ div input[required]):not(:has(.required-indicator))::after,
+        label:has(+ div textarea[required]):not(:has(.required-indicator))::after,
+        label:has(+ div select[required]):not(:has(.required-indicator))::after {
+                content: " *";
+                color: theme('colors.red.600');
+                font-weight: 600;
+        }
+
+        .required-indicator {
+                color: theme('colors.red.600');
+                font-weight: 600;
+                margin-left: 0.125rem;
+        }
+}
+
 @media screen {
 	.print-only {
 		display: none;

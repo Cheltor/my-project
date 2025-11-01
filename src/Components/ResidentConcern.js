@@ -573,7 +573,7 @@ export default function ResidentConcern() {
         >
           <div>
             <label htmlFor="resident-concern-address" className="block text-sm font-medium text-gray-700">
-              Address <span className="text-red-600" aria-hidden="true">*</span>
+              Address <span className="text-red-600 required-indicator" aria-hidden="true">*</span>
             </label>
             <div
               className={`mt-1 ${addressError ? "rounded border border-red-500 p-1" : ""}`}
@@ -620,7 +620,7 @@ export default function ResidentConcern() {
 
           <div>
             <label htmlFor="resident-concern-description" className="block text-sm font-medium text-gray-700">
-              Describe the concern <span className="text-red-600" aria-hidden="true">*</span>
+              Describe the concern <span className="text-red-600 required-indicator" aria-hidden="true">*</span>
             </label>
             <textarea
               id="resident-concern-description"
@@ -653,7 +653,7 @@ export default function ResidentConcern() {
 
           <div>
             <div className="mb-2 text-sm font-medium text-gray-700">
-              Your contact information <span className="text-red-600" aria-hidden="true">*</span>
+              Your contact information <span className="text-red-600 required-indicator" aria-hidden="true">*</span>
             </div>
             {hasSelectedContact ? (
               <div className="rounded-md border border-green-200 bg-green-50 p-3">

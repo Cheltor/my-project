@@ -275,7 +275,7 @@ export default function NewComplaint({ onCreated }) {
         {/* Address Selection */}
         <div className="mb-4">
           <label htmlFor="address_id" className="block text-sm font-medium text-gray-700">
-            Select Address <span className="text-red-600" aria-hidden> *</span>
+            Select Address <span className="text-red-600 required-indicator" aria-hidden> *</span>
           </label>
           <div
             className={`mt-1 ${addressError ? 'border border-red-500 rounded p-1' : ''}`}
@@ -373,7 +373,7 @@ export default function NewComplaint({ onCreated }) {
         {/* Description Field */}
         <div className="mb-4">
           <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-            Description <span className="text-red-600" aria-hidden> *</span>
+            Description <span className="text-red-600 required-indicator" aria-hidden> *</span>
           </label>
           <textarea
             id="description"

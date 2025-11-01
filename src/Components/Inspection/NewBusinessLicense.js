@@ -233,7 +233,7 @@ export default function NewBusinessLicense({ defaultAddressId, defaultAddressLab
         {/* Business Selection */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Business <span className="text-red-600" aria-hidden> *</span>
+            Business <span className="text-red-600 required-indicator" aria-hidden> *</span>
           </label>
           <div className={`${addressError ? 'border border-red-500 rounded p-2' : ''}`}
                aria-invalid={!!addressError}
