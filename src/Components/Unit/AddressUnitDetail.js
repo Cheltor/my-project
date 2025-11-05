@@ -204,14 +204,13 @@ const AddressUnitDetail = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-36 sm:pb-10">
-      <div className="relative overflow-hidden bg-gradient-to-br from-indigo-700 via-indigo-600 to-indigo-500 text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.15),_transparent_55%)]" aria-hidden="true" />
-        <div className="relative mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+      <div className="border-b border-slate-200 bg-white">
+        <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col-reverse gap-6 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <div className="text-sm text-indigo-100">
-                  <Link to={`/address/${address.id}`} className="inline-flex items-center gap-2 font-medium hover:text-white">
+                <div className="text-sm text-slate-500">
+                  <Link to={`/address/${address.id}`} className="inline-flex items-center gap-2 font-medium text-slate-600 hover:text-slate-900">
                     <span aria-hidden="true">←</span>
                     Back to {address.combadd}
                   </Link>
@@ -242,7 +241,7 @@ const AddressUnitDetail = () => {
                       }}
                     >
                       <input
-                        className="w-48 rounded-lg border border-indigo-200 bg-white/90 px-3 py-2 text-lg font-semibold text-indigo-900 focus:border-white focus:outline-none focus:ring-2 focus:ring-white"
+                        className="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-lg font-semibold text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         value={newUnitNumber}
                         onChange={(e) => setNewUnitNumber(e.target.value)}
                         autoFocus
@@ -250,13 +249,13 @@ const AddressUnitDetail = () => {
                       <div className="flex items-center gap-2">
                         <button
                           type="submit"
-                          className="rounded-lg bg-white/20 px-4 py-2 text-sm font-semibold uppercase tracking-wide transition hover:bg-white/30"
+                        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-slate-700"
                         >
                           Save
                         </button>
                         <button
                           type="button"
-                          className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold uppercase tracking-wide transition hover:bg-white/20"
+                          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-slate-700 transition hover:border-slate-400"
                           onClick={() => setEditing(false)}
                         >
                           Cancel
@@ -265,10 +264,10 @@ const AddressUnitDetail = () => {
                     </form>
                   ) : (
                     <div className="flex flex-wrap items-center gap-4">
-                      <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Unit {unit.number}</h1>
+                      <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Unit {unit.number}</h1>
                       <button
                         type="button"
-                        className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold uppercase tracking-wide transition hover:bg-white/25"
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-slate-700 transition hover:border-slate-400 hover:text-slate-900"
                         onClick={() => {
                           setNewUnitNumber(unit.number);
                           setEditing(true);
@@ -279,23 +278,23 @@ const AddressUnitDetail = () => {
                     </div>
                   )}
                   {address.property_name && (
-                    <div className="text-lg font-medium text-indigo-100/90">
+                    <div className="text-lg font-medium text-slate-700">
                       {address.property_name}
                     </div>
                   )}
                   {address.ownername && (
-                    <div className="text-sm text-indigo-100/80">
+                    <div className="text-sm text-slate-500">
                       Owner: {address.ownername}
                     </div>
                   )}
                 </div>
               </div>
-              <div className="flex flex-col items-start gap-2 text-sm text-indigo-100 sm:items-end">
+              <div className="flex flex-col items-start gap-2 text-sm text-slate-500 sm:items-end">
                 {activityMeta.map((item) => (
-                  <div key={item.label} className="rounded-lg bg-white/10 px-4 py-2 shadow-sm">
-                    <div className="text-xs uppercase tracking-wide text-indigo-100/80">{item.label}</div>
-                    <div className="text-sm font-semibold">{item.value}</div>
-                    {item.hint && <div className="text-xs text-indigo-100/70">{item.hint}</div>}
+                  <div key={item.label} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 shadow-sm">
+                    <div className="text-xs uppercase tracking-wide text-slate-500">{item.label}</div>
+                    <div className="text-sm font-semibold text-slate-800">{item.value}</div>
+                    {item.hint && <div className="text-xs text-slate-500">{item.hint}</div>}
                   </div>
                 ))}
               </div>
@@ -305,12 +304,12 @@ const AddressUnitDetail = () => {
                 {unitHighlights.map((highlight, index) => (
                   <div
                     key={`${highlight.label}-${index}`}
-                    className="rounded-xl border border-white/15 bg-white/10 p-4 shadow-sm backdrop-blur"
+                    className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
                   >
-                    <div className="text-xs font-semibold uppercase tracking-wide text-indigo-100/70">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       {highlight.label}
                     </div>
-                    <div className="mt-1 text-lg font-semibold text-white">
+                    <div className="mt-1 text-lg font-semibold text-slate-900">
                       {highlight.value}
                     </div>
                   </div>
@@ -321,7 +320,7 @@ const AddressUnitDetail = () => {
         </div>
       </div>
 
-      <div className="relative -mt-8 pb-10 sm:-mt-10">
+      <div className="relative -mt-6 pb-10 sm:-mt-8">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 sm:px-6 lg:px-8">
           {propertyMeta.length > 0 && (
             <section className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur">
