@@ -8,6 +8,8 @@ export default function RoomDetail() {
   const [room, setRoom] = useState(null); // State to hold the room details
   const [prompts, setPrompts] = useState([]); // State to hold the room's prompts
   const [newPromptContent, setNewPromptContent] = useState(''); // State for the new prompt content
+  const [editingPromptId, setEditingPromptId] = useState(null); // Track which prompt is being edited
+  const [editedPromptContent, setEditedPromptContent] = useState(''); // Temp state for editing a prompt
   const [loading, setLoading] = useState(true); // State to hold loading status
   const [error, setError] = useState(null); // State to hold error status
   const [editingRoom, setEditingRoom] = useState(false); // State to toggle editing mode
@@ -70,6 +72,9 @@ export default function RoomDetail() {
     })
       .then(() => {
         setPrompts(prompts.filter((prompt) => prompt.id !== promptId));
+        if (editingPromptId === promptId) {
+          handleCancelEditPrompt();
+        }
       })
       .catch((error) => {
         console.error('Error deleting prompt:', error);
@@ -77,13 +82,23 @@ export default function RoomDetail() {
   };
 
   // Function to handle prompt editing
-  const handleEditPrompt = (promptId, updatedContent) => {
+  const handleStartEditPrompt = (prompt) => {
+    setEditingPromptId(prompt.id);
+    setEditedPromptContent(prompt.content);
+  };
+
+  const handleCancelEditPrompt = () => {
+    setEditingPromptId(null);
+    setEditedPromptContent('');
+  };
+
+  const handleUpdatePrompt = (promptId) => {
     fetch(`${process.env.REACT_APP_API_URL}/prompts/${promptId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ content: updatedContent }),
+      body: JSON.stringify({ content: editedPromptContent }),
     })
       .then((response) => response.json())
       .then((updatedPrompt) => {
@@ -92,6 +107,7 @@ export default function RoomDetail() {
             prompt.id === promptId ? updatedPrompt : prompt
           )
         );
+        handleCancelEditPrompt();
       })
       .catch((error) => {
         console.error('Error updating prompt:', error);
@@ -252,24 +268,65 @@ export default function RoomDetail() {
                   key={prompt.id}
                   className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition hover:border-indigo-200 hover:shadow"
                 >
-                  <label htmlFor={`prompt-${prompt.id}`} className="sr-only">
-                    Prompt content
-                  </label>
-                  <input
-                    id={`prompt-${prompt.id}`}
-                    type="text"
-                    value={prompt.content}
-                    onChange={(e) => handleEditPrompt(prompt.id, e.target.value)}
-                    className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
-                  />
-                  <div className="mt-3 flex justify-end">
-                    <button
-                      onClick={() => handleDeletePrompt(prompt.id)}
-                      className="inline-flex items-center rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                  {editingPromptId === prompt.id ? (
+                    <>
+                      <label htmlFor={`prompt-${prompt.id}`} className="sr-only">
+                        Prompt content
+                      </label>
+                      <textarea
+                        id={`prompt-${prompt.id}`}
+                        value={editedPromptContent}
+                        onChange={(e) => setEditedPromptContent(e.target.value)}
+                        rows={3}
+                        className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+                      />
+                      <div className="mt-3 flex flex-wrap justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdatePrompt(prompt.id)}
+                          className="inline-flex items-center rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelEditPrompt}
+                          className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-700 shadow-sm transition hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-400"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePrompt(prompt.id)}
+                          className="inline-flex items-center rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-700">
+                        <span className="block whitespace-pre-wrap break-words">{prompt.content}</span>
+                      </p>
+                      <div className="mt-3 flex flex-wrap justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditPrompt(prompt)}
+                          className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePrompt(prompt.id)}
+                          className="inline-flex items-center rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
