@@ -48,6 +48,19 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
     setEditingPage(false);
   };
 
+  const resolveUnitNumber = useCallback((comment) => {
+    if (!comment || !comment.unit) return comment?.unit_id;
+    const raw =
+      comment.unit.number
+      ?? comment.unit.unit_number
+      ?? comment.unit.unitNumber
+      ?? comment.unit.label
+      ?? comment.unit.name;
+    if (raw == null) return comment.unit_id;
+    const trimmed = String(raw).trim();
+    return trimmed ? trimmed : comment.unit_id;
+  }, []);
+
   const downloadAttachments = async (commentId) => {
     if (!commentId) return;
     try {
@@ -325,7 +338,7 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
                         to={`/address/${comment.address_id}/unit/${comment.unit_id}`}
                         className="text-blue-500 hover:underline"
                       >
-                        {`Unit${comment.unit && comment.unit.number ? ` ${comment.unit.number}` : ''}`}
+                        {`Unit ${resolveUnitNumber(comment)}`}
                       </Link>
                     </span>
                   )}
