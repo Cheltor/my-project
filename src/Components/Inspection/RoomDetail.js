@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 
 // Component to show the details of a specific room
 export default function RoomDetail() {
@@ -164,6 +164,16 @@ export default function RoomDetail() {
 
   return (
     <div className="mx-auto max-w-3xl px-5 pt-6 pb-10 sm:pb-12">
+      <nav className="mb-4 text-sm font-medium text-indigo-600">
+        <Link
+          to="/rooms"
+          className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-3 py-1 text-indigo-600 transition hover:bg-indig
+o-100"
+        >
+          <span aria-hidden="true">←</span>
+          <span>Back to rooms</span>
+        </Link>
+      </nav>
       <div className="space-y-6 rounded-2xl bg-white px-5 py-6 shadow-md ring-1 ring-gray-200/70 sm:px-6">
         <header className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
