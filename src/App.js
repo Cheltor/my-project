@@ -43,6 +43,7 @@ import Users from './Components/Users';
 import UserDetail from './Components/UserDetails';
 import AddressUnitDetail from './Components/Unit/AddressUnitDetail'; // Import the AddressUnitDetail component
 import Helpful from './Components/Helpful'; // Import the HelpfulLinks component
+import CommentingTourPage from './Components/Help/CommentingTourPage';
 import NewAddressPage from './Components/Address/NewAddressPage';
 import VacancyStatusList from './Components/VacancyStatusList';
 import Review from './Components/Inspection/Review';
@@ -201,6 +202,7 @@ function MainApp() {
                 <Route path="/users/:id" element={<UserDetail />} />
                 <Route path="/address/:addressId/unit/:unitId" element={<AddressUnitDetail />} />
                 <Route path="/helpful" element={<Helpful />} />
+                <Route path="/help/commenting" element={<CommentingTourPage />} />
                 <Route path="/new-address" element={<NewAddressPage />} />
                 <Route path="/vacancy-statuses" element={<VacancyStatusList />} />
                 <Route path="/admin" element={<AdminDashboard />} />

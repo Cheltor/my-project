@@ -19,6 +19,7 @@ import {
   ArrowLeftIcon,
   BellIcon,
   MapIcon,
+  QuestionMarkCircleIcon,
 } from '@heroicons/react/24/outline';
 import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
 import { Link, useNavigate, useLocation } from 'react-router-dom'; // Import Link, useNavigate, and useLocation
@@ -44,6 +45,7 @@ const navigation = [
   { name: 'Users', href: '/users', icon: UsersIcon, current: false, roles: ['Admin'] },
   { name: 'Rooms', href: '/rooms', icon: DocumentDuplicateIcon, current: false, roles: ['Admin'] },
   { name: 'Helpful Links', href: '/Helpful', icon: DocumentDuplicateIcon, current: false },
+  { name: 'Help & Tours', href: '/help/commenting', icon: QuestionMarkCircleIcon, current: false },
   { name: 'New Address', href: '/new-address', icon: BuildingOffice2Icon, current: false, roles: ['Admin'] },
   { name: 'Vacancy Statuses', href: '/vacancy-statuses', icon: BuildingOffice2Icon, current: false },
   { name: 'Admin Dashboard', href: '/admin', icon: Cog6ToothIcon, current: false, roles: ['Admin'] },
