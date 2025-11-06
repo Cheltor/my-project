@@ -175,11 +175,16 @@ export default function NewComplaint() {
           createForm.append('attachments', photo);
         });
       }
-      // Admin-selected assignee -> inspector_id; OAS defaults to inspector 1
-      if (user?.role === 3 && assigneeId) {
-        createForm.append('inspector_id', String(assigneeId));
-      } else if (user?.role === 2) {
-        createForm.append('inspector_id', '1');
+      // Determine inspector assignment rules
+      let inspectorId = null;
+      if (user?.role === 3) {
+        inspectorId = assigneeId ? String(assigneeId) : null;
+      } else if (user?.role === 1 && user?.id) {
+        inspectorId = String(user.id);
+      }
+
+      if (inspectorId) {
+        createForm.append('inspector_id', inspectorId);
       }
 
       const complaintResponse = await fetch(`${process.env.REACT_APP_API_URL}/inspections/`, {
