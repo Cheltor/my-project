@@ -323,10 +323,16 @@ const TourInteractionCurtain = ({ children }) => {
       '.reactour__dot',
       '.app-tour [role="dialog"][aria-modal="true"]',
       '.app-tour [data-tour-allow-interaction="true"]',
+      '[class*="reactour__"]',
+      '[data-tour-elem]',
     ];
 
     const isAllowedTarget = (target) => {
       if (typeof Node !== 'function' || !(target instanceof Node)) {
+        return false;
+      }
+
+      if (target.closest && (target.closest('.reactour__mask') || target.closest('[data-tour-elem="mask"]'))) {
         return false;
       }
 
