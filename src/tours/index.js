@@ -97,9 +97,17 @@ const violationEntrySteps = () => [
           await pause(650);
         }
 
-        await waitForElement('[data-tour-id="address-violations-tab"]', {
+        const violationsTab = await waitForElement('[data-tour-id="address-violations-tab"]', {
           timeout: 6000,
         });
+
+        if (!violationsTab) {
+          navigate(`/address/${DEMO_ADDRESS_ID}`);
+          await pause(700);
+          await waitForElement('[data-tour-id="address-violations-tab"]', {
+            timeout: 6000,
+          });
+        }
       },
     },
   },
