@@ -1,17 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import NewUnit from './NewUnit';
-import { toEasternLocaleTimeString } from '../../utils';
-
-const formatStatusLabel = (status) => {
-  if (!status) return 'Pending';
-  return status
-    .toString()
-    .split(' ')
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
+import {
+  canonicalInspectionStatus,
+  formatInspectionStatusLabel,
+  inferInspectionStatusSuggestion,
+  toEasternLocaleTimeString
+} from '../../utils';
 
 const getStatusBadgeClasses = (status) => {
   const normalized = (status || '').toString().toLowerCase();
@@ -40,25 +35,13 @@ export default function Conduct() {
   const [rooms, setRooms] = useState([]); // State for rooms
   const [selectedRoomId, setSelectedRoomId] = useState(''); // State for selected room
   const [statusValue, setStatusValue] = useState('');
+  const [statusTouched, setStatusTouched] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
   const [statusError, setStatusError] = useState(null);
   const [statusSavedAt, setStatusSavedAt] = useState(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [showNewAreaForm, setShowNewAreaForm] = useState(false);
   const [potentialCount, setPotentialCount] = useState(null); // count of potential violations
-
-  const canonicalStatus = (s) => {
-    if (!s) return 'Pending';
-    const v = String(s).trim().toLowerCase();
-    if (v === 'pending') return 'Pending';
-    if (v === 'scheduled') return 'Scheduled';
-    if (v === 'in progress' || v === 'in-progress') return 'In Progress';
-    if (v === 'under review' || v === 'under-review') return 'under review';
-    if (v === 'completed') return 'Completed';
-    if (v === 'cancelled' || v === 'canceled') return 'Cancelled';
-    // Fallback to original (ensures we don't break on unexpected values)
-    return s;
-  };
 
   useEffect(() => {
     const fetchInspection = async () => {
@@ -69,7 +52,8 @@ export default function Conduct() {
         }
         const data = await response.json();
         setInspection(data);
-        setStatusValue(canonicalStatus(data.status));
+        setStatusValue(canonicalInspectionStatus(data.status));
+        setStatusTouched(false);
       } catch (error) {
         setError(error.message);
       } finally {
@@ -161,7 +145,8 @@ export default function Conduct() {
       }
       const updated = await res.json();
       setInspection(updated);
-      setStatusValue(canonicalStatus(updated.status));
+      setStatusValue(canonicalInspectionStatus(updated.status));
+      setStatusTouched(false);
       setStatusSavedAt(new Date());
       if (updated.status_message) {
         setStatusMessage(updated.status_message);
@@ -201,12 +186,44 @@ export default function Conduct() {
   );
 
   const generalAreas = areas.filter((area) => area.unit_id === null);
-  const statusDisplay = formatStatusLabel(statusValue || inspection?.status);
+  const canonicalServerStatus = canonicalInspectionStatus(inspection?.status);
+  const suggestion = useMemo(
+    () => inferInspectionStatusSuggestion({ inspection, areas, potentialCount }),
+    [inspection, areas, potentialCount]
+  );
+  const shouldAutoApplySuggestion = useMemo(() => {
+    if (!suggestion) return false;
+    if (statusTouched) return false;
+    if (!canonicalServerStatus) return true;
+    return canonicalServerStatus === 'Pending' || canonicalServerStatus === 'Scheduled';
+  }, [suggestion, statusTouched, canonicalServerStatus]);
+
+  useEffect(() => {
+    if (shouldAutoApplySuggestion && suggestion?.status) {
+      if (statusValue !== suggestion.status) {
+        setStatusValue(suggestion.status);
+      }
+    } else if (!statusTouched && !statusValue && canonicalServerStatus) {
+      if (statusValue !== canonicalServerStatus) {
+        setStatusValue(canonicalServerStatus);
+      }
+    }
+  }, [shouldAutoApplySuggestion, suggestion, statusTouched, statusValue, canonicalServerStatus]);
+
+  const statusDisplay = formatInspectionStatusLabel(
+    canonicalInspectionStatus(statusValue || inspection?.status)
+  );
   const savedAtLabel = statusSavedAt ? toEasternLocaleTimeString(statusSavedAt) : '';
   const reviewCountLabel = potentialCount === null ? '…' : potentialCount;
   const selectedRoom = rooms.find((r) => String(r.id) === String(selectedRoomId));
   const selectedRoomName = selectedRoom?.name || '';
   const canAddArea = Boolean(selectedRoomId || (newAreaName || '').trim());
+  const showSuggestedStatus = Boolean(
+    suggestion?.status &&
+      suggestion.status !== canonicalServerStatus &&
+      canonicalServerStatus !== 'Completed' &&
+      canonicalServerStatus !== 'Cancelled'
+  );
 
   const handleAddArea = async (e) => {
     e.preventDefault(); // Prevent the form from refreshing the page
@@ -312,7 +329,10 @@ export default function Conduct() {
                   id="inspection-status"
                   className="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                   value={statusValue}
-                  onChange={(e) => setStatusValue(e.target.value)}
+                  onChange={(e) => {
+                    setStatusTouched(true);
+                    setStatusValue(e.target.value);
+                  }}
                 >
                   <option value="Pending">Pending</option>
                   <option value="Scheduled">Scheduled</option>
@@ -338,6 +358,17 @@ export default function Conduct() {
             {statusMessage && !statusError && (
               <div className="mt-3 rounded-md border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
                 {statusMessage}
+              </div>
+            )}
+            {showSuggestedStatus && (
+              <div className="mt-3 rounded-md border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+                <div>
+                  Suggested status:{' '}
+                  <strong>{formatInspectionStatusLabel(suggestion.status)}</strong>
+                </div>
+                {suggestion.reason && (
+                  <div className="mt-1 text-[11px] text-indigo-600/80">{suggestion.reason}</div>
+                )}
               </div>
             )}
           </section>

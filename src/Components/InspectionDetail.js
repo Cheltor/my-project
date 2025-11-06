@@ -7,7 +7,10 @@ import {
   getAttachmentFilename,
   isImageAttachment,
   toEasternLocaleString,
-  formatPhoneNumber
+  formatPhoneNumber,
+  canonicalInspectionStatus,
+  formatInspectionStatusLabel,
+  inferInspectionStatusSuggestion
 } from '../utils';
 import FileUploadInput from './Common/FileUploadInput';
 
@@ -76,15 +79,8 @@ export default function InspectionDetail() {
   const [contactError, setContactError] = useState(null);
   const [contactSuccess, setContactSuccess] = useState('');
   const [showContactForm, setShowContactForm] = useState(false);
-  const formatStatus = (s) => {
-    if (!s) return 'Pending';
-    return s
-      .toString()
-      .split(' ')
-      .filter(Boolean)
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ');
-  };
+  const [areas, setAreas] = useState([]);
+  const [potentialCount, setPotentialCount] = useState(null);
 
   const buildContactOption = useCallback((contact) => {
     if (!contact || contact.id == null) return null;
@@ -305,6 +301,41 @@ export default function InspectionDetail() {
   }, [id, loadAttachments]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadAreas = async () => {
+      try {
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/areas`);
+        if (!resp.ok) throw new Error('Failed to load areas');
+        const data = await resp.json();
+        if (!cancelled) setAreas(Array.isArray(data) ? data : []);
+      } catch {
+        if (!cancelled) setAreas([]);
+      }
+    };
+
+    const loadPotential = async () => {
+      try {
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/potential-observations`);
+        if (!resp.ok) throw new Error('Failed to load potential observations');
+        const list = await resp.json();
+        if (!cancelled) setPotentialCount(Array.isArray(list) ? list.length : 0);
+      } catch {
+        if (!cancelled) setPotentialCount(0);
+      }
+    };
+
+    if (id) {
+      loadAreas();
+      loadPotential();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  useEffect(() => {
     if (inspection?.contact) {
       const option = buildContactOption(inspection.contact);
       setSelectedContact(option);
@@ -423,7 +454,18 @@ export default function InspectionDetail() {
   const canSaveContact = contactMode === 'existing'
     ? Boolean(selectedContact?.value)
     : Boolean((newContact.name || '').trim());
-  const statusLabel = formatStatus(inspection?.status);
+  const canonicalStatus = canonicalInspectionStatus(inspection?.status);
+  const statusLabel = formatInspectionStatusLabel(canonicalStatus);
+  const suggestion = useMemo(
+    () => inferInspectionStatusSuggestion({ inspection, areas, potentialCount }),
+    [inspection, areas, potentialCount]
+  );
+  const showSuggestedStatus = Boolean(
+    suggestion?.status &&
+      suggestion.status !== canonicalStatus &&
+      canonicalStatus !== 'Completed' &&
+      canonicalStatus !== 'Cancelled'
+  );
   const scheduledLabel = inspection?.scheduled_datetime ? toEasternLocaleString(inspection.scheduled_datetime) : 'Not scheduled';
   const assignedInspectorName = inspection?.inspector?.name || inspection?.inspector?.email || 'Unassigned';
 
@@ -447,6 +489,16 @@ export default function InspectionDetail() {
             {statusLabel}
           </span>
         </div>
+        {showSuggestedStatus && (
+          <div className="mt-4 rounded-md border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+            <div>
+              Suggested status: <strong>{formatInspectionStatusLabel(suggestion.status)}</strong>
+            </div>
+            {suggestion.reason && (
+              <div className="mt-1 text-[11px] text-indigo-600/80">{suggestion.reason}</div>
+            )}
+          </div>
+        )}
         <div className="mt-4 flex flex-wrap gap-3">
           {inspection.status === null ? (
             <Link

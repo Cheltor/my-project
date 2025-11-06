@@ -94,6 +94,82 @@ export const toEasternLocaleDateString = (value, locales, options) => {
   });
 };
 
+const STATUS_CANONICAL_MAP = {
+  pending: 'Pending',
+  scheduled: 'Scheduled',
+  'in progress': 'In Progress',
+  'in-progress': 'In Progress',
+  'under review': 'under review',
+  'under-review': 'under review',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  canceled: 'Cancelled'
+};
+
+const FINAL_STATUS_SET = new Set(['Completed', 'Cancelled']);
+
+export const canonicalInspectionStatus = (status) => {
+  if (!status) return 'Pending';
+  const normalized = status.toString().trim().toLowerCase();
+  if (!normalized) return 'Pending';
+  if (STATUS_CANONICAL_MAP[normalized]) {
+    return STATUS_CANONICAL_MAP[normalized];
+  }
+  return status;
+};
+
+export const formatInspectionStatusLabel = (status) => {
+  if (!status) return 'Pending';
+  return status
+    .toString()
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+export const inferInspectionStatusSuggestion = ({ inspection, areas, potentialCount } = {}) => {
+  const canonical = canonicalInspectionStatus(inspection?.status);
+
+  if (FINAL_STATUS_SET.has(canonical)) {
+    return null;
+  }
+
+  const hasPotentialViolations = typeof potentialCount === 'number' && potentialCount > 0;
+  const hasAreas = Array.isArray(areas) && areas.length > 0;
+  const hasScheduledDate = Boolean(inspection?.scheduled_datetime);
+
+  if (hasPotentialViolations) {
+    return {
+      status: 'under review',
+      reason: 'Potential violations have been flagged and need review.'
+    };
+  }
+
+  if (hasAreas) {
+    return {
+      status: 'In Progress',
+      reason: 'Areas have been added to this inspection.'
+    };
+  }
+
+  if (hasScheduledDate) {
+    return {
+      status: 'Scheduled',
+      reason: 'A schedule has been set for this inspection.'
+    };
+  }
+
+  if (!canonical || canonical === 'Pending') {
+    return {
+      status: 'Pending',
+      reason: 'No activity has been recorded for this inspection yet.'
+    };
+  }
+
+  return null;
+};
+
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'heic', 'heif', 'tif', 'tiff', 'svg']);
 
 const extractFilename = (value) => {
