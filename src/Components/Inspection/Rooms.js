@@ -59,84 +59,120 @@ export default function Rooms() {
     setEditingPage(false);
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (loading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center text-sm font-medium text-gray-600">
+        Loading rooms...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center text-sm font-medium text-red-600">
+        Error: {error}
+      </div>
+    );
+  }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8">
-      <div className="sm:flex sm:items-center">
-        <div className="sm:flex-auto">
-          <h1 className="text-base font-semibold leading-6 text-gray-900">Rooms</h1>
-          <p className="mt-2 text-sm text-gray-700">
-            A list of all rooms.
-          </p>
-        </div>
-        <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+    <div className="max-w-4xl mx-auto px-5 pt-6 pb-10 sm:pb-12">
+      <div className="space-y-6 rounded-2xl bg-white px-5 py-6 shadow-md ring-1 ring-gray-200/70 sm:px-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800 sm:text-3xl">Rooms</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Browse and manage the room definitions used throughout inspections.
+            </p>
+          </div>
           <button
             onClick={() => setShowNewRoomForm(!showNewRoomForm)}
-            className="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+            className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
           >
             {showNewRoomForm ? 'Cancel' : 'Add Room'}
           </button>
         </div>
-      </div>
-      {showNewRoomForm && <NewRoom onRoomAdded={fetchRooms} />} {/* Pass the callback to NewRoom */}
-      <div className="mt-4">
-        <ul className="divide-y divide-gray-200">
-          {currentRooms.map((room) => (
-            <li key={room.id} className="py-4">
-              <div className="flex items-center space-x-4">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{room.name}</p>
-                </div>
-                <div>
-                  <Link to={`/rooms/${room.id}`} className="text-indigo-600 hover:text-indigo-900">View</Link>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="mt-4">
-        <nav className="flex justify-between items-center">
-          <button
-            onClick={() => paginate(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="px-3 py-2 text-sm font-semibold text-gray-500 bg-gray-200 rounded-md hover:bg-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
-          >
-            Previous
-          </button>
-          <div className="text-sm text-gray-700">
-            {editingPage ? (
-              <div>
-                <input
-                  type="number"
-                  min={1}
-                  max={totalPages}
-                  value={pageInput}
-                  onChange={(e) => { setPageInput(e.target.value); setPageError(''); }}
-                  onBlur={applyPageInput}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') applyPageInput();
-                    if (e.key === 'Escape') setEditingPage(false);
-                  }}
-                  className={`w-20 px-2 py-1 border rounded ${pageError ? 'border-red-500' : ''}`}
-                  autoFocus
-                />
-                {pageError && <div className="text-xs text-red-600 mt-1">{pageError}</div>}
-              </div>
-            ) : (
-              <button onClick={startEditPage} className="underline">Page {currentPage} of {totalPages}</button>
-            )}
+
+        {showNewRoomForm && (
+          <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 p-4 shadow-sm">
+            <NewRoom onRoomAdded={fetchRooms} />
           </div>
-          <button
-            onClick={() => paginate(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="px-3 py-2 text-sm font-semibold text-gray-500 bg-gray-200 rounded-md hover:bg-gray-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
-          >
-            Next
-          </button>
-        </nav>
+        )}
+
+        <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 shadow-sm">
+          {currentRooms.length === 0 ? (
+            <p className="text-sm text-gray-600">No rooms found.</p>
+          ) : (
+            <ul className="space-y-3">
+              {currentRooms.map((room) => (
+                <li
+                  key={room.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm transition hover:border-indigo-200 hover:shadow"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-base font-semibold text-gray-800">{room.name}</p>
+                  </div>
+                  <Link
+                    to={`/rooms/${room.id}`}
+                    className="inline-flex items-center rounded-md border border-indigo-600 px-3 py-1.5 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-600 hover:text-white"
+                  >
+                    View details
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {totalPages > 1 && (
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:justify-between">
+            <button
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+            >
+              Previous
+            </button>
+            <div className="text-sm text-gray-700">
+              {editingPage ? (
+                <div className="flex flex-col items-center gap-1 sm:flex-row sm:gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={pageInput}
+                    onChange={(e) => {
+                      setPageInput(e.target.value);
+                      setPageError('');
+                    }}
+                    onBlur={applyPageInput}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') applyPageInput();
+                      if (e.key === 'Escape') setEditingPage(false);
+                    }}
+                    className={`w-20 rounded-md border px-2 py-1 text-center text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 ${pageError ? 'border-red-500 focus:border-red-500 focus:ring-red-300/60' : 'border-gray-300'}`}
+                    autoFocus
+                  />
+                  {pageError && <div className="text-xs font-medium text-red-600">{pageError}</div>}
+                </div>
+              ) : (
+                <button
+                  onClick={startEditPage}
+                  className="inline-flex items-center text-sm font-medium text-indigo-600 underline-offset-2 hover:text-indigo-500 hover:underline"
+                >
+                  Page {currentPage} of {totalPages}
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

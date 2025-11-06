@@ -200,7 +200,12 @@ export default function Example() {
                 ))}
               </div>
 
-              {showNewViolationForm && <NewViolationForm />}
+              {showNewViolationForm && (
+                <NewViolationForm
+                  isOpen={showNewViolationForm}
+                  onClose={() => setShowNewViolationForm(false)}
+                />
+              )}
               {showNewComplaint && <NewComplaint />}
               {showNewMFLicense && <NewMFLicense />}
               {showNewSFLicense && <NewSFLicense />}

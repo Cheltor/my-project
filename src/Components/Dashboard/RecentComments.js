@@ -163,6 +163,19 @@ const RecentComments = ({ limit = 10, className = '', startExpanded = false }) =
     setSelectedUserId(value === 'all' ? null : Number(value));
   };
 
+  const resolveUnitNumber = useCallback((comment) => {
+    if (!comment || !comment.unit) return comment?.unit_id;
+    const raw =
+      comment.unit.number
+      ?? comment.unit.unit_number
+      ?? comment.unit.unitNumber
+      ?? comment.unit.label
+      ?? comment.unit.name;
+    if (raw == null) return comment.unit_id;
+    const trimmed = String(raw).trim();
+    return trimmed ? trimmed : comment.unit_id;
+  }, []);
+
   const content = useMemo(() => {
     if (loading) {
       return <div className="text-gray-500">Loading recent comments...</div>;
@@ -189,6 +202,7 @@ const RecentComments = ({ limit = 10, className = '', startExpanded = false }) =
             const addressLabel = comment.combadd
               || (comment.address && comment.address.combadd)
               || ('Address #' + comment.address_id);
+            const unitNumber = resolveUnitNumber(comment);
 
             return (
               <li key={comment.id} className="py-4">
@@ -202,7 +216,7 @@ const RecentComments = ({ limit = 10, className = '', startExpanded = false }) =
                           </Link>
                           <span className="mx-1">•</span>
                           <Link to={unitLink} className="text-indigo-700 hover:underline">
-                            {'Unit ' + (comment.unit && comment.unit.number ? comment.unit.number : comment.unit_id)}
+                            {'Unit ' + unitNumber}
                           </Link>
                         </>
                       ) : (
@@ -257,7 +271,7 @@ const RecentComments = ({ limit = 10, className = '', startExpanded = false }) =
         )}
       </>
     );
-  }, [comments, loading, error, canLoadMore, limit]);
+  }, [comments, loading, error, canLoadMore, limit, resolveUnitNumber]);
 
   const containerClass = 'rounded-lg bg-white p-4 shadow ' + className;
 
