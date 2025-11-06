@@ -5,7 +5,24 @@ import CodeSelect from "../CodeSelect";
 import { useAuth } from "../../AuthContext";
 import FileUploadInput from "../Common/FileUploadInput";
 
-export default function NewViolationForm({ onCreated, initialAddressId, initialAddressLabel, lockAddress = false, inspectionId, selectedCodesValue, onSelectedCodesChange, initialViolationType, lockViolationType = false, initialFileUrls = [], initialFiles = [] }) {
+export default function NewViolationForm({
+  onCreated,
+  initialAddressId,
+  initialAddressLabel,
+  lockAddress = false,
+  inspectionId,
+  selectedCodesValue,
+  onSelectedCodesChange,
+  initialViolationType,
+  lockViolationType = false,
+  initialFileUrls = [],
+  initialFiles = [],
+  isOpen = true,
+  onClose,
+  renderAsModal = true,
+  title = "Add New Violation",
+  description,
+}) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -13,6 +30,13 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
     address_id: initialAddressId || ""
   });
   const [files, setFiles] = useState([]);
+  const STEPS = [
+    { key: "photos", label: "Photos" },
+    { key: "address", label: "Address" },
+    { key: "codes", label: "Codes" },
+    { key: "deadline", label: "Deadline" },
+  ];
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
   // If parent provides File objects directly, merge them into files state
   React.useEffect(() => {
@@ -119,6 +143,32 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
   // Validation UI state
   const [addressError, setAddressError] = useState('');
   const [codesError, setCodesError] = useState('');
+  const currentStep = STEPS[currentStepIndex]?.key ?? "photos";
+  const isFirstStep = currentStepIndex === 0;
+  const isLastStep = currentStepIndex === STEPS.length - 1;
+
+  const handleNext = () => {
+    if (currentStep === "address") {
+      if (!form.address_id) {
+        setAddressError('Please select an address.');
+        return;
+      }
+      setAddressError('');
+    }
+    if (currentStep === "codes") {
+      const nextCodes = selectedCodesValue ?? selectedCodes;
+      if (!nextCodes || nextCodes.length === 0) {
+        setCodesError('Please select at least one violation code.');
+        return;
+      }
+      setCodesError('');
+    }
+    setCurrentStepIndex((idx) => Math.min(idx + 1, STEPS.length - 1));
+  };
+
+  const handleBack = () => {
+    setCurrentStepIndex((idx) => Math.max(idx - 1, 0));
+  };
 
 
   // Handle code select change (multi)
@@ -162,8 +212,7 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
     if (initialViolationType) setViolationType(initialViolationType);
   }, [initialViolationType]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleFinalSubmit = async () => {
     setLoading(true);
     setError(null);
     setSuccess(false);
@@ -266,138 +315,268 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
     }
   };
 
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    if (isLastStep) {
+      handleFinalSubmit();
+    } else {
+      handleNext();
+    }
+  };
+
   // Determine selected codes source consistently (controlled vs uncontrolled)
   const effectiveSelectedCodes = selectedCodesValue ?? selectedCodes;
   const canSubmit = !!form.address_id && Array.isArray(effectiveSelectedCodes) && effectiveSelectedCodes.length > 0 && !loading;
+  const canAdvanceFromStep = (() => {
+    if (currentStep === "address") return !!form.address_id;
+    if (currentStep === "codes") return Array.isArray(effectiveSelectedCodes) && effectiveSelectedCodes.length > 0;
+    return true;
+  })();
 
-  return (
-    <div className="p-4 bg-white rounded shadow mt-4">
-      <h2 className="text-lg font-bold mb-2">Add New Violation</h2>
-      <form onSubmit={handleSubmit} className="space-y-2">
-        {/* Address Search */}
+  const headingId = React.useMemo(() => `new-violation-form-title-${Math.random().toString(36).slice(2, 8)}`, []);
+  const descriptionId = description ? `${headingId}-description` : undefined;
+
+  const card = (
+    <div
+      className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-xl"
+      role={renderAsModal ? "dialog" : undefined}
+      aria-modal={renderAsModal ? "true" : undefined}
+      aria-labelledby={renderAsModal ? headingId : undefined}
+      aria-describedby={renderAsModal && description ? descriptionId : undefined}
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="nvf-address">
-            Address <span className="text-red-600" aria-hidden> *</span>
-          </label>
-          <div className={`${addressError ? 'border border-red-500 rounded' : ''} mb-2`} aria-invalid={!!addressError} aria-describedby={addressError ? 'nvf-address-error' : undefined}> 
-            <AsyncSelect
-              cacheOptions
-              defaultOptions
-              loadOptions={loadAddressOptions}
-              onChange={handleAddressChange}
-              inputId="nvf-address"
-              value={form.address_id ? { value: form.address_id, label: addressLabel } : null}
-              placeholder="Type to search addresses..."
-              isClearable
-              isDisabled={!!lockAddress}
-              className="mb-0"
-            />
-          </div>
-          <div className="text-xs text-gray-500">This field is required.</div>
-          {addressError && <div id="nvf-address-error" className="text-xs text-red-600 mt-1">{addressError}</div>}
-        </div>
-        {/* Assignee (Admin only) */}
-  {user?.role === 3 && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Assign to ONS member</label>
-            <select
-              className="w-full border border-gray-300 rounded px-2 py-1"
-              value={assigneeId}
-              onChange={e => setAssigneeId(e.target.value)}
-            >
-              <option value="">Unassigned (defaults to me)</option>
-              {onsUsers.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name || u.email}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-        {/* Violation Type Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Violation Type</label>
-          {lockViolationType ? (
-            <div className="w-full border border-gray-200 rounded px-2 py-1 bg-gray-50 text-gray-700">{
-              (VIOLATION_TYPE_OPTIONS.find(o => o.value === violationType) || { label: violationType }).label
-            }</div>
-          ) : (
-            <select
-              className="w-full border border-gray-300 rounded px-2 py-1"
-              value={violationType}
-              onChange={e => setViolationType(e.target.value)}
-            >
-              {VIOLATION_TYPE_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
+          <h2 id={headingId} className="text-lg font-semibold text-slate-900">{title}</h2>
+          {description && (
+            <p id={descriptionId} className="mt-1 text-sm text-slate-600">
+              {description}
+            </p>
           )}
         </div>
-        {/* Violation Code Selection (multi) */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="nvf-codes">
-            Violation Codes <span className="text-red-600" aria-hidden> *</span>
-          </label>
-          <div className={`${codesError ? 'border border-red-500 rounded p-1' : ''}`} aria-invalid={!!codesError} aria-describedby={codesError ? 'nvf-codes-error' : undefined}>
-            <CodeSelect
-              onChange={handleCodeChange}
-              inputId="nvf-codes"
-              value={effectiveSelectedCodes}
-              isMulti={true}
-            />
-          </div>
-          <div className="text-xs text-gray-500">Select one or more codes.</div>
-          {codesError && <div id="nvf-codes-error" className="text-xs text-red-600 mt-1">{codesError}</div>}
-        </div>
-        {/* Show selected code descriptions (truncated) */}
-        {Array.isArray(effectiveSelectedCodes) && effectiveSelectedCodes.length > 0 && (
-          <div className="mb-2">
-            <label className="block text-xs font-medium text-gray-500">Descriptions:</label>
-            <ul className="list-disc ml-5 text-xs text-gray-700">
-              {effectiveSelectedCodes.map((opt) => (
-                <li key={opt.value} title={opt.code.description}>
-                  {opt.code.description.length > 80 ? opt.code.description.slice(0, 80) + '...' : opt.code.description}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {/* Violation Deadline Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
-          <select
-            className="w-full border border-gray-300 rounded px-2 py-1"
-            value={deadline}
-            onChange={e => setDeadline(e.target.value)}
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700"
           >
-            {DEADLINE_OPTIONS.map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
+            <span className="sr-only">Close</span>
+            ×
+          </button>
+        )}
+      </div>
+      <div className="px-6 py-5">
+        <div className="mb-4 flex items-center justify-between text-xs font-medium text-gray-500">
+          {STEPS.map((step, index) => {
+            const isActive = index === currentStepIndex;
+            const isComplete = index < currentStepIndex;
+            return (
+              <div key={step.key} className={`flex-1 text-center px-1 ${isActive ? 'text-blue-600' : ''}`}>
+                <div className={`mx-auto flex h-8 w-8 items-center justify-center rounded-full border ${isActive ? 'border-blue-600 bg-blue-50 text-blue-600' : isComplete ? 'border-green-500 bg-green-50 text-green-600' : 'border-gray-300 bg-white text-gray-500'}`}>
+                  {index + 1}
+                </div>
+                <div className="mt-1 uppercase tracking-wide">{step.label}</div>
+              </div>
+            );
+          })}
         </div>
-        {/* Attachments */}
-        <div className="mb-4">
-          <FileUploadInput
-            label="Attachments"
-            name="attachments"
-            files={files}
-            onChange={setFiles}
-            accept="image/*,application/pdf"
-            disabled={loading}
-          />
-        </div>
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded disabled:opacity-50"
-          disabled={!canSubmit}
-          aria-disabled={!canSubmit}
-          aria-describedby={!form.address_id ? 'nvf-address' : undefined}
-        >
-          {loading ? "Adding..." : "Add Violation"}
-        </button>
-        {error && <div className="text-red-500">{error}</div>}
-        {success && <div className="text-green-600">Violation created!</div>}
-      </form>
+        <form onSubmit={handleFormSubmit} className="space-y-4">
+          {currentStep === "photos" && (
+            <div>
+              <FileUploadInput
+                label="Attachments"
+                name="attachments"
+                files={files}
+                onChange={setFiles}
+                accept="image/*,application/pdf"
+                disabled={loading}
+              />
+              <div className="mt-1 text-xs text-gray-500">
+                Add inspection photos now or continue to the next step.
+              </div>
+            </div>
+          )}
+
+          {currentStep === "address" && (
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="nvf-address">
+                  Address <span className="text-red-600" aria-hidden> *</span>
+                </label>
+                <div className={`${addressError ? 'rounded border border-red-500' : ''} mb-2`} aria-invalid={!!addressError} aria-describedby={addressError ? 'nvf-address-error' : undefined}>
+                  <AsyncSelect
+                    cacheOptions
+                    defaultOptions
+                    loadOptions={loadAddressOptions}
+                    onChange={handleAddressChange}
+                    inputId="nvf-address"
+                    value={form.address_id ? { value: form.address_id, label: addressLabel } : null}
+                    placeholder="Type to search addresses..."
+                    isClearable
+                    isDisabled={!!lockAddress}
+                    className="mb-0"
+                  />
+                </div>
+                <div className="text-xs text-gray-500">This field is required.</div>
+                {addressError && <div id="nvf-address-error" className="mt-1 text-xs text-red-600">{addressError}</div>}
+              </div>
+              {user?.role === 3 && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Assign to ONS member</label>
+                  <select
+                    className="w-full rounded border border-gray-300 px-2 py-1"
+                    value={assigneeId}
+                    onChange={e => setAssigneeId(e.target.value)}
+                  >
+                    <option value="">Unassigned (defaults to me)</option>
+                    {onsUsers.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name || u.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
+          {currentStep === "codes" && (
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Violation Type</label>
+                {lockViolationType ? (
+                  <div className="w-full rounded border border-gray-200 bg-gray-50 px-2 py-1 text-gray-700">
+                    {(VIOLATION_TYPE_OPTIONS.find(o => o.value === violationType) || { label: violationType }).label}
+                  </div>
+                ) : (
+                  <select
+                    className="w-full rounded border border-gray-300 px-2 py-1"
+                    value={violationType}
+                    onChange={e => setViolationType(e.target.value)}
+                  >
+                    {VIOLATION_TYPE_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="nvf-codes">
+                  Violation Codes <span className="text-red-600" aria-hidden> *</span>
+                </label>
+                <div className={`${codesError ? 'rounded border border-red-500 p-1' : ''}`} aria-invalid={!!codesError} aria-describedby={codesError ? 'nvf-codes-error' : undefined}>
+                  <CodeSelect
+                    onChange={handleCodeChange}
+                    inputId="nvf-codes"
+                    value={effectiveSelectedCodes}
+                    isMulti={true}
+                  />
+                </div>
+                <div className="text-xs text-gray-500">Select one or more codes.</div>
+                {codesError && <div id="nvf-codes-error" className="mt-1 text-xs text-red-600">{codesError}</div>}
+              </div>
+              {Array.isArray(effectiveSelectedCodes) && effectiveSelectedCodes.length > 0 && (
+                <div className="mb-2">
+                  <label className="block text-xs font-medium text-gray-500">Descriptions:</label>
+                  <ul className="ml-5 list-disc text-xs text-gray-700">
+                    {effectiveSelectedCodes.map((opt) => (
+                      <li key={opt.value} title={opt.code.description}>
+                        {opt.code.description.length > 80 ? opt.code.description.slice(0, 80) + '...' : opt.code.description}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {currentStep === "deadline" && (
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Deadline</label>
+                <select
+                  className="w-full rounded border border-gray-300 px-2 py-1"
+                  value={deadline}
+                  onChange={e => setDeadline(e.target.value)}
+                >
+                  {DEADLINE_OPTIONS.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1 rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+                <div className="font-semibold text-gray-800">Review</div>
+                <div><span className="font-medium">Address:</span> {addressLabel || 'Not selected'}</div>
+                <div><span className="font-medium">Violation type:</span> {(VIOLATION_TYPE_OPTIONS.find(o => o.value === violationType) || { label: violationType }).label}</div>
+                <div><span className="font-medium">Codes selected:</span> {effectiveSelectedCodes.length}</div>
+                <div><span className="font-medium">Photos attached:</span> {files.length}</div>
+                {user?.role === 3 && (
+                  <div><span className="font-medium">Assignee:</span> {assigneeId ? (onsUsers.find(u => String(u.id) === String(assigneeId))?.name || onsUsers.find(u => String(u.id) === String(assigneeId))?.email || 'Selected user') : 'Defaults to me'}</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {error && <div className="text-red-500">{error}</div>}
+          {success && <div className="text-green-600">Violation created!</div>}
+
+          <div className="flex items-center justify-between pt-2">
+            {!isFirstStep && (
+              <button
+                type="button"
+                onClick={handleBack}
+                className="rounded border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+                disabled={loading}
+              >
+                Back
+              </button>
+            )}
+            <div className="ml-auto flex gap-2">
+              {!isLastStep && (
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
+                  disabled={!canAdvanceFromStep || loading}
+                >
+                  Next
+                </button>
+              )}
+              {isLastStep && (
+                <button
+                  type="submit"
+                  className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
+                  disabled={!canSubmit}
+                >
+                  {loading ? "Adding..." : "Submit Violation"}
+                </button>
+              )}
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
+  if (!renderAsModal) {
+    return card;
+  }
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const handleBackdropClick = () => {
+    if (onClose) onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/70 px-4 py-8 sm:py-12">
+      <div
+        className="absolute inset-0"
+        aria-hidden="true"
+        onClick={handleBackdropClick}
+      />
+      <div className="relative z-10 flex w-full justify-center">{card}</div>
     </div>
   );
 }

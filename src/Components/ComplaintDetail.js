@@ -1072,38 +1072,24 @@ const ComplaintDetail = () => {
       )}
 
       {showViolationPrompt && complaint?.address && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4 py-6">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900">Add a Violation for this Address?</h3>
-                <p className="mt-2 text-sm text-slate-600">
-                  You marked this complaint as “Violation Found”. Create a new violation for
-                  <span className="font-semibold"> {complaint.address.combadd}</span>?
-                </p>
-              </div>
-              <button
-                type="button"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700"
-                onClick={() => setShowViolationPrompt(false)}
-              >
-                <span className="sr-only">Close</span>
-                ×
-              </button>
-            </div>
-            <div className="mt-6">
-              <NewViolationForm
-                initialAddressId={complaint.address.id}
-                initialAddressLabel={complaint.address.combadd}
-                lockAddress
-                onCreated={(violation) => {
-                  setShowViolationPrompt(false);
-                  if (violation?.id) navigate(`/violation/${violation.id}`);
-                }}
-              />
-            </div>
-          </div>
-        </div>
+        <NewViolationForm
+          isOpen={showViolationPrompt}
+          onClose={() => setShowViolationPrompt(false)}
+          initialAddressId={complaint.address.id}
+          initialAddressLabel={complaint.address.combadd}
+          lockAddress
+          title="Add a Violation for this Address?"
+          description={(
+            <span>
+              You marked this complaint as “Violation Found”. Create a new violation for
+              <span className="font-semibold"> {complaint.address.combadd}</span>?
+            </span>
+          )}
+          onCreated={(violation) => {
+            setShowViolationPrompt(false);
+            if (violation?.id) navigate(`/violation/${violation.id}`);
+          }}
+        />
       )}
     </div>
   );
