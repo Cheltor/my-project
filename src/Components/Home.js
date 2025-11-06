@@ -13,6 +13,7 @@ import NewSFLicense from './Inspection/NewSFLicense';
 import NewBuildingPermit from './Inspection/NewBuildingPermit';
 import NewBusinessLicense from './Inspection/NewBusinessLicense';
 import { useAuth } from '../AuthContext';
+import { dispatchTourAdvance } from '../tours/events';
 
 export default function Example() {
   const { user } = useAuth();
@@ -62,6 +63,8 @@ export default function Example() {
       setShowNewBuildingPermit(false);
       setShowNewBusinessLicense(false);
       setShowNewViolationForm(true);
+      dispatchTourAdvance('quick-actions-opened');
+      dispatchTourAdvance('quick-violation-opened');
     };
 
     window.addEventListener('app:open-new-violation-tour', handleOpenNewViolationTour);
@@ -76,6 +79,8 @@ export default function Example() {
         window.sessionStorage.removeItem('app:tour-open-quick-action');
         setShowQuickActions(true);
         setShowNewViolationForm(true);
+        dispatchTourAdvance('quick-actions-opened');
+        dispatchTourAdvance('quick-violation-opened');
       }
     } catch (err) {
       // ignore storage access issues
@@ -137,7 +142,11 @@ export default function Example() {
   };
 
   const toggleNewViolationForm = () => {
-    setShowNewViolationForm(!showNewViolationForm);
+    const next = !showNewViolationForm;
+    setShowNewViolationForm(next);
+    if (next) {
+      dispatchTourAdvance('quick-violation-opened');
+    }
     if (showNewComplaint) setShowNewComplaint(false);
     if (showNewMFLicense) setShowNewMFLicense(false);
     if (showNewSFLicense) setShowNewSFLicense(false);
@@ -151,10 +160,14 @@ export default function Example() {
 
   const toggleQuickActions = () => {
     setShowQuickActions((prev) => {
+      const next = !prev;
       if (prev) {
         closeAllForms();
       }
-      return !prev;
+      if (next) {
+        dispatchTourAdvance('quick-actions-opened');
+      }
+      return next;
     });
   };
 

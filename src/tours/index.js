@@ -29,6 +29,7 @@ const violationEntrySteps = [
     ),
     position: 'bottom',
     spotlightPadding: 12,
+    meta: { advanceOn: 'address-selected' },
   },
   {
     selector: '[data-tour-id="address-violations-tab"]',
@@ -37,6 +38,7 @@ const violationEntrySteps = [
       'Inside the address workspace, open the Violations card to launch the detailed modal for this property.',
     ),
     spotlightPadding: 12,
+    meta: { advanceOn: 'violations-tab-opened' },
   },
   {
     selector: '[data-tour-id="address-new-violation-button"]',
@@ -45,6 +47,7 @@ const violationEntrySteps = [
       'Use the New Violation button to reveal the form. Keep the modal open while you work through the fields.',
     ),
     spotlightPadding: 12,
+    meta: { advanceOn: 'address-new-violation-opened' },
   },
   {
     selector: '[data-tour-id="address-violation-type"]',
@@ -95,6 +98,7 @@ const violationEntrySteps = [
       'You can also add violations without opening an address first. Navigate back to the Dashboard to see the quick action panel.',
     ),
     position: 'right',
+    meta: { advanceOn: 'nav-dashboard-clicked' },
   },
   {
     selector: '[data-tour-id="home-quick-actions-toggle"]',
@@ -103,6 +107,7 @@ const violationEntrySteps = [
       'Use the quick actions toggle to reveal shortcuts for common forms, including the violation form.',
     ),
     position: 'left',
+    meta: { advanceOn: 'quick-actions-opened' },
   },
   {
     selector: '[data-tour-id="home-new-violation-quick-action"]',
@@ -112,6 +117,7 @@ const violationEntrySteps = [
     ),
     position: 'bottom',
     spotlightPadding: 12,
+    meta: { advanceOn: 'quick-violation-opened' },
   },
   {
     selector: '[data-tour-id="new-violation-address"]',

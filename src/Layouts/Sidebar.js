@@ -27,6 +27,7 @@ import Logout from '../Components/Logout'; // Import the Logout component
 import { useAuth } from '../AuthContext'; // Import useAuth hook
 import { apiFetch } from '../api';
 import { toEasternLocaleString } from '../utils';
+import { dispatchTourAdvance } from '../tours/events';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon, current: false, tourId: 'nav-dashboard' },
@@ -251,6 +252,7 @@ export default function Sidebar({ children }) {
     setSearchQuery(''); // Clear the search bar
     setFilteredAddresses([]); // Clear filtered results
     setShowDropdown(false); // Hide dropdown
+    dispatchTourAdvance('address-selected');
     navigate(`/address/${address.id}`); // Navigate to the address details page
   };
 
@@ -370,7 +372,12 @@ export default function Sidebar({ children }) {
                           <li key={item.name}>
                             <Link
                               to={item.href}
-                              onClick={() => setSidebarOpen(false)} // Close sidebar on click
+                              onClick={() => {
+                                setSidebarOpen(false); // Close sidebar on click
+                                if (item.tourId === 'nav-dashboard') {
+                                  dispatchTourAdvance('nav-dashboard-clicked');
+                                }
+                              }}
                               className={classNames(
                                 item.current
                                   ? 'bg-gray-800 text-white'
@@ -427,7 +434,12 @@ export default function Sidebar({ children }) {
     <li key={item.name}>
       <Link
         to={item.href}
-        onClick={() => setSidebarOpen(false)} // Close sidebar on click
+        onClick={() => {
+          setSidebarOpen(false); // Close sidebar on click
+          if (item.tourId === 'nav-dashboard') {
+            dispatchTourAdvance('nav-dashboard-clicked');
+          }
+        }}
         className={classNames(
           item.current
             ? 'bg-gray-800 text-white'

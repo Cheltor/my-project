@@ -61,6 +61,7 @@ import ResidentConcern from './Components/ResidentConcern';
 import LandingPage from './Components/LandingPage';
 import ForgotPassword from './Components/ForgotPassword';
 import ResetPassword from './Components/ResetPassword';
+import TourAutoAdvanceListener from './tours/AutoAdvanceListener';
 
 function App() {
   return (
@@ -197,6 +198,7 @@ function MainApp() {
       scrollSmooth
     >
       <>
+        <TourAutoAdvanceListener />
         {showUpdateNotice && (
           <div className="sw-update-notice" role="status" aria-live="assertive">
             Refreshing to apply updates...

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../AuthContext';
 import CodeSelect from '../CodeSelect';
 import FileUploadInput from '../Common/FileUploadInput';
+import { dispatchTourAdvance } from '../../tours/events';
 
 const DEADLINE_OPTIONS = [
   'Immediate',
@@ -39,6 +40,8 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
       const next = !prev;
       if (!next) {
         setFiles([]);
+      } else {
+        dispatchTourAdvance('address-new-violation-opened');
       }
       return next;
     });

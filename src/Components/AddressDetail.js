@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { formatPhoneNumber, toEasternLocaleDateString, toEasternLocaleString } from '../utils';
+import { dispatchTourAdvance } from '../tours/events';
 import AddressPhotos from './Address/AddressPhotos'; // Update the import statement
 import Citations from './Address/AddressCitations';
 import Violations from './Address/AddressViolations';
@@ -1140,6 +1141,9 @@ const AddressDetails = () => {
     if (!nextTab) return;
     setActiveTab(nextTab);
     setModalTab(nextTab);
+    if (nextTab === 'violations') {
+      dispatchTourAdvance('violations-tab-opened');
+    }
   };
 
   const closeModal = () => {
