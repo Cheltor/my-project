@@ -321,6 +321,8 @@ const TourInteractionCurtain = ({ children }) => {
       '.reactour__close',
       '.reactour__badge',
       '.reactour__dot',
+      '.reactour__footer',
+      '.reactour__header',
       '.app-tour [role="dialog"][aria-modal="true"]',
       '.app-tour [data-tour-allow-interaction="true"]',
       '[class*="reactour__"]',
@@ -328,18 +330,15 @@ const TourInteractionCurtain = ({ children }) => {
     ];
 
     const isAllowedTarget = (target) => {
-      if (typeof Node !== 'function' || !(target instanceof Node)) {
+      if (typeof Element === 'undefined' || !(target instanceof Element)) {
         return false;
       }
 
-      if (target.closest && (target.closest('.reactour__mask') || target.closest('[data-tour-elem="mask"]'))) {
+      if (target.closest('.reactour__mask, [data-tour-elem="mask"]')) {
         return false;
       }
 
-      return interactiveSelectors.some((selector) => {
-        const nodes = document.querySelectorAll(selector);
-        return Array.from(nodes).some((node) => node.contains(target));
-      });
+      return interactiveSelectors.some((selector) => target.closest(selector));
     };
 
     const intercept = (event) => {
@@ -386,13 +385,9 @@ const TourInteractionCurtain = ({ children }) => {
   return (
     <div className="relative">
       {isOpen && (
-        <div
-          aria-hidden="true"
-          className="fixed inset-0 z-[9997]"
-          style={{ pointerEvents: 'auto' }}
-        />
+        <div aria-hidden="true" className="fixed inset-0 z-[9997]" />
       )}
-      <div style={isOpen ? { pointerEvents: 'none' } : undefined}>{children}</div>
+      <div>{children}</div>
     </div>
   );
 };
