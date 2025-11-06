@@ -57,6 +57,17 @@ const StepScriptRunner = () => {
   const stepsIdentityRef = useRef(steps);
 
   useEffect(() => {
+    if (!isOpen || typeof document === 'undefined') {
+      return;
+    }
+
+    const { activeElement } = document;
+    if (activeElement && typeof activeElement.blur === 'function') {
+      activeElement.blur();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     if (stepsIdentityRef.current !== steps) {
       executedStepsRef.current.clear();
       lastStepRef.current = -1;

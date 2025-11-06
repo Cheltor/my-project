@@ -5,7 +5,7 @@ import { apiFetch } from './api';
 import { AuthProvider, useAuth } from './AuthContext';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react'; // added import
-import { TourProvider } from '@reactour/tour';
+import { TourProvider, useTour } from '@reactour/tour';
 import './App.css';
 import Sidebar from './Layouts/Sidebar';  // Adjust path based on your project structure
 import Home from './Components/Home';
@@ -197,6 +197,9 @@ function MainApp() {
       styles={tourStyles}
       padding={12}
       scrollSmooth
+      disableInteraction
+      closeWithMask={false}
+      disableKeyboardNavigation={['left', 'right']}
     >
       <>
         <TourAutoAdvanceListener />
@@ -207,11 +210,12 @@ function MainApp() {
         )}
         <Router>
           <TourStepScriptRunner />
-          {user ? (
-            <>
-              {chatEnabled && <ChatWidget />}
-              <Sidebar>
-                <Routes>
+          <TourInteractionCurtain>
+            {user ? (
+              <>
+                {chatEnabled && <ChatWidget />}
+                <Sidebar>
+                  <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/about" element={<About />} />
                 <Route path="/due-list" element={<DueList />} />
@@ -280,25 +284,37 @@ function MainApp() {
                 <Route path="/reset-password" element={<ResetPassword />} />
                 {/* Add more routes as needed */}
               </Routes>
-            </Sidebar>
-          </>
-          ) : (
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/resident-concern" element={<ResidentConcern />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="*" element={<LandingPage />} />
-              {/* Redirect any other route to landing if not authenticated */}
-            </Routes>
-          )}
+              </Sidebar>
+              </>
+            ) : (
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/resident-concern" element={<ResidentConcern />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="*" element={<LandingPage />} />
+                {/* Redirect any other route to landing if not authenticated */}
+              </Routes>
+            )}
+          </TourInteractionCurtain>
           <Analytics /> {/* render here so it's always mounted while Router is active */}
         </Router>
       </>
     </TourProvider>
   );
 }
+
+const TourInteractionCurtain = ({ children }) => {
+  const { isOpen } = useTour();
+
+  const interactionStyle = React.useMemo(() => {
+    if (!isOpen) return undefined;
+    return { pointerEvents: 'none' };
+  }, [isOpen]);
+
+  return <div style={interactionStyle}>{children}</div>;
+};
 
 export default App;
 

@@ -46,12 +46,11 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="address-search-results"]',
     content: createStepContent(
       'Open the address workspace',
-      'Pick the “Town Hall – 5008 Queensbury Road” result from the dropdown. Click that option yourself to keep the walkthrough in sync as the address page opens with tabs for contacts, inspections, and more.',
+      'Watch the tour select the “Town Hall – 5008 Queensbury Road” result and open the address workspace so you can review every step in context.',
     ),
     position: 'bottom',
     spotlightPadding: 12,
     meta: {
-      advanceOn: 'address-selected',
       script: async ({ navigate, wait: pause, waitForElement, queryAll }) => {
         if (typeof document === 'undefined') {
           navigate(`/address/${DEMO_ADDRESS_ID}`);
@@ -85,6 +84,17 @@ const violationEntrySteps = () => [
           } else {
             await pause(250);
           }
+
+          const eventOptions = {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+          };
+
+          target.dispatchEvent(new MouseEvent('mousedown', eventOptions));
+          target.dispatchEvent(new MouseEvent('mouseup', eventOptions));
+          target.dispatchEvent(new MouseEvent('click', eventOptions));
+          await pause(650);
         }
 
         await waitForElement('[data-tour-id="address-violations-tab"]', {
@@ -97,7 +107,7 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="address-violations-tab"]',
     content: createStepContent(
       'Navigate to Violations',
-      'Inside the address workspace, open the Violations card to launch the detailed modal for this property.',
+      'The tour opens the Violations card so you can preview the property workspace layout before we start the form.',
     ),
     spotlightPadding: 12,
     meta: {
@@ -133,7 +143,7 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="address-new-violation-button"]',
     content: createStepContent(
       'Start a new notice',
-      'Use the New Violation button to reveal the form. Keep the modal open while you work through the fields.',
+      'The walkthrough reveals the New Violation form and keeps it open while we review each field.',
     ),
     spotlightPadding: 12,
     meta: {
@@ -169,7 +179,7 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="address-violation-type"]',
     content: createStepContent(
       'Choose the notice type',
-      'Select the template that matches how you are delivering the violation (Doorhanger or Formal Notice).',
+      'We will use the Formal Notice template for this example so you can see the full workflow.',
     ),
     position: 'bottom',
     meta: {
@@ -191,7 +201,7 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="address-violation-codes"]',
     content: createStepContent(
       'Add violation codes',
-      'Search and add one or more codes. These drive the language on the notice and the follow-up schedule.',
+      'This field is where you would search and add one or more codes to drive the notice language and follow-up schedule.',
     ),
     position: 'right',
     spotlightPadding: 12,
@@ -200,7 +210,7 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="address-violation-deadline"]',
     content: createStepContent(
       'Set the compliance deadline',
-      'Pick the deadline that inspectors should enforce. Adjusting this updates reminders and reporting.',
+      'The example sets a seven-day compliance window, which you can adjust in real scenarios.',
     ),
     position: 'bottom',
     meta: {
@@ -222,7 +232,7 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="address-violation-attachments"]',
     content: createStepContent(
       'Attach documentation',
-      'Drop photos or PDFs that support the violation. These stay with the record for future inspections.',
+      'This panel accepts photos or PDFs that support the violation. They stay with the record for future inspections.',
     ),
     position: 'top',
   },
@@ -230,7 +240,7 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="address-violation-submit"]',
     content: createStepContent(
       'Submit the violation',
-      'When all required fields are complete, submit to log the violation on this property.',
+      'When all required fields are complete outside of the tour, you would submit to log the violation on this property.',
     ),
     position: 'top',
     spotlightPadding: 12,
@@ -239,7 +249,7 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="nav-dashboard"]',
     content: createStepContent(
       'Return to the dashboard',
-      'You can also add violations without opening an address first. Navigate back to the Dashboard to see the quick action panel.',
+      'You can also add violations without opening an address first. The tour returns to the Dashboard so you can see the quick action panel.',
     ),
     position: 'right',
     meta: {
@@ -253,7 +263,7 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="home-quick-actions-toggle"]',
     content: createStepContent(
       'Open quick actions',
-      'Use the quick actions toggle to reveal shortcuts for common forms, including the violation form.',
+      'The tour opens quick actions so you can see the shortcuts for common forms, including the violation form.',
     ),
     position: 'left',
     meta: {
@@ -287,7 +297,7 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="home-new-violation-quick-action"]',
     content: createStepContent(
       'Launch the quick violation form',
-      'The dashboard shortcut opens the same form without leaving your current context. It is ideal for back-to-back notices.',
+      'The dashboard shortcut opens the same form without leaving your current context. It is ideal for back-to-back notices, and the tour opens it automatically.',
     ),
     position: 'bottom',
     spotlightPadding: 12,
@@ -325,7 +335,7 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="new-violation-address"]',
     content: createStepContent(
       'Select the address',
-      'Search for the property again from the quick form. The system keeps the violation linked to the correct address.',
+      'The tour fills in the sample address (ID 1143) so the record stays linked without manual input.',
     ),
     position: 'bottom',
     meta: {
@@ -342,7 +352,7 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="new-violation-type"]',
     content: createStepContent(
       'Set the notice type',
-      'Pick the same notice type options here. The quick form mirrors the fields from the address modal.',
+      'The quick form mirrors the address modal, and we will pick the same notice type automatically.',
     ),
     position: 'bottom',
     meta: {
@@ -373,7 +383,7 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="new-violation-deadline"]',
     content: createStepContent(
       'Confirm the deadline',
-      'Match the compliance deadline to the notice type. Adjust it if the situation requires a shorter window.',
+      'We keep the same compliance deadline here so both entry points stay consistent.',
     ),
     position: 'bottom',
     meta: {
@@ -395,7 +405,7 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="new-violation-attachments"]',
     content: createStepContent(
       'Attach supporting files',
-      'Upload photos or other documents directly from the dashboard if you already have them.',
+      'This quick form field also accepts uploads, letting you add photos or documents without leaving the dashboard.',
     ),
     position: 'top',
   },
@@ -403,7 +413,7 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="new-violation-submit"]',
     content: createStepContent(
       'Submit from anywhere',
-      'Save the violation to route it to inspectors. The quick form and address modal both create the same record.',
+      'Outside of the tour you would save the violation to route it to inspectors. The quick form and address modal both create the same record.',
       <p className="text-xs font-medium uppercase tracking-wide text-indigo-200">All done! You can rerun this tour anytime from the Help page.</p>
     ),
     position: 'top',
