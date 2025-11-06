@@ -62,6 +62,7 @@ import LandingPage from './Components/LandingPage';
 import ForgotPassword from './Components/ForgotPassword';
 import ResetPassword from './Components/ResetPassword';
 import TourAutoAdvanceListener from './tours/AutoAdvanceListener';
+import TourStepScriptRunner from './tours/StepScriptRunner';
 
 function App() {
   return (
@@ -205,6 +206,7 @@ function MainApp() {
           </div>
         )}
         <Router>
+          <TourStepScriptRunner />
           {user ? (
             <>
               {chatEnabled && <ChatWidget />}

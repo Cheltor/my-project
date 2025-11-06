@@ -1,6 +1,7 @@
 import React from 'react';
 
-const wait = (ms = 350) => new Promise((resolve) => window.setTimeout(resolve, ms));
+const wait = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms));
+const DEMO_ADDRESS_ID = '1143';
 
 const createStepContent = (title, description, footer) => (
   <div className="space-y-2 text-slate-100">
@@ -10,7 +11,7 @@ const createStepContent = (title, description, footer) => (
   </div>
 );
 
-const violationEntrySteps = [
+const violationEntrySteps = () => [
   {
     selector: '[data-tour-id="address-search-input"]',
     content: createStepContent(
@@ -20,6 +21,25 @@ const violationEntrySteps = [
     ),
     position: 'bottom',
     spotlightPadding: 10,
+    meta: {
+      script: async ({ location, navigate, wait: pause, typeIntoInput, waitForElement }) => {
+        if (typeof window === 'undefined') return;
+
+        if (!location || location.pathname !== '/') {
+          navigate('/', { replace: false });
+          await pause(700);
+        }
+
+        await pause(250);
+        await typeIntoInput('[data-tour-id="address-search-input"]', DEMO_ADDRESS_ID, {
+          timeout: 5000,
+        });
+
+        await waitForElement('[data-tour-id="address-search-results"]', {
+          timeout: 5000,
+        });
+      },
+    },
   },
   {
     selector: '[data-tour-id="address-search-results"]',
@@ -29,7 +49,45 @@ const violationEntrySteps = [
     ),
     position: 'bottom',
     spotlightPadding: 12,
-    meta: { advanceOn: 'address-selected' },
+    meta: {
+      script: async ({ navigate, wait: pause, waitForElement, queryAll }) => {
+        if (typeof document === 'undefined') {
+          navigate(`/address/${DEMO_ADDRESS_ID}`);
+          await pause(650);
+          return;
+        }
+
+        const candidate = await waitForElement('[data-tour-id="address-search-results"] li', {
+          timeout: 5000,
+          interval: 150,
+        });
+
+        if (!candidate) {
+          navigate(`/address/${DEMO_ADDRESS_ID}`);
+          await pause(650);
+          return;
+        }
+
+        const items = queryAll('[data-tour-id="address-search-results"] li');
+        const match = items.find((el) => el.textContent && el.textContent.includes(DEMO_ADDRESS_ID));
+        const target = match || candidate;
+
+        if (target) {
+          target.dispatchEvent(
+            new MouseEvent('mousedown', {
+              bubbles: true,
+              cancelable: true,
+              view: window,
+            }),
+          );
+          await pause(650);
+        }
+
+        await waitForElement('[data-tour-id="address-violations-tab"]', {
+          timeout: 6000,
+        });
+      },
+    },
   },
   {
     selector: '[data-tour-id="address-violations-tab"]',
@@ -38,7 +96,30 @@ const violationEntrySteps = [
       'Inside the address workspace, open the Violations card to launch the detailed modal for this property.',
     ),
     spotlightPadding: 12,
-    meta: { advanceOn: 'violations-tab-opened' },
+    meta: {
+      script: async ({ wait: pause, waitForElement }) => {
+        if (typeof document === 'undefined') return;
+
+        const tab = await waitForElement('[data-tour-id="address-violations-tab"]', {
+          timeout: 6000,
+        });
+
+        if (tab && tab.getAttribute('aria-pressed') !== 'true') {
+          tab.dispatchEvent(
+            new MouseEvent('click', {
+              bubbles: true,
+              cancelable: true,
+              view: window,
+            }),
+          );
+          await pause(450);
+        }
+
+        await waitForElement('[data-tour-id="address-new-violation-button"]', {
+          timeout: 6000,
+        });
+      },
+    },
   },
   {
     selector: '[data-tour-id="address-new-violation-button"]',
@@ -47,7 +128,30 @@ const violationEntrySteps = [
       'Use the New Violation button to reveal the form. Keep the modal open while you work through the fields.',
     ),
     spotlightPadding: 12,
-    meta: { advanceOn: 'address-new-violation-opened' },
+    meta: {
+      script: async ({ wait: pause, waitForElement }) => {
+        if (typeof document === 'undefined') return;
+
+        const toggle = await waitForElement('[data-tour-id="address-new-violation-button"]', {
+          timeout: 5000,
+        });
+
+        if (toggle && toggle.getAttribute('aria-expanded') !== 'true') {
+          toggle.dispatchEvent(
+            new MouseEvent('click', {
+              bubbles: true,
+              cancelable: true,
+              view: window,
+            }),
+          );
+          await pause(450);
+        }
+
+        await waitForElement('[data-tour-id="address-violation-type"]', {
+          timeout: 6000,
+        });
+      },
+    },
   },
   {
     selector: '[data-tour-id="address-violation-type"]',
@@ -56,6 +160,20 @@ const violationEntrySteps = [
       'Select the template that matches how you are delivering the violation (Doorhanger or Formal Notice).',
     ),
     position: 'bottom',
+    meta: {
+      script: async ({ waitForElement }) => {
+        if (typeof document === 'undefined') return;
+
+        const select = await waitForElement('[data-tour-id="address-violation-type"]', {
+          timeout: 5000,
+        });
+
+        if (select && select.value !== 'Formal Notice') {
+          select.value = 'Formal Notice';
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      },
+    },
   },
   {
     selector: '[data-tour-id="address-violation-codes"]',
@@ -73,6 +191,20 @@ const violationEntrySteps = [
       'Pick the deadline that inspectors should enforce. Adjusting this updates reminders and reporting.',
     ),
     position: 'bottom',
+    meta: {
+      script: async ({ waitForElement }) => {
+        if (typeof document === 'undefined') return;
+
+        const select = await waitForElement('[data-tour-id="address-violation-deadline"]', {
+          timeout: 5000,
+        });
+
+        if (select && select.value !== '7 days') {
+          select.value = '7 days';
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      },
+    },
   },
   {
     selector: '[data-tour-id="address-violation-attachments"]',
@@ -98,7 +230,12 @@ const violationEntrySteps = [
       'You can also add violations without opening an address first. Navigate back to the Dashboard to see the quick action panel.',
     ),
     position: 'right',
-    meta: { advanceOn: 'nav-dashboard-clicked' },
+    meta: {
+      script: async ({ navigate, wait: pause }) => {
+        navigate('/', { replace: false });
+        await pause(700);
+      },
+    },
   },
   {
     selector: '[data-tour-id="home-quick-actions-toggle"]',
@@ -107,7 +244,32 @@ const violationEntrySteps = [
       'Use the quick actions toggle to reveal shortcuts for common forms, including the violation form.',
     ),
     position: 'left',
-    meta: { advanceOn: 'quick-actions-opened' },
+    meta: {
+      script: async ({ wait: pause, waitForElement }) => {
+        if (typeof document === 'undefined') return;
+
+        const quickActionButton = document.querySelector('[data-tour-id="home-new-violation-quick-action"]');
+        if (!quickActionButton) {
+          const toggle = await waitForElement('[data-tour-id="home-quick-actions-toggle"]', {
+            timeout: 5000,
+          });
+          if (toggle) {
+            toggle.dispatchEvent(
+              new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+              }),
+            );
+            await pause(450);
+          }
+        }
+
+        await waitForElement('[data-tour-id="home-new-violation-quick-action"]', {
+          timeout: 6000,
+        });
+      },
+    },
   },
   {
     selector: '[data-tour-id="home-new-violation-quick-action"]',
@@ -117,7 +279,35 @@ const violationEntrySteps = [
     ),
     position: 'bottom',
     spotlightPadding: 12,
-    meta: { advanceOn: 'quick-violation-opened' },
+    meta: {
+      script: async ({ wait: pause, waitForElement }) => {
+        if (typeof document === 'undefined') return;
+
+        const form = document.querySelector('[data-tour-id="new-violation-form"]');
+        if (form) {
+          return;
+        }
+
+        const button = await waitForElement('[data-tour-id="home-new-violation-quick-action"]', {
+          timeout: 5000,
+        });
+
+        if (button) {
+          button.dispatchEvent(
+            new MouseEvent('click', {
+              bubbles: true,
+              cancelable: true,
+              view: window,
+            }),
+          );
+          await pause(500);
+        }
+
+        await waitForElement('[data-tour-id="new-violation-form"]', {
+          timeout: 6000,
+        });
+      },
+    },
   },
   {
     selector: '[data-tour-id="new-violation-address"]',
@@ -126,6 +316,15 @@ const violationEntrySteps = [
       'Search for the property again from the quick form. The system keeps the violation linked to the correct address.',
     ),
     position: 'bottom',
+    meta: {
+      script: async ({ wait: pause, typeIntoInput }) => {
+        await pause(250);
+        await typeIntoInput('[data-tour-id="new-violation-address"] input', DEMO_ADDRESS_ID, {
+          timeout: 5000,
+        });
+        await pause(450);
+      },
+    },
   },
   {
     selector: '[data-tour-id="new-violation-type"]',
@@ -134,6 +333,20 @@ const violationEntrySteps = [
       'Pick the same notice type options here. The quick form mirrors the fields from the address modal.',
     ),
     position: 'bottom',
+    meta: {
+      script: async ({ waitForElement }) => {
+        if (typeof document === 'undefined') return;
+
+        const select = await waitForElement('[data-tour-id="new-violation-type"]', {
+          timeout: 5000,
+        });
+
+        if (select && select.value !== 'Formal Notice') {
+          select.value = 'Formal Notice';
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      },
+    },
   },
   {
     selector: '[data-tour-id="new-violation-codes"]',
@@ -151,6 +364,20 @@ const violationEntrySteps = [
       'Match the compliance deadline to the notice type. Adjust it if the situation requires a shorter window.',
     ),
     position: 'bottom',
+    meta: {
+      script: async ({ waitForElement }) => {
+        if (typeof document === 'undefined') return;
+
+        const select = await waitForElement('[data-tour-id="new-violation-deadline"]', {
+          timeout: 5000,
+        });
+
+        if (select && select.value !== '7 days') {
+          select.value = '7 days';
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      },
+    },
   },
   {
     selector: '[data-tour-id="new-violation-attachments"]',
@@ -186,9 +413,8 @@ export const tours = [
       if (typeof window.scrollTo === 'function') {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
-      window.dispatchEvent(new CustomEvent('app:open-new-violation-tour'));
     },
-    buildSteps: () => violationEntrySteps,
+    buildSteps: () => violationEntrySteps(),
   },
 ];
 
