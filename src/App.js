@@ -308,12 +308,18 @@ function MainApp() {
 const TourInteractionCurtain = ({ children }) => {
   const { isOpen } = useTour();
 
-  const interactionStyle = React.useMemo(() => {
-    if (!isOpen) return undefined;
-    return { pointerEvents: 'none' };
-  }, [isOpen]);
-
-  return <div style={interactionStyle}>{children}</div>;
+  return (
+    <div className="relative">
+      {isOpen && (
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-[9997]"
+          style={{ pointerEvents: 'auto' }}
+        />
+      )}
+      <div style={isOpen ? { pointerEvents: 'none' } : undefined}>{children}</div>
+    </div>
+  );
 };
 
 export default App;
