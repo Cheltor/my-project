@@ -19,6 +19,7 @@ export default function Review() {
   const [areasById, setAreasById] = useState({});
   const [violationCodes, setViolationCodes] = useState([]); // codes to prefill violation form
   const [violationFileUrls, setViolationFileUrls] = useState([]); // photo URLs to prefill attachments
+  const [showViolationForm, setShowViolationForm] = useState(false);
   const [viewerUrl, setViewerUrl] = useState(null);
   const [editingById, setEditingById] = useState({}); // { [obsId]: true }
   const [editedCodesById, setEditedCodesById] = useState({}); // { [obsId]: CodeSelectOption[] }
@@ -102,6 +103,7 @@ export default function Review() {
       });
     });
     setViolationFileUrls(Array.from(urlSet));
+    setShowViolationForm(true);
   };
 
   const startEditCodes = (p) => {
@@ -321,8 +323,23 @@ export default function Review() {
       </div>
 
       <div className="mt-8">
-        <h2 className="text-base font-semibold leading-6 text-gray-900 mb-2">Create Violation Notice</h2>
+        <h2 className="mb-2 text-base font-semibold leading-6 text-gray-900">Create Violation Notice</h2>
+        <p className="mb-4 text-sm text-gray-600">
+          Use the button below to launch the violation wizard, review attachments, and finalize the notice.
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowViolationForm(true)}
+          className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+        >
+          Open violation form
+        </button>
+      </div>
+
+      {showViolationForm && (
         <NewViolationForm
+          isOpen={showViolationForm}
+          onClose={() => setShowViolationForm(false)}
           onCreated={markInspectionCompleted}
           initialAddressId={inspection?.address_id}
           initialAddressLabel={inspection?.address?.combadd}
@@ -333,8 +350,14 @@ export default function Review() {
           inspectionId={parseInt(id, 10)}
           selectedCodesValue={violationCodes}
           onSelectedCodesChange={setViolationCodes}
+          title="Create Violation Notice"
+          description={
+            inspection?.address?.combadd
+              ? `Linking this notice to ${inspection?.address?.combadd}.`
+              : undefined
+          }
         />
-      </div>
+      )}
 
       {viewerUrl && (
         <FullScreenPhotoViewer photoUrl={viewerUrl} onClose={() => setViewerUrl(null)} />
