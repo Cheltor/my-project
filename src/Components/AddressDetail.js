@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { formatPhoneNumber, toEasternLocaleDateString, toEasternLocaleString } from '../utils';
+import { dispatchTourAdvance } from '../tours/events';
 import AddressPhotos from './Address/AddressPhotos'; // Update the import statement
 import Citations from './Address/AddressCitations';
 import Violations from './Address/AddressViolations';
@@ -1140,6 +1141,9 @@ const AddressDetails = () => {
     if (!nextTab) return;
     setActiveTab(nextTab);
     setModalTab(nextTab);
+    if (nextTab === 'violations') {
+      dispatchTourAdvance('violations-tab-opened');
+    }
   };
 
   const closeModal = () => {
@@ -2197,6 +2201,7 @@ const AddressDetails = () => {
                         onClick={() => handleTabSelect(item.id)}
                         aria-pressed={isActive}
                         className={`group flex h-full flex-col justify-between rounded-lg border bg-white p-4 text-left shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${isActive ? 'border-indigo-500 shadow-md ring-1 ring-indigo-200' : 'border-gray-200 hover:border-indigo-400 hover:shadow-md'}`}
+                        data-tour-id={item.id === 'violations' ? 'address-violations-tab' : undefined}
                       >
                         <div className="flex items-start gap-3">
                           <span className={`flex h-10 w-10 items-center justify-center rounded-full transition ${isActive ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100'}`}>

@@ -5,6 +5,7 @@ import { apiFetch } from './api';
 import { AuthProvider, useAuth } from './AuthContext';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react'; // added import
+import { TourProvider, useTour } from '@reactour/tour';
 import './App.css';
 import Sidebar from './Layouts/Sidebar';  // Adjust path based on your project structure
 import Home from './Components/Home';
@@ -43,6 +44,7 @@ import Users from './Components/Users';
 import UserDetail from './Components/UserDetails';
 import AddressUnitDetail from './Components/Unit/AddressUnitDetail'; // Import the AddressUnitDetail component
 import Helpful from './Components/Helpful'; // Import the HelpfulLinks component
+import Help from './Components/Help';
 import NewAddressPage from './Components/Address/NewAddressPage';
 import VacancyStatusList from './Components/VacancyStatusList';
 import Review from './Components/Inspection/Review';
@@ -59,6 +61,8 @@ import ResidentConcern from './Components/ResidentConcern';
 import LandingPage from './Components/LandingPage';
 import ForgotPassword from './Components/ForgotPassword';
 import ResetPassword from './Components/ResetPassword';
+import TourAutoAdvanceListener from './tours/AutoAdvanceListener';
+import TourStepScriptRunner from './tours/StepScriptRunner';
 
 function App() {
   return (
@@ -73,6 +77,45 @@ function MainApp() {
   const [chatEnabled, setChatEnabled] = React.useState(true);
   const [showUpdateNotice, setShowUpdateNotice] = React.useState(false);
   const updateNoticeTimeoutRef = React.useRef(null);
+  const tourStyles = React.useMemo(
+    () => ({
+      popover: (base) => ({
+        ...base,
+        backgroundColor: '#111827',
+        borderRadius: 16,
+        color: '#f9fafb',
+        boxShadow: '0 25px 45px rgba(15, 23, 42, 0.35)',
+        padding: '1.25rem',
+        maxWidth: '24rem',
+      }),
+      maskArea: (base) => ({
+        ...base,
+        rx: 12,
+      }),
+      badge: (base) => ({
+        ...base,
+        backgroundColor: '#4f46e5',
+        color: '#f9fafb',
+        fontWeight: 600,
+      }),
+      controls: (base) => ({
+        ...base,
+        marginTop: 16,
+      }),
+      close: (base) => ({
+        ...base,
+        color: '#f9fafb',
+        top: '1rem',
+        right: '1rem',
+      }),
+      dot: (base, state) => ({
+        ...base,
+        boxShadow: state.current ? '0 0 0 2px rgba(79,70,229,0.65)' : base.boxShadow,
+      }),
+    }),
+    []
+  );
+  const initialTourSteps = React.useMemo(() => [], []);
 
   // Poll the chat-enabled setting while the tab is visible. Pause when hidden.
   const fetchChatSetting = React.useCallback(async () => {
@@ -148,20 +191,33 @@ function MainApp() {
   }, []);
 
   return (
-    <>
-      {showUpdateNotice && (
-        <div className="sw-update-notice" role="status" aria-live="assertive">
-          Refreshing to apply updates...
-        </div>
-      )}
-      <Router>
-        {user ? (
-          <>
-            {chatEnabled && <ChatWidget />}
-            <Sidebar>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/about" element={<About />} />
+    <TourProvider
+      className="app-tour"
+      steps={initialTourSteps}
+      styles={tourStyles}
+      padding={12}
+      scrollSmooth
+      disableInteraction
+      closeWithMask={false}
+      disableKeyboardNavigation={['esc']}
+    >
+      <>
+        <TourAutoAdvanceListener />
+        {showUpdateNotice && (
+          <div className="sw-update-notice" role="status" aria-live="assertive">
+            Refreshing to apply updates...
+          </div>
+        )}
+        <Router>
+          <TourStepScriptRunner />
+          <TourInteractionCurtain>
+            {user ? (
+              <>
+                {chatEnabled && <ChatWidget />}
+                <Sidebar>
+                  <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/about" element={<About />} />
                 <Route path="/due-list" element={<DueList />} />
                 <Route path="/sir" element={<Sir />} />
                 <Route path="/address/:id" element={<AddressDetail />} />
@@ -201,6 +257,7 @@ function MainApp() {
                 <Route path="/users/:id" element={<UserDetail />} />
                 <Route path="/address/:addressId/unit/:unitId" element={<AddressUnitDetail />} />
                 <Route path="/helpful" element={<Helpful />} />
+                <Route path="/help" element={<Help />} />
                 <Route path="/new-address" element={<NewAddressPage />} />
                 <Route path="/vacancy-statuses" element={<VacancyStatusList />} />
                 <Route path="/admin" element={<AdminDashboard />} />
@@ -227,24 +284,113 @@ function MainApp() {
                 <Route path="/reset-password" element={<ResetPassword />} />
                 {/* Add more routes as needed */}
               </Routes>
-            </Sidebar>
-          </>
-        ) : (
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/resident-concern" element={<ResidentConcern />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="*" element={<LandingPage />} />
-            {/* Redirect any other route to landing if not authenticated */}
-          </Routes>
-        )}
-        <Analytics /> {/* render here so it's always mounted while Router is active */}
-      </Router>
-    </>
+              </Sidebar>
+              </>
+            ) : (
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/resident-concern" element={<ResidentConcern />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="*" element={<LandingPage />} />
+                {/* Redirect any other route to landing if not authenticated */}
+              </Routes>
+            )}
+          </TourInteractionCurtain>
+          <Analytics /> {/* render here so it's always mounted while Router is active */}
+        </Router>
+      </>
+    </TourProvider>
   );
 }
+
+const TourInteractionCurtain = ({ children }) => {
+  const { isOpen } = useTour();
+
+  React.useEffect(() => {
+    if (!isOpen || typeof document === 'undefined') {
+      return undefined;
+    }
+
+    const interactiveSelectors = [
+      '.reactour__popover',
+      '.reactour__helper',
+      '.reactour__controls',
+      '.reactour__navigation',
+      '.reactour__close',
+      '.reactour__badge',
+      '.reactour__dot',
+      '.reactour__footer',
+      '.reactour__header',
+      '.app-tour [role="dialog"][aria-modal="true"]',
+      '.app-tour [data-tour-allow-interaction="true"]',
+      '[class*="reactour__"]',
+      '[data-tour-elem]',
+    ];
+
+    const isAllowedTarget = (target) => {
+      if (typeof Element === 'undefined' || !(target instanceof Element)) {
+        return false;
+      }
+
+      if (target.closest('.reactour__mask, [data-tour-elem="mask"]')) {
+        return false;
+      }
+
+      return interactiveSelectors.some((selector) => target.closest(selector));
+    };
+
+    const intercept = (event) => {
+      if (isAllowedTarget(event.target)) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    const interceptKey = (event) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    const pointerEvents = [
+      'mousedown',
+      'mouseup',
+      'click',
+      'pointerdown',
+      'pointerup',
+      'touchstart',
+      'touchend',
+    ];
+
+    pointerEvents.forEach((type) => {
+      document.addEventListener(type, intercept, true);
+    });
+    document.addEventListener('keydown', interceptKey, true);
+
+    return () => {
+      pointerEvents.forEach((type) => {
+        document.removeEventListener(type, intercept, true);
+      });
+      document.removeEventListener('keydown', interceptKey, true);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className="relative">
+      {isOpen && (
+        <div aria-hidden="true" className="fixed inset-0 z-[9997]" />
+      )}
+      <div>{children}</div>
+    </div>
+  );
+};
 
 export default App;
 

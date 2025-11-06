@@ -271,7 +271,7 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
   const canSubmit = !!form.address_id && Array.isArray(effectiveSelectedCodes) && effectiveSelectedCodes.length > 0 && !loading;
 
   return (
-    <div className="p-4 bg-white rounded shadow mt-4">
+    <div className="p-4 bg-white rounded shadow mt-4" data-tour-id="new-violation-form">
       <h2 className="text-lg font-bold mb-2">Add New Violation</h2>
       <form onSubmit={handleSubmit} className="space-y-2">
         {/* Address Search */}
@@ -279,7 +279,12 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
           <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="nvf-address">
             Address <span className="text-red-600 required-indicator" aria-hidden> *</span>
           </label>
-          <div className={`${addressError ? 'border border-red-500 rounded' : ''} mb-2`} aria-invalid={!!addressError} aria-describedby={addressError ? 'nvf-address-error' : undefined}> 
+          <div
+            className={`${addressError ? 'border border-red-500 rounded' : ''} mb-2`}
+            aria-invalid={!!addressError}
+            aria-describedby={addressError ? 'nvf-address-error' : undefined}
+            data-tour-id="new-violation-address"
+          >
             <AsyncSelect
               cacheOptions
               defaultOptions
@@ -326,6 +331,7 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
               className="w-full border border-gray-300 rounded px-2 py-1"
               value={violationType}
               onChange={e => setViolationType(e.target.value)}
+              data-tour-id="new-violation-type"
             >
               {VIOLATION_TYPE_OPTIONS.map(opt => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -338,7 +344,12 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
           <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="nvf-codes">
             Violation Codes <span className="text-red-600 required-indicator" aria-hidden> *</span>
           </label>
-          <div className={`${codesError ? 'border border-red-500 rounded p-1' : ''}`} aria-invalid={!!codesError} aria-describedby={codesError ? 'nvf-codes-error' : undefined}>
+          <div
+            className={`${codesError ? 'border border-red-500 rounded p-1' : ''}`}
+            aria-invalid={!!codesError}
+            aria-describedby={codesError ? 'nvf-codes-error' : undefined}
+            data-tour-id="new-violation-codes"
+          >
             <CodeSelect
               onChange={handleCodeChange}
               inputId="nvf-codes"
@@ -369,6 +380,7 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
             className="w-full border border-gray-300 rounded px-2 py-1"
             value={deadline}
             onChange={e => setDeadline(e.target.value)}
+            data-tour-id="new-violation-deadline"
           >
             {DEADLINE_OPTIONS.map(opt => (
               <option key={opt} value={opt}>{opt}</option>
@@ -376,7 +388,7 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
           </select>
         </div>
         {/* Attachments */}
-        <div className="mb-4">
+        <div className="mb-4" data-tour-id="new-violation-attachments">
           <FileUploadInput
             label="Attachments"
             name="attachments"
@@ -392,6 +404,7 @@ export default function NewViolationForm({ onCreated, initialAddressId, initialA
           disabled={!canSubmit}
           aria-disabled={!canSubmit}
           aria-describedby={!form.address_id ? 'nvf-address' : undefined}
+          data-tour-id="new-violation-submit"
         >
           {loading ? "Adding..." : "Add Violation"}
         </button>

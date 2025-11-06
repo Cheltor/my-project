@@ -19,6 +19,7 @@ import {
   ArrowLeftIcon,
   BellIcon,
   MapIcon,
+  QuestionMarkCircleIcon,
 } from '@heroicons/react/24/outline';
 import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
 import { Link, useNavigate, useLocation } from 'react-router-dom'; // Import Link, useNavigate, and useLocation
@@ -26,9 +27,10 @@ import Logout from '../Components/Logout'; // Import the Logout component
 import { useAuth } from '../AuthContext'; // Import useAuth hook
 import { apiFetch } from '../api';
 import { toEasternLocaleString } from '../utils';
+import { dispatchTourAdvance } from '../tours/events';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: HomeIcon, current: false },
+  { name: 'Dashboard', href: '/', icon: HomeIcon, current: false, tourId: 'nav-dashboard' },
   { name: 'Calendar', href: '/calendar', icon: CalendarIcon, current: false },
   { name: 'Map', href: '/map', icon: MapIcon, current: false, roles: ['Admin'] },
   { name: 'Contacts', href: '/contacts', icon: UsersIcon, current: false },
@@ -44,6 +46,7 @@ const navigation = [
   { name: 'Users', href: '/users', icon: UsersIcon, current: false, roles: ['Admin'] },
   { name: 'Rooms', href: '/rooms', icon: DocumentDuplicateIcon, current: false, roles: ['Admin'] },
   { name: 'Helpful Links', href: '/Helpful', icon: DocumentDuplicateIcon, current: false },
+  { name: 'Help', href: '/help', icon: QuestionMarkCircleIcon, current: false },
   { name: 'New Address', href: '/new-address', icon: BuildingOffice2Icon, current: false, roles: ['Admin'] },
   { name: 'Vacancy Statuses', href: '/vacancy-statuses', icon: BuildingOffice2Icon, current: false },
   { name: 'Admin Dashboard', href: '/admin', icon: Cog6ToothIcon, current: false, roles: ['Admin'] },
@@ -249,6 +252,7 @@ export default function Sidebar({ children }) {
     setSearchQuery(''); // Clear the search bar
     setFilteredAddresses([]); // Clear filtered results
     setShowDropdown(false); // Hide dropdown
+    dispatchTourAdvance('address-selected');
     navigate(`/address/${address.id}`); // Navigate to the address details page
   };
 
@@ -368,13 +372,19 @@ export default function Sidebar({ children }) {
                           <li key={item.name}>
                             <Link
                               to={item.href}
-                              onClick={() => setSidebarOpen(false)} // Close sidebar on click
+                              onClick={() => {
+                                setSidebarOpen(false); // Close sidebar on click
+                                if (item.tourId === 'nav-dashboard') {
+                                  dispatchTourAdvance('nav-dashboard-clicked');
+                                }
+                              }}
                               className={classNames(
                                 item.current
                                   ? 'bg-gray-800 text-white'
                                   : 'text-gray-400 hover:bg-gray-800 hover:text-white',
                                 'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6'
                               )}
+                              data-tour-id={item.tourId}
                             >
                               <item.icon aria-hidden="true" className="h-6 w-6 shrink-0" />
                               {item.name}
@@ -424,13 +434,19 @@ export default function Sidebar({ children }) {
     <li key={item.name}>
       <Link
         to={item.href}
-        onClick={() => setSidebarOpen(false)} // Close sidebar on click
+        onClick={() => {
+          setSidebarOpen(false); // Close sidebar on click
+          if (item.tourId === 'nav-dashboard') {
+            dispatchTourAdvance('nav-dashboard-clicked');
+          }
+        }}
         className={classNames(
           item.current
             ? 'bg-gray-800 text-white'
             : 'text-gray-400 hover:bg-gray-800 hover:text-white',
           'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6'
         )}
+        data-tour-id={item.tourId}
       >
         <item.icon aria-hidden="true" className="h-6 w-6 shrink-0" />
         {item.name}
@@ -481,6 +497,7 @@ export default function Sidebar({ children }) {
                   type="search"
                   placeholder="Search by address or owner..."
                   className="block h-full w-full border-0 py-0 pl-8 pr-0 text-gray-900 placeholder:text-gray-400 focus:ring-0 sm:text-sm"
+                  data-tour-id="address-search-input"
                   value={searchQuery}
                   onChange={handleSearchChange} // Update search query on input change
                   onFocus={() => setShowDropdown(filteredAddresses.length > 0)}
@@ -492,7 +509,10 @@ export default function Sidebar({ children }) {
 
               {/* Dropdown Search Results */}
               {showDropdown && (
-                <div className="absolute w-full bg-white shadow-md rounded-md z-50 mt-1">
+                <div
+                  className="absolute w-full bg-white shadow-md rounded-md z-50 mt-1"
+                  data-tour-id="address-search-results"
+                >
                   <ul className="dropdown-list max-h-60 overflow-auto">
           {filteredAddresses.map((address, index) => (
                       <li
