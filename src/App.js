@@ -199,7 +199,7 @@ function MainApp() {
       scrollSmooth
       disableInteraction
       closeWithMask={false}
-      disableKeyboardNavigation={['left', 'right', 'esc']}
+      disableKeyboardNavigation={['esc']}
     >
       <>
         <TourAutoAdvanceListener />
