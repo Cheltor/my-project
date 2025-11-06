@@ -5,6 +5,7 @@ import { apiFetch } from './api';
 import { AuthProvider, useAuth } from './AuthContext';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react'; // added import
+import { TourProvider } from '@reactour/tour';
 import './App.css';
 import Sidebar from './Layouts/Sidebar';  // Adjust path based on your project structure
 import Home from './Components/Home';
@@ -43,6 +44,7 @@ import Users from './Components/Users';
 import UserDetail from './Components/UserDetails';
 import AddressUnitDetail from './Components/Unit/AddressUnitDetail'; // Import the AddressUnitDetail component
 import Helpful from './Components/Helpful'; // Import the HelpfulLinks component
+import Help from './Components/Help';
 import NewAddressPage from './Components/Address/NewAddressPage';
 import VacancyStatusList from './Components/VacancyStatusList';
 import Review from './Components/Inspection/Review';
@@ -73,6 +75,45 @@ function MainApp() {
   const [chatEnabled, setChatEnabled] = React.useState(true);
   const [showUpdateNotice, setShowUpdateNotice] = React.useState(false);
   const updateNoticeTimeoutRef = React.useRef(null);
+  const tourStyles = React.useMemo(
+    () => ({
+      popover: (base) => ({
+        ...base,
+        backgroundColor: '#111827',
+        borderRadius: 16,
+        color: '#f9fafb',
+        boxShadow: '0 25px 45px rgba(15, 23, 42, 0.35)',
+        padding: '1.25rem',
+        maxWidth: '24rem',
+      }),
+      maskArea: (base) => ({
+        ...base,
+        rx: 12,
+      }),
+      badge: (base) => ({
+        ...base,
+        backgroundColor: '#4f46e5',
+        color: '#f9fafb',
+        fontWeight: 600,
+      }),
+      controls: (base) => ({
+        ...base,
+        marginTop: 16,
+      }),
+      close: (base) => ({
+        ...base,
+        color: '#f9fafb',
+        top: '1rem',
+        right: '1rem',
+      }),
+      dot: (base, state) => ({
+        ...base,
+        boxShadow: state.current ? '0 0 0 2px rgba(79,70,229,0.65)' : base.boxShadow,
+      }),
+    }),
+    []
+  );
+  const initialTourSteps = React.useMemo(() => [], []);
 
   // Poll the chat-enabled setting while the tab is visible. Pause when hidden.
   const fetchChatSetting = React.useCallback(async () => {
@@ -148,20 +189,27 @@ function MainApp() {
   }, []);
 
   return (
-    <>
-      {showUpdateNotice && (
-        <div className="sw-update-notice" role="status" aria-live="assertive">
-          Refreshing to apply updates...
-        </div>
-      )}
-      <Router>
-        {user ? (
-          <>
-            {chatEnabled && <ChatWidget />}
-            <Sidebar>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/about" element={<About />} />
+    <TourProvider
+      className="app-tour"
+      steps={initialTourSteps}
+      styles={tourStyles}
+      padding={12}
+      scrollSmooth
+    >
+      <>
+        {showUpdateNotice && (
+          <div className="sw-update-notice" role="status" aria-live="assertive">
+            Refreshing to apply updates...
+          </div>
+        )}
+        <Router>
+          {user ? (
+            <>
+              {chatEnabled && <ChatWidget />}
+              <Sidebar>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/about" element={<About />} />
                 <Route path="/due-list" element={<DueList />} />
                 <Route path="/sir" element={<Sir />} />
                 <Route path="/address/:id" element={<AddressDetail />} />
@@ -201,6 +249,7 @@ function MainApp() {
                 <Route path="/users/:id" element={<UserDetail />} />
                 <Route path="/address/:addressId/unit/:unitId" element={<AddressUnitDetail />} />
                 <Route path="/helpful" element={<Helpful />} />
+                <Route path="/help" element={<Help />} />
                 <Route path="/new-address" element={<NewAddressPage />} />
                 <Route path="/vacancy-statuses" element={<VacancyStatusList />} />
                 <Route path="/admin" element={<AdminDashboard />} />
@@ -229,20 +278,21 @@ function MainApp() {
               </Routes>
             </Sidebar>
           </>
-        ) : (
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/resident-concern" element={<ResidentConcern />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="*" element={<LandingPage />} />
-            {/* Redirect any other route to landing if not authenticated */}
-          </Routes>
-        )}
-        <Analytics /> {/* render here so it's always mounted while Router is active */}
-      </Router>
-    </>
+          ) : (
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/resident-concern" element={<ResidentConcern />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="*" element={<LandingPage />} />
+              {/* Redirect any other route to landing if not authenticated */}
+            </Routes>
+          )}
+          <Analytics /> {/* render here so it's always mounted while Router is active */}
+        </Router>
+      </>
+    </TourProvider>
   );
 }
 

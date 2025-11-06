@@ -138,6 +138,7 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
         onClick={handleToggleForm}
         aria-expanded={showForm}
         className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
+        data-tour-id="address-new-violation-button"
       >
         {showForm ? 'Hide New Violation' : 'New Violation'}
       </button>
@@ -155,6 +156,7 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
               value={violationType}
               onChange={e => setViolationType(e.target.value)}
               disabled={submitting}
+              data-tour-id="address-violation-type"
             >
               {VIOLATION_TYPE_OPTIONS.map(opt => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -165,12 +167,14 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Violation Codes <span className="text-red-600 required-indicator" aria-hidden> *</span>
             </label>
-            <CodeSelect
-              onChange={opts => setSelectedCodes(opts || [])}
-              value={selectedCodes}
-              isMulti={true}
-              isDisabled={submitting}
-            />
+            <div data-tour-id="address-violation-codes">
+              <CodeSelect
+                onChange={opts => setSelectedCodes(opts || [])}
+                value={selectedCodes}
+                isMulti={true}
+                isDisabled={submitting}
+              />
+            </div>
             <div className="text-xs text-gray-500 mt-1">Select one or more codes. This field is required.</div>
           </div>
           {selectedCodes.length > 0 && (
@@ -192,13 +196,14 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
               value={deadline}
               onChange={e => setDeadline(e.target.value)}
               disabled={submitting}
+              data-tour-id="address-violation-deadline"
             >
               {DEADLINE_OPTIONS.map(opt => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>
           </div>
-          <div className="mb-4">
+          <div className="mb-4" data-tour-id="address-violation-attachments">
             <FileUploadInput
               label="Attachments"
               name="attachments"
@@ -213,6 +218,7 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
               type="submit"
               className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
               disabled={submitting || !addressId || !Array.isArray(selectedCodes) || selectedCodes.length === 0}
+              data-tour-id="address-violation-submit"
             >
               {submitting ? 'Submitting...' : (!addressId || selectedCodes.length === 0 ? 'Add Violation (Codes required)' : 'Add Violation')}
             </button>

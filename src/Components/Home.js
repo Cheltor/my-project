@@ -48,6 +48,40 @@ export default function Example() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleOpenNewViolationTour = () => {
+      try {
+        window.sessionStorage.setItem('app:tour-open-quick-action', '1');
+      } catch (err) {
+        // ignore storage access issues
+      }
+      setShowQuickActions(true);
+      setShowNewComplaint(false);
+      setShowNewMFLicense(false);
+      setShowNewSFLicense(false);
+      setShowNewBuildingPermit(false);
+      setShowNewBusinessLicense(false);
+      setShowNewViolationForm(true);
+    };
+
+    window.addEventListener('app:open-new-violation-tour', handleOpenNewViolationTour);
+    return () => {
+      window.removeEventListener('app:open-new-violation-tour', handleOpenNewViolationTour);
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (window.sessionStorage.getItem('app:tour-open-quick-action') === '1') {
+        window.sessionStorage.removeItem('app:tour-open-quick-action');
+        setShowQuickActions(true);
+        setShowNewViolationForm(true);
+      }
+    } catch (err) {
+      // ignore storage access issues
+    }
+  }, []);
+
   const closeAllForms = () => {
     setShowNewComplaint(false);
     setShowNewMFLicense(false);
@@ -161,6 +195,7 @@ export default function Example() {
       state: showNewViolationForm,
       toggle: toggleNewViolationForm,
       color: "bg-red-500",
+      tourId: 'home-new-violation-quick-action',
     },
     {
       label: showNewComplaint ? "Hide Complaint Form" : "New Complaint Form",
@@ -218,6 +253,7 @@ export default function Example() {
               type="button"
               onClick={toggleQuickActions}
               className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              data-tour-id="home-quick-actions-toggle"
             >
               {showQuickActions ? 'Hide Quick Actions' : 'Show Quick Actions'}
             </button>
@@ -232,6 +268,7 @@ export default function Example() {
                     type="button"
                     onClick={button.toggle}
                     className={`relative flex items-center space-x-3 rounded-lg border border-gray-300 px-6 py-5 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-gray-400 ${button.color}`}
+                    data-tour-id={button.tourId}
                   >
                     <span className="w-full text-white font-semibold">
                       {button.label}
