@@ -199,7 +199,7 @@ function MainApp() {
       scrollSmooth
       disableInteraction
       closeWithMask={false}
-      disableKeyboardNavigation={['left', 'right']}
+      disableKeyboardNavigation={['left', 'right', 'esc']}
     >
       <>
         <TourAutoAdvanceListener />
@@ -307,6 +307,75 @@ function MainApp() {
 
 const TourInteractionCurtain = ({ children }) => {
   const { isOpen } = useTour();
+
+  React.useEffect(() => {
+    if (!isOpen || typeof document === 'undefined') {
+      return undefined;
+    }
+
+    const interactiveSelectors = [
+      '.reactour__popover',
+      '.reactour__helper',
+      '.reactour__controls',
+      '.reactour__navigation',
+      '.reactour__close',
+      '.reactour__badge',
+      '.reactour__dot',
+      '.app-tour [role="dialog"][aria-modal="true"]',
+      '.app-tour [data-tour-allow-interaction="true"]',
+    ];
+
+    const isAllowedTarget = (target) => {
+      if (typeof Node !== 'function' || !(target instanceof Node)) {
+        return false;
+      }
+
+      return interactiveSelectors.some((selector) => {
+        const nodes = document.querySelectorAll(selector);
+        return Array.from(nodes).some((node) => node.contains(target));
+      });
+    };
+
+    const intercept = (event) => {
+      if (isAllowedTarget(event.target)) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    const interceptKey = (event) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    const pointerEvents = [
+      'mousedown',
+      'mouseup',
+      'click',
+      'pointerdown',
+      'pointerup',
+      'touchstart',
+      'touchend',
+    ];
+
+    pointerEvents.forEach((type) => {
+      document.addEventListener(type, intercept, true);
+    });
+    document.addEventListener('keydown', interceptKey, true);
+
+    return () => {
+      pointerEvents.forEach((type) => {
+        document.removeEventListener(type, intercept, true);
+      });
+      document.removeEventListener('keydown', interceptKey, true);
+    };
+  }, [isOpen]);
 
   return (
     <div className="relative">
