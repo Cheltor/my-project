@@ -2,6 +2,7 @@ import React from 'react';
 
 const wait = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms));
 const DEMO_ADDRESS_ID = '1143';
+const DEMO_ADDRESS_SEARCH = '5008 Queensbury';
 
 const createStepContent = (title, description, footer) => (
   <div className="space-y-2 text-slate-100">
@@ -16,7 +17,7 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="address-search-input"]',
     content: createStepContent(
       'Find the property',
-      'Use the global search to jump to the address that needs a notice. Type at least two characters to see suggestions.',
+      'Use the global search to jump to the address that needs a notice. Type “5008 Queensbury” to find the Town Hall property used in this example.',
       <p className="text-xs uppercase tracking-wide text-indigo-200">Tip: You can search by address, owner, or property name.</p>
     ),
     position: 'bottom',
@@ -31,7 +32,7 @@ const violationEntrySteps = () => [
         }
 
         await pause(250);
-        await typeIntoInput('[data-tour-id="address-search-input"]', DEMO_ADDRESS_ID, {
+        await typeIntoInput('[data-tour-id="address-search-input"]', DEMO_ADDRESS_SEARCH, {
           timeout: 5000,
         });
 
@@ -45,7 +46,7 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="address-search-results"]',
     content: createStepContent(
       'Open the address workspace',
-      'Pick the correct result from the dropdown. The address page opens with tabs for contacts, inspections, and more.',
+      'Pick the “Town Hall – 5008 Queensbury Road” result from the dropdown. The address page opens with tabs for contacts, inspections, and more.',
     ),
     position: 'bottom',
     spotlightPadding: 12,
@@ -69,10 +70,15 @@ const violationEntrySteps = () => [
         }
 
         const items = queryAll('[data-tour-id="address-search-results"] li');
-        const match = items.find((el) => el.textContent && el.textContent.includes(DEMO_ADDRESS_ID));
+        const searchLower = DEMO_ADDRESS_SEARCH.toLowerCase();
+        const match = items.find((el) => {
+          const text = el.textContent ? el.textContent.toLowerCase() : '';
+          return text.includes(searchLower);
+        });
         const target = match || candidate;
 
         if (target) {
+          await pause(400);
           target.dispatchEvent(
             new MouseEvent('mousedown', {
               bubbles: true,
@@ -105,6 +111,10 @@ const violationEntrySteps = () => [
         });
 
         if (tab && tab.getAttribute('aria-pressed') !== 'true') {
+          if (typeof tab.scrollIntoView === 'function') {
+            tab.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            await pause(350);
+          }
           tab.dispatchEvent(
             new MouseEvent('click', {
               bubbles: true,
@@ -137,6 +147,10 @@ const violationEntrySteps = () => [
         });
 
         if (toggle && toggle.getAttribute('aria-expanded') !== 'true') {
+          if (typeof toggle.scrollIntoView === 'function') {
+            toggle.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            await pause(300);
+          }
           toggle.dispatchEvent(
             new MouseEvent('click', {
               bubbles: true,
