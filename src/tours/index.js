@@ -46,11 +46,12 @@ const violationEntrySteps = () => [
     selector: '[data-tour-id="address-search-results"]',
     content: createStepContent(
       'Open the address workspace',
-      'Pick the “Town Hall – 5008 Queensbury Road” result from the dropdown. The address page opens with tabs for contacts, inspections, and more.',
+      'Pick the “Town Hall – 5008 Queensbury Road” result from the dropdown. Click that option yourself to keep the walkthrough in sync as the address page opens with tabs for contacts, inspections, and more.',
     ),
     position: 'bottom',
     spotlightPadding: 12,
     meta: {
+      advanceOn: 'address-selected',
       script: async ({ navigate, wait: pause, waitForElement, queryAll }) => {
         if (typeof document === 'undefined') {
           navigate(`/address/${DEMO_ADDRESS_ID}`);
@@ -78,15 +79,12 @@ const violationEntrySteps = () => [
         const target = match || candidate;
 
         if (target) {
-          await pause(400);
-          target.dispatchEvent(
-            new MouseEvent('mousedown', {
-              bubbles: true,
-              cancelable: true,
-              view: window,
-            }),
-          );
-          await pause(650);
+          if (typeof target.scrollIntoView === 'function') {
+            target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            await pause(350);
+          } else {
+            await pause(250);
+          }
         }
 
         await waitForElement('[data-tour-id="address-violations-tab"]', {
