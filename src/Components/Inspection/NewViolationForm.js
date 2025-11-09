@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AsyncSelect from "react-select/async";
 import CodeSelect from "../CodeSelect";
+import CodeDrawerLink from "../Codes/CodeDrawerLink";
 import { useAuth } from "../../AuthContext";
 import FileUploadInput from "../Common/FileUploadInput";
 
@@ -30,6 +31,7 @@ export default function NewViolationForm({
     address_id: initialAddressId || ""
   });
   const [files, setFiles] = useState([]);
+  const [previews, setPreviews] = useState([]);
   const STEPS = [
     { key: "photos", label: "Photos" },
     { key: "address", label: "Address" },
@@ -95,6 +97,24 @@ export default function NewViolationForm({
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialFileUrls]);
+
+  // Build preview URLs for attached files so we can show them in Review
+  React.useEffect(() => {
+    // revoke previous urls
+    setPreviews((prev) => {
+      prev.forEach(p => p.url && URL.revokeObjectURL(p.url));
+      return [];
+    });
+    if (!files || files.length === 0) {
+      setPreviews([]);
+      return;
+    }
+    const next = files.map((f) => ({ name: f.name, type: f.type, url: URL.createObjectURL(f) }));
+    setPreviews(next);
+    return () => {
+      next.forEach(p => p.url && URL.revokeObjectURL(p.url));
+    };
+  }, [files]);
   const [selectedCodes, setSelectedCodes] = useState([]); // internal when uncontrolled
   const [addressLabel, setAddressLabel] = useState(initialAddressLabel || "");
   // Admin assignment state
@@ -391,7 +411,7 @@ export default function NewViolationForm({
                 disabled={loading}
               />
               <div className="mt-1 text-xs text-gray-500">
-                Add inspection photos now or continue to the next step.
+                Add photos now or continue to the next step.
               </div>
             </div>
           )}
@@ -507,8 +527,53 @@ export default function NewViolationForm({
                 <div className="font-semibold text-gray-800">Review</div>
                 <div><span className="font-medium">Address:</span> {addressLabel || 'Not selected'}</div>
                 <div><span className="font-medium">Violation type:</span> {(VIOLATION_TYPE_OPTIONS.find(o => o.value === violationType) || { label: violationType }).label}</div>
-                <div><span className="font-medium">Codes selected:</span> {effectiveSelectedCodes.length}</div>
-                <div><span className="font-medium">Photos attached:</span> {files.length}</div>
+                <div>
+                  <div className="font-medium">Codes:</div>
+                  <div className="mt-1 space-y-1">
+                    {Array.isArray(effectiveSelectedCodes) && effectiveSelectedCodes.length > 0 ? (
+                      effectiveSelectedCodes.map((opt) => (
+                        <div key={opt.value}>
+                          <CodeDrawerLink codeId={opt.code?.id}>{opt.code?.name || opt.label}</CodeDrawerLink>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-gray-600">None</div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="font-medium">Attachments:</div>
+                  <div className="mt-2">
+                    {previews && previews.length > 0 ? (
+                      <div className="grid grid-cols-4 gap-2">
+                        {previews.map((p, idx) => (
+                          <div key={idx} className="relative flex flex-col items-center text-xs">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                try { if (p.url) URL.revokeObjectURL(p.url); } catch (e) {}
+                                setFiles((prev) => prev.filter((_, i) => i !== idx));
+                              }}
+                              aria-label={`Remove ${p.name}`}
+                              className="absolute right-0 top-0 z-10 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-red-600 border border-gray-200 hover:bg-red-50"
+                            >
+                              ×
+                            </button>
+                            {p.type && p.type.startsWith('image/') ? (
+                              <img src={p.url} alt={p.name} className="h-20 w-full rounded object-cover border" />
+                            ) : (
+                              <a href={p.url} download className="inline-block w-full truncate rounded border px-2 py-1 text-sm text-gray-700 bg-white">{p.name}</a>
+                            )}
+                            <div className="mt-1 text-xs text-gray-600 truncate w-full text-center">{p.name}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-600">No attachments</div>
+                    )}
+                  </div>
+                </div>
                 {user?.role === 3 && (
                   <div><span className="font-medium">Assignee:</span> {assigneeId ? (onsUsers.find(u => String(u.id) === String(assigneeId))?.name || onsUsers.find(u => String(u.id) === String(assigneeId))?.email || 'Selected user') : 'Defaults to me'}</div>
                 )}
