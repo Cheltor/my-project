@@ -212,10 +212,34 @@ export default function Example() {
                   onClose={() => setShowNewComplaint(false)}
                 />
               )}
-              {showNewMFLicense && <NewMFLicense />}
-              {showNewSFLicense && <NewSFLicense />}
-              {showNewBuildingPermit && <NewBuildingPermit />}
-              {showNewBusinessLicense && <NewBusinessLicense />}
+              {showNewMFLicense && (
+                <NewMFLicense
+                  isOpen={showNewMFLicense}
+                  onClose={() => setShowNewMFLicense(false)}
+                  renderAsModal
+                />
+              )}
+              {showNewSFLicense && (
+                <NewSFLicense
+                  isOpen={showNewSFLicense}
+                  onClose={() => setShowNewSFLicense(false)}
+                  renderAsModal
+                />
+              )}
+              {showNewBuildingPermit && (
+                <NewBuildingPermit
+                  isOpen={showNewBuildingPermit}
+                  onClose={() => setShowNewBuildingPermit(false)}
+                  renderAsModal
+                />
+              )}
+              {showNewBusinessLicense && (
+                <NewBusinessLicense
+                  isOpen={showNewBusinessLicense}
+                  onClose={() => setShowNewBusinessLicense(false)}
+                  renderAsModal
+                />
+              )}
             </>
           )}
         </>
