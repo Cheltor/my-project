@@ -40,7 +40,7 @@ export default function NotificationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token, user, logout]);
 
   useEffect(() => { load(); }, [load]);
 

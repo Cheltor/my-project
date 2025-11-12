@@ -1,1 +1,1 @@
-import React from "react";
+// Intentionally left blank: address owner info component (no-op)

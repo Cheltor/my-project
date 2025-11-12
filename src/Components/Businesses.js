@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { formatPhoneNumber, formatWebsite } from '../utils';
-import { useAuth } from '../AuthContext';
+// useAuth not required here - removed unused import
 import NewBusinessForm from './Business/NewBusinessForm';
 
 const BusinessesList = () => {
-  const { user } = useAuth();
+  // auth not used in this component
   const [businesses, setBusinesses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -216,8 +216,6 @@ const BusinessesList = () => {
   );
 };
 
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}
+// removed unused helper classNames
 
 export default BusinessesList;

@@ -267,6 +267,4 @@ export default function Permits() {
   );
 }
 
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}
+// removed unused classNames helper

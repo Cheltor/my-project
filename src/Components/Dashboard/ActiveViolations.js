@@ -183,6 +183,4 @@ export default function ActiveViolations() {
   );
 }
 
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}
+// removed unused classNames helper

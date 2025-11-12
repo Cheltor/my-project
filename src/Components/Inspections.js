@@ -284,6 +284,4 @@ export default function Inspections() {
   );
 }
 
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}
+// removed unused classNames helper

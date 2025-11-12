@@ -20,13 +20,13 @@ export default function ContactComments({ contactId, contact }) {  // Accept con
 
   const attachmentKey = (item) => (item ? `${item.type}:${item.id}` : '');
   const contactAddresses = useMemo(() => Array.isArray(contact?.addresses) ? contact.addresses : [], [contact?.addresses]);
-  const contactAddressesKey = useMemo(() => contactAddresses.map((addr) => addr?.id).filter(Boolean).join(','), [contactAddresses]);
+  // contactAddressesKey removed (unused) — keep contactAddresses memo only
   const contactMeta = useMemo(() => ({
     name: (contact?.name || '').trim(),
     email: (contact?.email || '').trim(),
     phone: (contact?.phone || '').trim(),
   }), [contact?.name, contact?.email, contact?.phone]);
-  const contactMetaKey = `${contactMeta.name}|${contactMeta.email}|${contactMeta.phone}`;
+  // contactMetaKey removed (unused)
 
   const collectMentionedFromAddresses = async ({ baseUrl, addresses, contactId, contactMeta }) => {
     const results = new Map();
@@ -217,7 +217,7 @@ export default function ContactComments({ contactId, contact }) {  // Accept con
       setError(err.message || 'Failed to load comments');
       setLoading(false);
     }
-  }, [contactId, contactAddresses, contactMeta, contactAddressesKey, contactMetaKey]);
+  }, [contactId, contactAddresses, contactMeta]);
 
   useEffect(() => {
     fetchComments();  // Fetch comments on component load and when identifiers change

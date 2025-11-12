@@ -146,7 +146,7 @@ const RecentComments = ({ limit = 10, className = '', startExpanded = false }) =
   const filteredLength = applyFilters(allComments).length;
   const canLoadMore = filteredLength > comments.length;
 
-  const handleLoadMore = (event) => {
+  const handleLoadMore = useCallback((event) => {
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
     if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
     const prevY = window.scrollY;
@@ -156,7 +156,7 @@ const RecentComments = ({ limit = 10, className = '', startExpanded = false }) =
         window.scrollTo({ top: prevY, left: 0, behavior: 'auto' });
       });
     });
-  };
+  }, [limit]);
 
   const handleUserFilterChange = (event) => {
     const value = event.target.value;
@@ -191,7 +191,7 @@ const RecentComments = ({ limit = 10, className = '', startExpanded = false }) =
 
     return (
       <>
-        <ul role="list" className="divide-y divide-gray-200">
+  <ul className="divide-y divide-gray-200">
           {comments.map((comment) => {
             const contentPreview = comment.content && comment.content.length > 280
               ? comment.content.slice(0, 280) + '…'
@@ -271,7 +271,7 @@ const RecentComments = ({ limit = 10, className = '', startExpanded = false }) =
         )}
       </>
     );
-  }, [comments, loading, error, canLoadMore, limit, resolveUnitNumber]);
+  }, [comments, loading, error, canLoadMore, resolveUnitNumber, handleLoadMore]);
 
   const containerClass = 'rounded-lg bg-white p-4 shadow ' + className;
 

@@ -69,7 +69,7 @@ const AddressCitations = ({ addressId }) => {
   const [error, setError] = useState(null);
   const [sortBy, setSortBy] = useState(null); // 'unpaid' | 'pastdue' | null
   const [sortDirection, setSortDirection] = useState('desc');
-  const [enriching, setEnriching] = useState(false);
+  const [, setEnriching] = useState(false);
 
   useEffect(() => {
     // Fetch citations for the specific address

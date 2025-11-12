@@ -304,7 +304,5 @@ export default function Licenses() {
   );
 }
 
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}
+// removed unused classNames helper
 
