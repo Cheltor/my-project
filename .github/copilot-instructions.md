@@ -1,43 +1,42 @@
 # AI agent quick-start for this codebase
+## AI agent quick-start — CiviCode (concise)
 
-This workspace is a full-stack app with a FastAPI backend (under `FastAPI/CiviCodeAPI`) and a React frontend (under `my-project`). These notes capture the specific architecture, workflows, and conventions used here so agents can be productive fast.
+Purpose: give an AI coding agent immediate, practical context to make safe, small, high-value edits across the FastAPI backend and React frontend.
 
-## Architecture and data flow
-- Backend: FastAPI app in `FastAPI/CiviCodeAPI/main.py` including multiple routers from `CiviCodeAPI/routes/*`. CORS is open to `*`.
-- Routers: Each domain (addresses, users, businesses, violations, comments, citations, inspections, codes, licenses, dashboard, permits, SIR, notifications, word_templates) defines an `APIRouter` in its file and is re-exported via `routes/__init__.py`, then registered in `main.py`.
-- Persistence: SQLAlchemy models in `CiviCodeAPI/models.py` use declarative base and explicit relationships with cascades (e.g., `Address` → `Inspections`, `Violations`, `Businesses`). Tables are created via `Base.metadata.create_all(bind=engine)` in `main.py` for local dev.
-- Database config: `CiviCodeAPI/database.py` loads `.env.development` or `.env` (unless on Heroku) and resolves `DATABASE_URL` (normalizes `postgres://` → `postgresql+psycopg2://`; adds `sslmode=require` on dynos). Session factory `SessionLocal` and `get_db()` dependency provided.
-- Storage/Media: Azure Blob via `CiviCodeAPI/storage.py` (`container_client`) and helpers in `image_utils.py`, `video_utils.py`, `media_service.py`. `word_templates` router exposes document templating endpoints.
-- Frontend: CRA React app. API calls go through `src/Services/api.js` which creates an axios instance using `process.env.REACT_APP_API_URL` and attaches `Authorization: Bearer <token>` from `localStorage`.
+Big picture (one line each):
+- Backend: FastAPI app at `FastAPI/CiviCodeAPI` (entry: `main.py`, routers in `routes/`, models in `models.py`).
+- Frontend: Create React App in `my-project/` (services in `my-project/src/Services`, entry `src/index.js`).
+- Data: Postgres via SQLAlchemy; migrations in `FastAPI/alembic/`.
+- Media/Storage: Azure Blob via `FastAPI/CiviCodeAPI/storage.py` + `media_service.py` for HEIC/MOV conversions.
 
-## Run, build, and test
-- Backend dev server (from `FastAPI/CiviCodeAPI/`): `uvicorn main:app --host 0.0.0.0 --port 8000`.
-- Frontend dev server (from `my-project/`): `npm start`.
-- Frontend tests: `npm test` (React Testing Library preconfigured).
-- Backend tests: `pytest` in `FastAPI/CiviCodeAPI` (see `pytest.ini` and `tests/`).
-- Env files: Place backend secrets in `FastAPI/.env.development` or `FastAPI/.env`; CRA env in `my-project/.env` using `REACT_APP_*` keys. Example: `REACT_APP_API_URL=http://localhost:8000`.
-- Alembic: Migrations live in `FastAPI/alembic/` with versions under `alembic/versions`. Use Alembic for schema evolution in non-local environments.
+Quick start (files to open first):
+- `FastAPI/CiviCodeAPI/main.py` — app wiring, CORS, router registration.
+- `FastAPI/CiviCodeAPI/database.py` — DB URL normalization, `get_db()` dependency.
+- `FastAPI/CiviCodeAPI/models.py`, `schemas.py` — canonical data shapes.
+- `FastAPI/CiviCodeAPI/routes/<feature>.py` — individual feature handlers.
+- `my-project/src/Services/api.js` — centralized axios instance and auth header behavior.
 
-## Conventions and patterns
-- Router wiring: When adding a new route module:
-  1) Create `CiviCodeAPI/routes/<feature>.py` with `router = APIRouter(prefix="/<feature>")`.
-  2) Export it from `routes/__init__.py`.
-  3) Register in `main.py` via `app.include_router(<feature>_router)`.
-- DB access: Prefer `Depends(get_db)` from `database.py` in route handlers. Return Pydantic schemas from `schemas.py` when present; otherwise, ensure JSON-serializable responses.
-- Auth: Axios attaches a `Bearer` token from `localStorage`. Backend has `fastapi-users` in requirements and a `users` router; check `routes/users.py` for auth flows when calling protected endpoints.
-- Cross-component contract: Frontend expects consistent base URLs and JSON shapes. If you change a route path or payload, update `src/Services/*` consumers and any components using them.
-- Media/Blobs: When dealing with uploads, use the storage helpers (`storage.py`, `media_service.py`) rather than calling Azure SDK directly.
+Run & test (most common commands):
+- Backend dev (from `FastAPI/`): `uvicorn CiviCodeAPI.main:app --host 0.0.0.0 --port 8000 --reload`.
+- Frontend dev (from `my-project/`): `npm start`.
+- Backend tests (from `FastAPI/`): `pytest` (fixtures override DB for isolated runs).
+- DB migrations: `alembic revision --autogenerate -m "..."` then `alembic upgrade head`.
 
-## Integration examples
-- Frontend service pattern (`src/Services/api.js`): centralized axios instance logs base URL and injects `Authorization` from `localStorage`.
-- Typical backend handler: `@router.get("/addresses/{id}")` obtains a DB session via `Depends(get_db)` and returns ORM data mapped to schemas.
+Project-specific conventions (do these):
+- Router pattern: add `APIRouter` in `routes/<x>.py`, export in `routes/__init__.py`, then include in `main.py`.
+- DB access: always use `Depends(get_db)` in routes; prefer returning Pydantic schemas from `schemas.py`.
+- Media: use `media_service.ensure_blob_browser_safe` and `storage.py` helpers — do not instantiate Blob clients ad-hoc.
+- Auth: frontend reads token from `localStorage`; backend expects `Authorization: Bearer <token>`.
 
-## Troubleshooting tips
-- If frontend 401s: ensure a valid token in `localStorage`; check CORS config (open by default) and `REACT_APP_API_URL`.
-- If DB connection fails: verify `FastAPI/.env.development` has a valid `DATABASE_URL` (Postgres), or that the default local URL matches your environment. Heroku dynos require SSL; the helper adds `sslmode=require`.
-- CRA build/start issues: confirm `react-scripts` v5 is installed and Node is supported; Tailwind config is present in `tailwind.config.js`.
+Integration & gotchas to watch for:
+- Env vars: backend loads `.env.development`/`.env` in `FastAPI/`; frontend reads `REACT_APP_*` vars in `my-project/`.
+- FFmpeg is required for video conversion (Aptfile/Procfile mention). Tests may mock conversion helpers.
+- `database.py` rewrites `postgres://` → `postgresql+psycopg2://` and appends SSL on dynos — changing it affects deployments.
 
-## Where to look
-- Backend entry: `FastAPI/CiviCodeAPI/main.py`; routers: `FastAPI/CiviCodeAPI/routes/`; models: `FastAPI/CiviCodeAPI/models.py`.
-- Backend config: `FastAPI/CiviCodeAPI/database.py`, `FastAPI/CiviCodeAPI/config.py`, env files in `FastAPI/`.
-- Frontend entry: `my-project/src/index.js`; routing/components in `src/Layouts`, `src/Components`, services in `src/Services`.
+Small actionable examples (copy/paste targets):
+- To add a new API: create `FastAPI/CiviCodeAPI/routes/foos.py` with `router=APIRouter(prefix='/foos')`, export and include in `main.py`.
+- To call backend from React: use `my-project/src/Services/api.js` axios instance (it uses `REACT_APP_API_URL`).
+
+When unsure, open `FastAPI/CiviCodeAPI/main.py` then the matching `routes/<feature>.py` and `models.py` to see DB shape and side effects. After edits, run the backend tests (`pytest`) and start the frontend to verify integration.
+
+If anything here is unclear or you'd like more examples (e.g., sample PR format, preferred commit message style, or specific testing snippets), tell me which area to expand.
