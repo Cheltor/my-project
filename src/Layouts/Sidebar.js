@@ -637,7 +637,7 @@ export default function Sidebar({ children }) {
           </div>
 
           {/* Main content area */}
-          <main className="py-10">
+          <main id="main-content" role="main" tabIndex="-1" className="py-10 focus:outline-none">
             <div className="px-4 sm:px-6 lg:px-8">{children}</div>
           </main>
         </div>

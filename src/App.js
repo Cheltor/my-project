@@ -231,15 +231,17 @@ function MainApp() {
             </Sidebar>
           </>
         ) : (
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/resident-concern" element={<ResidentConcern />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="*" element={<LandingPage />} />
-            {/* Redirect any other route to landing if not authenticated */}
-          </Routes>
+          <main id="main-content" role="main" className="min-h-screen focus:outline-none">
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/resident-concern" element={<ResidentConcern />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="*" element={<LandingPage />} />
+              {/* Redirect any other route to landing if not authenticated */}
+            </Routes>
+          </main>
         )}
         <Analytics /> {/* render here so it's always mounted while Router is active */}
       </Router>
