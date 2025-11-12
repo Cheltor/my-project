@@ -667,7 +667,7 @@ export default function NewBuildingPermit({
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/70 px-4 py-8 sm:py-12">
-      <div className="absolute inset-0" aria-hidden="true" onClick={handleBackdropClick} />
+      <div className="absolute inset-0" onClick={handleBackdropClick} />
       <div className="relative z-10 flex w-full justify-center">{card}</div>
     </div>
   );

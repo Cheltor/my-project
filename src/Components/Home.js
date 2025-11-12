@@ -165,37 +165,37 @@ export default function Example() {
       label: showNewViolationForm ? "Hide Violation Form" : "New Violation Form",
       state: showNewViolationForm,
       toggle: toggleNewViolationForm,
-      color: "bg-red-500",
+      color: "bg-red-700",
     },
     {
       label: showNewComplaint ? "Hide Complaint Form" : "New Complaint Form",
       state: showNewComplaint,
       toggle: toggleNewComplaint,
-      color: "bg-indigo-500",
+      color: "bg-indigo-700",
     },
     {
       label: showNewMFLicense ? "Hide Multifamily License Form" : "New Multi Family License Application Form",
       state: showNewMFLicense,
       toggle: toggleNewMFLicense,
-      color: "bg-green-500",
+      color: "bg-emerald-700",
     },
     {
       label: showNewSFLicense ? "Hide Single Family License Form" : "New Single Family License Application Form",
       state: showNewSFLicense,
       toggle: toggleNewSFLicense,
-      color: "bg-teal-500",
+      color: "bg-teal-700",
     },
     {
       label: showNewBuildingPermit ? "Hide Building Permit Form" : "New Building Permit Application Form",
       state: showNewBuildingPermit,
       toggle: toggleNewBuildingPermit,
-      color: "bg-violet-500",
+      color: "bg-violet-700",
     },
     {
       label: showNewBusinessLicense ? "Hide Business License Form" : "New Business License Application Form",
       state: showNewBusinessLicense,
       toggle: toggleNewBusinessLicense,
-      color: "bg-orange-500",
+      color: "bg-orange-700",
     },
   ];
 
@@ -222,7 +222,7 @@ export default function Example() {
             <button
               type="button"
               onClick={toggleQuickActions}
-              className="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-2 text-sm font-semibold text-white shadow-lg transition transform hover:scale-[1.03] hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2"
+            className="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-indigo-600 to-purple-700 px-5 py-2 text-sm font-semibold text-white shadow-lg transition transform hover:scale-[1.03] hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
             >
               {showQuickActions ? 'Hide Quick Actions' : 'Show Quick Actions'}
             </button>
@@ -346,7 +346,7 @@ export default function Example() {
           <button
             type="button"
             onClick={toggleAdminWidgets}
-            className="mt-4 inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-2 text-sm font-semibold text-white shadow-lg transition transform hover:scale-[1.03] hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-orange-300 focus:ring-offset-2"
+            className="mt-4 inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-amber-700 to-orange-800 px-5 py-2 text-sm font-semibold text-white shadow-lg transition transform hover:scale-[1.03] hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2"
           >
             {showAdminWidgets ? 'Hide Admin Activity' : 'Show Admin Activity'}
           </button>
@@ -356,7 +356,7 @@ export default function Example() {
               type="button"
               onClick={sendTestEmail}
               disabled={emailTestLoading}
-              className="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-sky-500 to-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-lg transition transform hover:scale-[1.03] hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-sky-300 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-sky-700 to-blue-800 px-5 py-2 text-sm font-semibold text-white shadow-lg transition transform hover:scale-[1.03] hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {emailTestLoading ? 'Sending…' : 'Send Test Email'}
             </button>
