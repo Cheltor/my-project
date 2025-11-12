@@ -3,16 +3,31 @@ import { Link } from 'react-router-dom';
 import { formatPhoneNumber, formatWebsite } from '../utils';
 // useAuth not required here - removed unused import
 import NewBusinessForm from './Business/NewBusinessForm';
+import usePaginatedSearch from '../Hooks/usePaginatedSearch';
+import PaginationControls from './Common/PaginationControls';
 
 const BusinessesList = () => {
   // auth not used in this component
   const [businesses, setBusinesses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
   const [showForm, setShowForm] = useState(false);
   const businessesPerPage = 10;
+
+  const {
+    searchQuery,
+    handleSearchChange,
+    currentPage,
+    totalPages,
+    currentItems: currentBusinesses,
+    goToPage,
+  } = usePaginatedSearch(businesses, {
+    itemsPerPage: businessesPerPage,
+    filterFn: (business, query) =>
+      [business.name, business.email, business.phone, business.address?.combadd]
+        .filter((field) => field !== undefined && field !== null)
+        .some((field) => String(field).toLowerCase().includes(query)),
+  });
 
   const loadBusinesses = () => {
     fetch(`${process.env.REACT_APP_API_URL}/businesses/`)
@@ -37,37 +52,6 @@ const BusinessesList = () => {
   }, []);
 
   // Inline form logic removed; handled in NewBusinessForm
-
-  const filteredBusinesses = businesses.filter((business) =>
-    [business.name, business.email, business.phone, business.address?.combadd]
-      .some((field) => field?.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
-  const totalPages = Math.ceil(filteredBusinesses.length / businessesPerPage);
-  const indexOfLastBusiness = currentPage * businessesPerPage;
-  const indexOfFirstBusiness = indexOfLastBusiness - businessesPerPage;
-  const currentBusinesses = filteredBusinesses.slice(indexOfFirstBusiness, indexOfLastBusiness);
-
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  const [editingPage, setEditingPage] = useState(false);
-  const [pageInput, setPageInput] = useState('');
-
-  const startEditPage = () => {
-    setPageInput(String(currentPage));
-    setEditingPage(true);
-  };
-
-  const applyPageInput = () => {
-    const n = parseInt(pageInput, 10);
-    if (!Number.isNaN(n) && n >= 1 && n <= totalPages) {
-      paginate(n);
-    }
-    setEditingPage(false);
-  };
-  const handleSearchChange = (event) => {
-    setSearchQuery(event.target.value);
-    setCurrentPage(1);
-  };
 
   if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
   if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
@@ -174,44 +158,12 @@ const BusinessesList = () => {
       </div>
 
       {/* Pagination Controls */}
-      <div className="mt-4 flex justify-between items-center">
-        <button
-          onClick={() => paginate(currentPage - 1)}
-          disabled={currentPage === 1}
-          className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-500 disabled:bg-gray-300"
-        >
-          Previous
-        </button>
-        <div className="text-sm text-gray-700">
-          {editingPage ? (
-            <input
-              type="number"
-              min={1}
-              max={totalPages}
-              value={pageInput}
-              onChange={(e) => setPageInput(e.target.value)}
-              onBlur={applyPageInput}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') applyPageInput();
-                if (e.key === 'Escape') setEditingPage(false);
-              }}
-              className="w-20 px-2 py-1 border rounded"
-              autoFocus
-            />
-          ) : (
-            <button onClick={startEditPage} className="underline">
-              Page {currentPage} of {totalPages}
-            </button>
-          )}
-        </div>
-        <button
-          onClick={() => paginate(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-500 disabled:bg-gray-300"
-        >
-          Next
-        </button>
-      </div>
+      <PaginationControls
+        className="mt-4"
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={goToPage}
+      />
     </div>
   );
 };
