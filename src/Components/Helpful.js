@@ -1,9 +1,6 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import { useAuth } from "../AuthContext";
 
 function Helpful() {
-  const { user } = useAuth();
   return (
     <div className="flex flex-col items-center text-center">
       <h1 className="text-2xl font-bold mb-4">Helpful Links</h1>
