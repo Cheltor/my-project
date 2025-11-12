@@ -1,16 +1,61 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';  // Import Link from react-router-dom
-import UnitComments from './UnitComments';  // Import UnitComments component
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import UnitComments from './UnitComments';
 import { useAuth } from '../../AuthContext';
+import { toEasternLocaleString } from '../../utils';
+
+const RELATIVE_TIME_DIVISIONS = [
+  { amount: 60, unit: 'second' },
+  { amount: 60, unit: 'minute' },
+  { amount: 24, unit: 'hour' },
+  { amount: 7, unit: 'day' },
+  { amount: 4.34524, unit: 'week' },
+  { amount: 12, unit: 'month' },
+  { amount: Infinity, unit: 'year' },
+];
+
+const formatRelativeTimeFromNow = (input) => {
+  const target = input instanceof Date ? input : new Date(input);
+  if (!target || Number.isNaN(target.getTime())) return '';
+  let duration = (target.getTime() - Date.now()) / 1000;
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  for (const division of RELATIVE_TIME_DIVISIONS) {
+    if (Math.abs(duration) < division.amount) {
+      return rtf.format(Math.round(duration), division.unit);
+    }
+    duration /= division.amount;
+  }
+  return '';
+};
+
+const formatRecentDescriptor = (input) => {
+  const target = input instanceof Date ? input : new Date(input);
+  if (!target || Number.isNaN(target.getTime())) return '';
+  const diffMs = Math.abs(Date.now() - target.getTime());
+  const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+  if (diffMs <= thirtyDays) {
+    const relative = formatRelativeTimeFromNow(target);
+    if (relative) return relative;
+  }
+  return toEasternLocaleString(target, 'en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+};
+
+const hasValue = (value) => value !== undefined && value !== null && value !== '';
 
 const AddressUnitDetail = () => {
-  const { unitId } = useParams();  // Ensure this matches the route parameter name
+  const { unitId } = useParams();
   const { user } = useAuth();
   const [unit, setUnit] = useState(null);
   const [editing, setEditing] = useState(false);
   const [newUnitNumber, setNewUnitNumber] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
-  const [address, setAddress] = useState(null);  // State to store address details
+  const [address, setAddress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // Quick comment (mobile) state
@@ -29,7 +74,7 @@ const AddressUnitDetail = () => {
       })
       .then((data) => {
         setUnit(data);
-        return fetch(`${process.env.REACT_APP_API_URL}/addresses/${data.address_id}`);  // Fetch address details
+        return fetch(`${process.env.REACT_APP_API_URL}/addresses/${data.address_id}`);
       })
       .then((response) => {
         if (!response.ok) throw new Error('Failed to fetch address');
@@ -39,136 +84,319 @@ const AddressUnitDetail = () => {
         setAddress(data);
         setLoading(false);
       })
-      .catch((error) => {
-        setError(error.message);
+      .catch((fetchError) => {
+        setError(fetchError.message);
         setLoading(false);
       });
   }, [unitId]);
 
-  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
-  if (!unit || !address) return <div className="text-center mt-10">No unit or address details available.</div>;
+  const unitHighlights = useMemo(() => {
+    if (!unit) return [];
+    const highlights = [];
+    const pushHighlight = (label, value) => {
+      if (!hasValue(value)) return;
+      highlights.push({ label, value });
+    };
+
+    pushHighlight('Status', hasValue(unit.unit_status) ? unit.unit_status : unit.status);
+    pushHighlight('Type', hasValue(unit.unit_type) ? unit.unit_type : unit.type);
+    pushHighlight('Use', unit.use);
+    pushHighlight('Floor', unit.floor);
+    if (hasValue(unit.square_feet)) {
+      const sqft = Number(unit.square_feet);
+      pushHighlight('Square footage', Number.isFinite(sqft) ? `${sqft.toLocaleString()} sq ft` : unit.square_feet);
+    }
+    pushHighlight('Bedrooms', unit.bedrooms);
+    pushHighlight('Bathrooms', unit.bathrooms);
+    pushHighlight('Occupancy limit', unit.occupancy_limit);
+    if (unit?.is_vacant !== undefined && unit?.is_vacant !== null) {
+      pushHighlight('Vacancy', unit.is_vacant ? 'Vacant' : 'Occupied');
+    }
+    if (hasValue(unit.last_inspected_at)) {
+      pushHighlight('Last inspection', formatRecentDescriptor(unit.last_inspected_at));
+    }
+    if (hasValue(unit.next_inspection_at)) {
+      pushHighlight('Next inspection', formatRecentDescriptor(unit.next_inspection_at));
+    }
+    return highlights;
+  }, [unit]);
+
+  const activityMeta = useMemo(() => {
+    if (!unit) return [];
+    const rows = [];
+    if (hasValue(unit.created_at)) {
+      rows.push({
+        label: 'Created',
+        value: toEasternLocaleString(unit.created_at, 'en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        }),
+        hint: formatRecentDescriptor(unit.created_at),
+      });
+    }
+    if (hasValue(unit.updated_at)) {
+      rows.push({
+        label: 'Last updated',
+        value: toEasternLocaleString(unit.updated_at, 'en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        }),
+        hint: formatRecentDescriptor(unit.updated_at),
+      });
+    }
+    if (hasValue(unit.last_activity_at)) {
+      rows.push({
+        label: 'Latest activity',
+        value: formatRecentDescriptor(unit.last_activity_at),
+      });
+    }
+    return rows;
+  }, [unit]);
+
+  const propertyMeta = useMemo(() => {
+    if (!address && !unit) return [];
+    const rows = [];
+    if (address?.property_name) rows.push({ label: 'Property name', value: address.property_name });
+    if (address?.combadd) rows.push({ label: 'Street address', value: address.combadd, link: `/address/${address.id}` });
+    if (address?.ownername) rows.push({ label: 'Owner', value: address.ownername });
+    if (address?.mailadd) rows.push({ label: 'Mailing address', value: address.mailadd });
+    if (address?.aka) rows.push({ label: 'Also known as', value: address.aka });
+    if (unit?.notes && unit.notes.trim()) rows.push({ label: 'Unit notes', value: unit.notes.trim() });
+    if (unit?.occupant_name) rows.push({ label: 'Occupant', value: unit.occupant_name });
+    if (unit?.phone) rows.push({ label: 'Contact phone', value: unit.phone });
+    if (unit?.email) rows.push({ label: 'Contact email', value: unit.email });
+    return rows;
+  }, [address, unit]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-slate-600 text-lg font-medium">Loading unit details…</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-4 text-red-700 shadow-sm">
+          Error loading unit: {error}
+        </div>
+      </div>
+    );
+  }
+
+  if (!unit || !address) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="rounded-xl border border-slate-200 bg-white px-6 py-4 text-slate-700 shadow-sm">
+          No unit or address details available.
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto px-5 pt-4 pb-36 sm:pb-6 bg-white shadow-md rounded-lg mt-10 space-y-8">
-      {/* Unit Information */}
-      <div className="mb-4">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 flex flex-wrap items-center">
-          {editing ? (
-            <form
-              className="inline-flex items-center"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (newUnitNumber === unit.number || newUnitNumber.trim() === "") {
-                  setEditing(false);
-                  return;
-                }
-                // Check for duplicate unit number before showing confirm
-                try {
-                  const res = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${address.id}/units`);
-                  if (!res.ok) throw new Error('Failed to fetch units');
-                  const units = await res.json();
-                  const duplicate = units.find(u => u.number === newUnitNumber && u.id !== unit.id);
-                  if (duplicate) {
-                    alert('A unit with this number already exists for this address.');
-                    return;
-                  }
-                  setShowConfirm(true);
-                } catch (err) {
-                  alert('Error checking for duplicate unit number.');
-                }
-              }}
-            >
-              <input
-                className="border border-gray-300 rounded px-2 py-1 text-lg mr-2"
-                value={newUnitNumber}
-                onChange={e => setNewUnitNumber(e.target.value)}
-                autoFocus
-              />
-              <button type="submit" className="bg-green-500 text-white px-2 py-1 rounded mr-2">Save</button>
-              <button type="button" className="bg-gray-300 px-2 py-1 rounded" onClick={() => setEditing(false)}>Cancel</button>
-            </form>
-          ) : (
-            <div>
-              <span className="break-words">Unit {unit.number}</span>
-              <button
-                className="ml-3 px-4 py-2 text-base bg-yellow-400 rounded hover:bg-yellow-500 font-semibold shadow"
-                onClick={() => {
-                  setNewUnitNumber(unit.number);
-                  setEditing(true);
-                }}
-              >Edit</button>
+    <div className="min-h-screen bg-slate-50 pb-36 sm:pb-10">
+      <div className="border-b border-slate-200 bg-white">
+        <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col-reverse gap-6 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <div className="text-sm text-slate-500">
+                  <Link to={`/address/${address.id}`} className="inline-flex items-center gap-2 font-medium text-slate-600 hover:text-slate-900">
+                    <span aria-hidden="true">←</span>
+                    Back to {address.combadd}
+                  </Link>
+                </div>
+                <div className="mt-4 flex flex-col gap-3">
+                  {editing ? (
+                    <form
+                      className="flex flex-wrap items-center gap-3"
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (newUnitNumber === unit.number || newUnitNumber.trim() === '') {
+                          setEditing(false);
+                          return;
+                        }
+                        try {
+                          const res = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${address.id}/units`);
+                          if (!res.ok) throw new Error('Failed to fetch units');
+                          const units = await res.json();
+                          const duplicate = units.find((u) => u.number === newUnitNumber && u.id !== unit.id);
+                          if (duplicate) {
+                            alert('A unit with this number already exists for this address.');
+                            return;
+                          }
+                          setShowConfirm(true);
+                        } catch (err) {
+                          alert('Error checking for duplicate unit number.');
+                        }
+                      }}
+                    >
+                      <input
+                        className="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-lg font-semibold text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value={newUnitNumber}
+                        onChange={(e) => setNewUnitNumber(e.target.value)}
+                        autoFocus
+                      />
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="submit"
+                        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-slate-700"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-slate-700 transition hover:border-slate-400"
+                          onClick={() => setEditing(false)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-4">
+                      <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Unit {unit.number}</h1>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-slate-700 transition hover:border-slate-400 hover:text-slate-900"
+                        onClick={() => {
+                          setNewUnitNumber(unit.number);
+                          setEditing(true);
+                        }}
+                      >
+                        Edit unit number
+                      </button>
+                    </div>
+                  )}
+                  {address.property_name && (
+                    <div className="text-lg font-medium text-slate-700">
+                      {address.property_name}
+                    </div>
+                  )}
+                  {address.ownername && (
+                    <div className="text-sm text-slate-500">
+                      Owner: {address.ownername}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col items-start gap-2 text-sm text-slate-500 sm:items-end">
+                {activityMeta.map((item) => (
+                  <div key={item.label} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 shadow-sm">
+                    <div className="text-xs uppercase tracking-wide text-slate-500">{item.label}</div>
+                    <div className="text-sm font-semibold text-slate-800">{item.value}</div>
+                    {item.hint && <div className="text-xs text-slate-500">{item.hint}</div>}
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
-        </h1>
+            {unitHighlights.length > 0 && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {unitHighlights.map((highlight, index) => (
+                  <div
+                    key={`${highlight.label}-${index}`}
+                    className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                  >
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {highlight.label}
+                    </div>
+                    <div className="mt-1 text-lg font-semibold text-slate-900">
+                      {highlight.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Confirmation dialog */}
+      <div className="relative -mt-6 pb-10 sm:-mt-8">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 sm:px-6 lg:px-8">
+          {propertyMeta.length > 0 && (
+            <section className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur">
+              <h2 className="text-lg font-semibold text-slate-900">Unit & property details</h2>
+              <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {propertyMeta.map((item, index) => (
+                  <div key={`${item.label}-${index}`} className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.label}</dt>
+                    {item.link ? (
+                      <dd className="mt-1 text-base font-medium text-indigo-700">
+                        <Link to={item.link} className="hover:underline">
+                          {item.value}
+                        </Link>
+                      </dd>
+                    ) : (
+                      <dd className="mt-1 text-base text-slate-800 whitespace-pre-line">{item.value}</dd>
+                    )}
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )}
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <UnitComments key={`unit-comments-${commentsRefreshKey}`} unitId={unitId} addressId={address.id} />
+          </section>
+        </div>
+      </div>
+
       {showConfirm && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-          <div className="bg-white p-6 rounded shadow-lg max-w-sm w-full">
-            <h3 className="text-lg font-semibold mb-2">Confirm Update</h3>
-            <p>Are you sure you want to change the unit number to <span className="font-bold">{newUnitNumber}</span>?</p>
-            <div className="flex justify-end mt-4 space-x-2">
+        <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-900/60 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900">Confirm update</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Are you sure you want to change the unit number to{' '}
+              <span className="font-semibold text-slate-900">{newUnitNumber}</span>?
+            </p>
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
               <button
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                type="button"
+                className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+                onClick={() => setShowConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500"
                 onClick={async () => {
                   try {
                     const response = await fetch(`${process.env.REACT_APP_API_URL}/units/${unitId}`, {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ number: newUnitNumber })
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ number: newUnitNumber }),
                     });
-                    if (!response.ok) throw new Error("Failed to update unit number");
+                    if (!response.ok) throw new Error('Failed to update unit number');
                     const updated = await response.json();
                     setUnit((prev) => ({ ...prev, number: updated.number }));
                     setEditing(false);
                     setShowConfirm(false);
                   } catch (err) {
-                    alert("Error updating unit number.");
+                    alert('Error updating unit number.');
                     setShowConfirm(false);
                   }
                 }}
               >
-                Yes, Update
-              </button>
-              <button
-                className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
-                onClick={() => setShowConfirm(false)}
-              >
-                Cancel
+                Yes, update
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Address Information */}
-      <div className="mb-4">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 flex flex-wrap items-center">
-          {address.property_name && (
-            <div className="inline-flex items-center">
-              <span className="break-words">{address.property_name}</span>
-              <span className="mx-2 hidden sm:inline">-</span>
-            </div>
-          )}
-          <Link to={`/address/${address.id}`} className="break-words text-blue-500">
-            {address.combadd}
-          </Link>
-        </h1>
-
-        <h2 className="text-2xl font-semibold text-gray-700">Owner Name</h2>
-        <p className="text-lg text-gray-600">{address.ownername}</p>
-
-        {address.aka && null}
-      </div>
-
-      {/* Unit Comments */}
-      <UnitComments key={`unit-comments-${commentsRefreshKey}`} unitId={unitId} addressId={address.id} />
-
       {/* Sticky Quick Unit Comment Bar (mobile only) */}
-      <div className="fixed inset-x-0 bottom-0 sm:hidden z-40">
-        <div className="mx-auto max-w-4xl px-4 py-4 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+      <div className="fixed inset-x-0 bottom-0 z-40 sm:hidden">
+        <div className="mx-auto max-w-5xl px-4 py-4 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
           <form
             onSubmit={async (e) => {
               e.preventDefault();

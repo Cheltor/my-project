@@ -4,10 +4,47 @@ import AsyncSelect from "react-select/async";
 import ContactSelection from "../Contact/ContactSelection";
 import FileUploadInput from "../Common/FileUploadInput";
 
-export default function NewMFLicense({ defaultAddressId, defaultAddressLabel, onCreated }) {
+const addressSelectStyles = {
+  control: (provided, state) => ({
+    ...provided,
+    minHeight: "42px",
+    borderColor: state.isFocused ? "#2563eb" : provided.borderColor,
+    boxShadow: state.isFocused ? "0 0 0 1px #2563eb" : provided.boxShadow,
+    "&:hover": {
+      borderColor: "#2563eb",
+    },
+  }),
+  menu: (provided) => ({
+    ...provided,
+    zIndex: 9999,
+  }),
+  option: (provided, state) => ({
+    ...provided,
+    backgroundColor: state.isSelected
+      ? "#2563eb"
+      : state.isFocused
+      ? "#ebf4ff"
+      : "white",
+    color: state.isSelected ? "white" : "#111827",
+    "&:active": { backgroundColor: "#2563eb", color: "white" },
+  }),
+  singleValue: (provided) => ({
+    ...provided,
+    color: "#111827",
+  }),
+};
+
+export default function NewMFLicense({
+  defaultAddressId,
+  defaultAddressLabel,
+  onCreated,
+  isOpen = true,
+  onClose,
+  renderAsModal = false,
+  title = "Create New Multifamily License",
+  description,
+}) {
   const { user, token } = useAuth();
-  const [contacts, setContacts] = useState([]);
-  const [addresses, setAddresses] = useState([]);
   const [formData, setFormData] = useState({
     address_id: defaultAddressId ? String(defaultAddressId) : "",
     source: "Multifamily License",
@@ -19,37 +56,72 @@ export default function NewMFLicense({ defaultAddressId, defaultAddressLabel, on
     new_contact_phone: "",
     paid: false,
   });
-  // Admin assignment state
+  const [addressLabel, setAddressLabel] = useState(defaultAddressLabel || "");
+  const [previews, setPreviews] = useState([]);
   const [onsUsers, setOnsUsers] = useState([]);
   const [assigneeId, setAssigneeId] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  // Validation state
   const [addressError, setAddressError] = useState("");
   const [contactError, setContactError] = useState("");
-  const isAddressValid = !!formData.address_id;
   const hasNewContactInput = (formData.new_contact_name || "").trim().length > 0;
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
-        const [contactsRes, addressesRes] = await Promise.all([
-          fetch(`${process.env.REACT_APP_API_URL}/contacts/`, { headers: authHeader }),
-          fetch(`${process.env.REACT_APP_API_URL}/addresses/`, { headers: authHeader }),
-        ]);
+  const STEPS = [
+    { key: "attachments", label: "Attachments" },
+    { key: "address", label: "Address" },
+    { key: "contact", label: "Contact" },
+    { key: "review", label: "Review" },
+  ];
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const isFirstStep = currentStepIndex === 0;
+  const isLastStep = currentStepIndex === STEPS.length - 1;
+  const currentStep = STEPS[currentStepIndex]?.key;
+  const canSubmit = Boolean(formData.address_id) && !submitting;
 
-        setContacts(await contactsRes.json());
-        setAddresses(await addressesRes.json());
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
+  const [localOpen, setLocalOpen] = useState(isOpen);
+  useEffect(() => {
+    setLocalOpen(isOpen);
+  }, [isOpen]);
+
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      address_id: defaultAddressId ? String(defaultAddressId) : "",
+    }));
+    setAddressLabel(defaultAddressLabel || "");
+  }, [defaultAddressId, defaultAddressLabel]);
+
+  useEffect(() => {
+    setPreviews((prev) => {
+      prev.forEach((p) => {
+        try {
+          if (p.url) URL.revokeObjectURL(p.url);
+        } catch (_) {}
+      });
+      return [];
+    });
+    const attachments = Array.isArray(formData.attachments)
+      ? formData.attachments
+      : Array.from(formData.attachments || []);
+    if (attachments.length === 0) {
+      setPreviews([]);
+      return;
+    }
+    const next = attachments.map((file) => ({
+      name: file.name,
+      type: file.type,
+      url: URL.createObjectURL(file),
+    }));
+    setPreviews(next);
+    return () => {
+      next.forEach((p) => {
+        try {
+          if (p.url) URL.revokeObjectURL(p.url);
+        } catch (_) {}
+      });
     };
-
-    fetchData();
-  }, []);
+  }, [formData.attachments]);
 
   useEffect(() => {
-    // Load ONS users for admins (role 3)
     const loadOns = async () => {
       try {
         const resp = await fetch(`${process.env.REACT_APP_API_URL}/users/ons/`);
@@ -63,16 +135,17 @@ export default function NewMFLicense({ defaultAddressId, defaultAddressLabel, on
     if (user?.role === 3) loadOns();
   }, [user?.role]);
 
+  const closeHandler = () => {
+    if (onClose) onClose();
+    else setLocalOpen(false);
+  };
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    if (type === "checkbox") {
-      setFormData({ ...formData, [name]: checked });
-    } else {
-      setFormData({ ...formData, [name]: value });
-      if (name === 'contact_id' && value) {
-        setContactError("");
-      }
-    }
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
   const handleAttachmentsChange = (files) => {
@@ -80,31 +153,51 @@ export default function NewMFLicense({ defaultAddressId, defaultAddressLabel, on
     setFormData((prev) => ({ ...prev, attachments: next }));
   };
 
-  const handleAddressChange = async (selectedOption) => {
+  const handleAddressChange = (selectedOption) => {
     const addressId = selectedOption ? selectedOption.value : "";
-    setFormData({ ...formData, address_id: addressId });
+    setFormData((prev) => ({ ...prev, address_id: addressId }));
+    setAddressLabel(selectedOption ? selectedOption.label : "");
     if (selectedOption) setAddressError("");
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (submitting) return;
-    setSubmitting(true);
-    // Client-side validation (address required only)
-    if (!formData.address_id) {
-      setAddressError('Address is required.');
-      setSubmitting(false);
+  const removeAttachmentAt = (index) => {
+    setFormData((prev) => {
+      const attachments = Array.isArray(prev.attachments)
+        ? [...prev.attachments]
+        : Array.from(prev.attachments || []);
+      attachments.splice(index, 1);
+      return { ...prev, attachments };
+    });
+  };
+
+  const handleNext = () => {
+    if (currentStep === "address" && !formData.address_id) {
+      setAddressError("Address is required.");
       return;
     }
+    setCurrentStepIndex((idx) => Math.min(idx + 1, STEPS.length - 1));
+  };
 
-    // Create contact first if using New Contact path
+  const handleBack = () => {
+    setCurrentStepIndex((idx) => Math.max(idx - 1, 0));
+  };
+
+  const handleFinalSubmit = async () => {
+    if (submitting) return;
+    if (!formData.address_id) {
+      setAddressError("Address is required.");
+      setCurrentStepIndex(1);
+      return;
+    }
+    setSubmitting(true);
     let effectiveContactId = formData.contact_id;
+    setContactError("");
     if (!effectiveContactId && hasNewContactInput) {
       try {
         const resp = await fetch(`${process.env.REACT_APP_API_URL}/contacts/`, {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({
@@ -116,56 +209,83 @@ export default function NewMFLicense({ defaultAddressId, defaultAddressLabel, on
         if (resp.ok) {
           const created = await resp.json();
           effectiveContactId = created?.id ?? null;
-          if (effectiveContactId) setFormData((prev) => ({ ...prev, contact_id: effectiveContactId }));
+          if (effectiveContactId) {
+            setFormData((prev) => ({ ...prev, contact_id: effectiveContactId }));
+          }
         } else {
-          // Optional: show message but continue without blocking
-          setContactError('Failed to create contact. Continuing without contact.');
+          setContactError("Failed to create contact. Continuing without contact.");
         }
       } catch (err) {
-        // Optional: show message but continue without blocking
-        setContactError('Failed to create contact. Continuing without contact.');
+        console.error("Create contact error", err);
+        setContactError("Failed to create contact. Continuing without contact.");
       }
     }
-    const inspectionData = new FormData();
 
-    Object.keys(formData).forEach((key) => {
-      if (key === "attachments") {
-        // FastAPI expects the field name to match the parameter (attachments)
-        Array.from(formData.attachments).forEach((file) => {
-          inspectionData.append("attachments", file);
-        });
-      } else if (key !== "inspector_id") {
-        const val = formData[key];
-        if (val !== null && val !== undefined && val !== "") {
-          inspectionData.append(key, val);
-        }
+    const inspectionData = new FormData();
+    const attachments = Array.isArray(formData.attachments)
+      ? formData.attachments
+      : Array.from(formData.attachments || []);
+    attachments.forEach((file) => inspectionData.append("attachments", file));
+
+    const payload = {
+      ...formData,
+      contact_id: effectiveContactId || formData.contact_id,
+    };
+    Object.keys(payload).forEach((key) => {
+      if (key === "attachments") return;
+      const value = payload[key];
+      if (value !== null && value !== undefined && value !== "") {
+        inspectionData.append(key, value);
       }
     });
-    if (effectiveContactId) {
-      inspectionData.set('contact_id', String(effectiveContactId));
+
+    const effectiveInspectorId =
+      user?.role === 3 && assigneeId ? assigneeId : user?.id;
+    if (effectiveInspectorId) {
+      inspectionData.set("inspector_id", String(effectiveInspectorId));
     }
-    // inspector assignment
-    const effectiveInspectorId = user?.role === 3 && assigneeId ? assigneeId : user?.id;
-    if (effectiveInspectorId) inspectionData.set("inspector_id", String(effectiveInspectorId));
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/`, {
-        method: "POST",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: inspectionData,
-      });
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/inspections/`,
+        {
+          method: "POST",
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: inspectionData,
+        }
+      );
 
       if (!response.ok) throw new Error("Failed to create inspection");
       let created = null;
       try {
         created = await response.json();
       } catch (_) {}
+<<<<<<< HEAD
       if (typeof onCreated === 'function') {
         onCreated(created);
       } else {
         alert('Multifamily license inspection created successfully.');
+=======
+      if (onCreated) onCreated(created);
+      setCurrentStepIndex(0);
+      setFormData({
+        address_id: defaultAddressId ? String(defaultAddressId) : "",
+        source: "Multifamily License",
+        attachments: [],
+        scheduled_datetime: "",
+        contact_id: "",
+        new_contact_name: "",
+        new_contact_email: "",
+        new_contact_phone: "",
+        paid: false,
+      });
+      setAddressLabel(defaultAddressLabel || "");
+      if (renderAsModal) {
+        if (onClose) onClose();
+        else setLocalOpen(false);
+>>>>>>> change
       }
     } catch (error) {
       console.error("Error creating inspection:", error);
@@ -175,41 +295,23 @@ export default function NewMFLicense({ defaultAddressId, defaultAddressLabel, on
     }
   };
 
-  const addressOptions = addresses.map((address) => ({
-    value: address.id,
-    label: address.combadd,
-  }));
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    if (isLastStep) handleFinalSubmit();
+    else handleNext();
+  };
 
   const loadAddressOptions = async (inputValue) => {
     const response = await fetch(
       `${process.env.REACT_APP_API_URL}/addresses/search?query=${inputValue}&limit=5`
     );
     const data = await response.json();
-
     return data.map((address) => ({
-      label: `${address.property_name ? address.property_name + " - " : ""}${address.combadd}${address.aka ? ` (AKA: ${address.aka})` : ""}`,
-      value: address.id,
+      label: `${address.property_name ? `${address.property_name} - ` : ""}${address.combadd}${
+        address.aka ? ` (AKA: ${address.aka})` : ""
+      }`,
+      value: String(address.id),
     }));
-  };
-
-  const customStyles = {
-    control: (provided) => ({
-      ...provided,
-      backgroundColor: 'white',
-      borderColor: '#d1d5db',
-      boxShadow: 'none',
-      '&:hover': { borderColor: '#2563eb' },
-    }),
-    option: (provided, state) => ({
-      ...provided,
-      backgroundColor: state.isSelected ? '#2563eb' : state.isFocused ? '#ebf4ff' : 'white',
-      color: state.isSelected ? 'white' : '#111827',
-      '&:active': { backgroundColor: '#2563eb', color: 'white' },
-    }),
-    singleValue: (provided) => ({
-      ...provided,
-      color: '#111827',
-    }),
   };
 
   const loadContactOptions = async (inputValue) => {
@@ -217,13 +319,13 @@ export default function NewMFLicense({ defaultAddressId, defaultAddressLabel, on
       `${process.env.REACT_APP_API_URL}/contacts/search?query=${inputValue}&limit=5`
     );
     const data = await response.json();
-
     return data.map((contact) => ({
       label: `${contact.name} (${contact.email})`,
       value: contact.id,
     }));
   };
 
+<<<<<<< HEAD
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
       <h1 className="text-2xl font-semibold text-gray-900">Create New Multifamily License</h1>
@@ -253,84 +355,304 @@ export default function NewMFLicense({ defaultAddressId, defaultAddressLabel, on
           </div>
           <div className="text-xs text-gray-500 mt-1">This field is required.</div>
           {addressError && <div id="address-error" className="text-xs text-red-600 mt-1">{addressError}</div>}
+=======
+  const headingId = "new-mf-license-heading";
+  const descriptionId = description ? "new-mf-license-description" : undefined;
+  const open = renderAsModal ? (onClose ? isOpen : localOpen) : true;
+  if (renderAsModal && !open) return null;
+  const showCloseButton = renderAsModal || typeof onClose === "function";
+
+  const card = (
+    <div
+      className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-xl"
+      role={renderAsModal ? "dialog" : undefined}
+      aria-modal={renderAsModal ? "true" : undefined}
+      aria-labelledby={headingId}
+      aria-describedby={description ? descriptionId : undefined}
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-4">
+        <div>
+          <h2 id={headingId} className="text-lg font-semibold text-slate-900">
+            {title}
+          </h2>
+          {description && (
+            <p id={descriptionId} className="mt-1 text-sm text-slate-600">
+              {description}
+            </p>
+          )}
+>>>>>>> change
         </div>
-        {/* Assignee (Admin only) */}
-        {user?.role === 3 && (
-          <div className="mb-4">
-            <label htmlFor="assignee_id" className="block text-sm font-medium text-gray-700">Assign to ONS member</label>
-            <select
-              id="assignee_id"
-              value={assigneeId}
-              onChange={(e) => setAssigneeId(e.target.value)}
-              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm"
-            >
-              <option value="">Unassigned (defaults to me)</option>
-              {onsUsers.map((u) => (
-                <option key={u.id} value={u.id}>{u.name || u.email}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
-  {/* Multifamily licenses apply to the whole building; no unit selection */}
-
-  {/* ...existing code... */}
-
-        {/* Attachments Field */}
-        <div className="mb-4">
-          <FileUploadInput
-            label="Application or Photos"
-            name="attachments"
-            files={formData.attachments}
-            onChange={handleAttachmentsChange}
-            accept="image/*,application/pdf"
-            disabled={submitting}
-          />
-        </div>
-
-        {/* Scheduled Date 
-        <div className="mb-4">
-          <label htmlFor="scheduled_datetime" className="block text-sm font-medium text-gray-700">
-            Scheduled Date
-          </label>
-          <input
-            type="datetime-local"
-            id="scheduled_datetime"
-            name="scheduled_datetime"
-            value={formData.scheduled_datetime}
-            onChange={handleInputChange}
-            className="mt-1 block w-full shadow-sm border-gray-300 rounded-md"
-          />
-        </div>*/}
-
-        {/* Contact Selection (Optional) */}
-        <div className="mb-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Contact
-          </label>
-          <ContactSelection
-            formData={formData}
-            setFormData={setFormData}
-            loadContactOptions={loadContactOptions}
-            onInputChange={handleInputChange}
-          />
-          <div className="text-xs text-gray-500 mt-1">Optional.</div>
-          {contactError && <div className="text-xs text-red-600 mt-1">{contactError}</div>}
-        </div>
-
-        {/* Submit Button */}
-        <div className="mt-6">
+        {showCloseButton && (
           <button
-            type="submit"
-            className="w-full inline-flex justify-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60"
-            disabled={!isAddressValid || submitting}
-            aria-disabled={!isAddressValid || submitting}
-            aria-busy={submitting}
+            type="button"
+            onClick={closeHandler}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700"
           >
-            {submitting ? 'Creating…' : 'Create New Multifamily License'}
+            <span className="sr-only">Close</span>&times;
           </button>
+        )}
+      </div>
+      <div className="px-6 py-5">
+        <div className="mb-4 flex items-center justify-between text-xs font-medium text-gray-500">
+          {STEPS.map((step, index) => {
+            const isActive = index === currentStepIndex;
+            const isComplete = index < currentStepIndex;
+            return (
+              <div
+                key={step.key}
+                className={`flex-1 px-1 text-center ${
+                  isActive ? "text-blue-600" : ""
+                }`}
+              >
+                <div
+                  className={`mx-auto flex h-8 w-8 items-center justify-center rounded-full border ${
+                    isActive
+                      ? "border-blue-600 bg-blue-50 text-blue-600"
+                      : isComplete
+                      ? "border-green-500 bg-green-50 text-green-600"
+                      : "border-gray-300 bg-white text-gray-500"
+                  }`}
+                >
+                  {index + 1}
+                </div>
+                <div className="mt-1 uppercase tracking-wide">{step.label}</div>
+              </div>
+            );
+          })}
         </div>
-      </form>
+
+        <form onSubmit={handleFormSubmit} className="space-y-4">
+          {currentStep === "attachments" && (
+            <div>
+              <FileUploadInput
+                label="Application or Photos"
+                name="attachments"
+                files={formData.attachments}
+                onChange={handleAttachmentsChange}
+                accept="image/*,application/pdf"
+                disabled={submitting}
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Upload supporting documents now or continue to the next step.
+              </p>
+            </div>
+          )}
+
+          {currentStep === "address" && (
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="mf-address"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
+                  Select Address <span className="text-red-600">*</span>
+                </label>
+                <div
+                  className={`mt-1 ${
+                    addressError ? "rounded border border-red-500 p-1" : ""
+                  }`}
+                  aria-invalid={!!addressError}
+                  aria-describedby={addressError ? "mf-address-error" : undefined}
+                >
+                  <AsyncSelect
+                    inputId="mf-address"
+                    loadOptions={loadAddressOptions}
+                    onChange={handleAddressChange}
+                    placeholder="Type to search addresses..."
+                    isClearable
+                    styles={addressSelectStyles}
+                    className="mb-0"
+                    cacheOptions
+                    defaultOptions
+                    value={
+                      formData.address_id
+                        ? {
+                            value: formData.address_id,
+                            label:
+                              addressLabel || String(formData.address_id),
+                          }
+                        : null
+                    }
+                  />
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  This field is required.
+                </div>
+                {addressError && (
+                  <div
+                    id="mf-address-error"
+                    className="text-xs text-red-600 mt-1"
+                  >
+                    {addressError}
+                  </div>
+                )}
+              </div>
+              {user?.role === 3 && (
+                <div>
+                  <label
+                    htmlFor="mf-assignee"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Assign to ONS member
+                  </label>
+                  <select
+                    id="mf-assignee"
+                    value={assigneeId}
+                    onChange={(e) => setAssigneeId(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm"
+                  >
+                    <option value="">Unassigned (defaults to me)</option>
+                    {onsUsers.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name || u.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
+          {currentStep === "contact" && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Contact (optional)
+              </label>
+              <ContactSelection
+                formData={formData}
+                setFormData={setFormData}
+                loadContactOptions={loadContactOptions}
+                onInputChange={handleInputChange}
+              />
+              {contactError && (
+                <div className="text-xs text-red-600 mt-1">{contactError}</div>
+              )}
+            </div>
+          )}
+
+          {currentStep === "review" && (
+            <div className="space-y-3 rounded border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+              <div className="font-semibold text-gray-900">
+                Review and submit
+              </div>
+              <div>
+                <span className="font-medium">Address:</span>{" "}
+                {addressLabel || formData.address_id || "Not selected"}
+              </div>
+              <div>
+                <span className="font-medium">Assignee:</span>{" "}
+                {assigneeId
+                  ? onsUsers.find((u) => String(u.id) === String(assigneeId))
+                      ?.name ||
+                    onsUsers.find((u) => String(u.id) === String(assigneeId))
+                      ?.email ||
+                    "Selected user"
+                  : "Defaults to me"}
+              </div>
+              <div>
+                <span className="font-medium">Contact:</span>{" "}
+                {formData.contact_id
+                  ? `Existing contact #${formData.contact_id}`
+                  : formData.new_contact_name || "None"}
+              </div>
+              <div>
+                <div className="font-medium">Attachments:</div>
+                <div className="mt-2">
+                  {previews.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      {previews.map((preview, idx) => (
+                        <div
+                          key={preview.url || idx}
+                          className="relative rounded border bg-white p-2 text-xs"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              try {
+                                if (preview.url)
+                                  URL.revokeObjectURL(preview.url);
+                              } catch (_) {}
+                              removeAttachmentAt(idx);
+                            }}
+                            className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-red-600 shadow"
+                          >
+                            &times;
+                          </button>
+                          {preview.type?.startsWith("image/") ? (
+                            <img
+                              src={preview.url}
+                              alt={preview.name}
+                              className="h-20 w-full rounded object-cover"
+                            />
+                          ) : (
+                            <div className="truncate">{preview.name}</div>
+                          )}
+                          <div className="mt-1 truncate text-center">
+                            {preview.name}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-gray-600 text-sm">
+                      No attachments
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-2">
+            {!isFirstStep && (
+              <button
+                type="button"
+                onClick={handleBack}
+                className="rounded border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                disabled={submitting}
+              >
+                Back
+              </button>
+            )}
+            <div className="ml-auto flex gap-2">
+              {!isLastStep && (
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
+                  disabled={submitting}
+                >
+                  Next
+                </button>
+              )}
+              {isLastStep && (
+                <button
+                  type="submit"
+                  className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
+                  disabled={!canSubmit}
+                >
+                  {submitting ? "Creating…" : "Submit License"}
+                </button>
+              )}
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
+  if (!renderAsModal) {
+    return card;
+  }
+
+  const handleBackdropClick = () => {
+    closeHandler();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/70 px-4 py-8 sm:py-12">
+      <div className="absolute inset-0" aria-hidden="true" onClick={handleBackdropClick} />
+      <div className="relative z-10 flex w-full justify-center">{card}</div>
     </div>
   );
 }

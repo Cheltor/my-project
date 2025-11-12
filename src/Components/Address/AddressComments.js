@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import NewAddressComment from './NewAddressComment';
 import FullScreenPhotoViewer from '../FullScreenPhotoViewer';
+import CreateViolationFromCommentModal from '../Comment/CreateViolationFromCommentModal';
 import {
   toEasternLocaleString,
   getAttachmentFilename,
@@ -35,6 +36,7 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
   const [pageError, setPageError] = useState('');
   const [total, setTotal] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [violationComment, setViolationComment] = useState(null);
 
   const startEditPage = () => { setPageInputVal(String(page)); setPageError(''); setEditingPage(true); };
   const applyPageInput = () => {
@@ -47,6 +49,19 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
     setPage(n);
     setEditingPage(false);
   };
+
+  const resolveUnitNumber = useCallback((comment) => {
+    if (!comment || !comment.unit) return comment?.unit_id;
+    const raw =
+      comment.unit.number
+      ?? comment.unit.unit_number
+      ?? comment.unit.unitNumber
+      ?? comment.unit.label
+      ?? comment.unit.name;
+    if (raw == null) return comment.unit_id;
+    const trimmed = String(raw).trim();
+    return trimmed ? trimmed : comment.unit_id;
+  }, []);
 
   const downloadAttachments = async (commentId) => {
     if (!commentId) return;
@@ -225,7 +240,8 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
   }
 
   return (
-    <div className="border-b pb-4">
+    <>
+      <div className="border-b pb-4">
       <h2 className="text-2xl font-semibold text-gray-700">Comments</h2>
       <NewAddressComment addressId={addressId} onCommentAdded={handleCommentAdded} />
       {selectedPhotoUrl && (
@@ -291,7 +307,26 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
       <ul className="space-y-4 mt-2">
         {comments.length > 0 ? (
           comments.map((comment) => (
-            <li key={comment.id} className="bg-gray-100 p-4 rounded-lg shadow">
+            <li key={comment.id} className="relative rounded-lg bg-gray-100 p-4 shadow">
+              <div className="absolute right-3 top-3 flex items-center gap-2">
+                {!comment.violation_id && (
+                  <button
+                    type="button"
+                    onClick={() => setViolationComment(comment)}
+                    className="inline-flex items-center rounded-full border border-transparent bg-white/80 px-3 py-1 text-xs font-medium text-indigo-600 shadow-sm transition hover:bg-indigo-100 hover:text-indigo-700"
+                  >
+                    Create violation
+                  </button>
+                )}
+                {comment.violation_id && (
+                  <Link
+                    to={`/violation/${comment.violation_id}`}
+                    className="inline-flex items-center rounded-full border border-transparent bg-white/80 px-3 py-1 text-xs font-medium text-green-700 shadow-sm transition hover:bg-green-100"
+                  >
+                    View #{comment.violation_id}
+                  </Link>
+                )}
+              </div>
               <p className="text-gray-700 whitespace-pre-line">{comment.content}</p>
               {Array.isArray(comment.mentions) && comment.mentions.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -325,7 +360,7 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
                         to={`/address/${comment.address_id}/unit/${comment.unit_id}`}
                         className="text-blue-500 hover:underline"
                       >
-                        {`Unit${comment.unit && comment.unit.number ? ` ${comment.unit.number}` : ''}`}
+                        {`Unit ${resolveUnitNumber(comment)}`}
                       </Link>
                     </span>
                   )}
@@ -434,7 +469,20 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+      {violationComment && (
+        <CreateViolationFromCommentModal
+          comment={violationComment}
+          onClose={() => setViolationComment(null)}
+          onCreated={(newViolation) => {
+            setRefreshKey((key) => key + 1);
+            if (newViolation?.id) {
+              setViolationComment((prev) => (prev ? { ...prev, violation_id: newViolation.id } : prev));
+            }
+          }}
+        />
+      )}
+    </>
   );
 };
 

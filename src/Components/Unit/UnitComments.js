@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import NewUnitComment from './NewUnitComment';
 import FullScreenPhotoViewer from '../FullScreenPhotoViewer';
+import CreateViolationFromCommentModal from '../Comment/CreateViolationFromCommentModal';
 import { toEasternLocaleString } from '../../utils';
 
 // Utility function to format the date
@@ -14,6 +16,7 @@ const UnitComments = ({ unitId, addressId }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState(null);
+  const [violationComment, setViolationComment] = useState(null);
 
   const downloadAttachments = async (commentId) => {
     if (!commentId) return;
@@ -123,7 +126,8 @@ const UnitComments = ({ unitId, addressId }) => {
   }
 
   return (
-    <div className="border-b pb-4">
+    <>
+      <div className="border-b pb-4">
       <h2 className="text-2xl font-semibold text-gray-700">Comments</h2>
       <NewUnitComment unitId={Number(unitId)} addressId={Number(addressId)} onCommentAdded={handleCommentAdded} />
       {selectedPhotoUrl && (
@@ -135,7 +139,26 @@ const UnitComments = ({ unitId, addressId }) => {
       <ul className="space-y-4 mt-4">
         {comments.length > 0 ? (
           comments.map((comment) => (
-            <li key={comment.id} className="bg-gray-100 p-4 rounded-lg shadow">
+            <li key={comment.id} className="relative rounded-lg bg-gray-100 p-4 shadow">
+              <div className="absolute right-3 top-3 flex items-center gap-2">
+                {!comment.violation_id && (
+                  <button
+                    type="button"
+                    onClick={() => setViolationComment(comment)}
+                    className="inline-flex items-center rounded-full border border-transparent bg-white/80 px-3 py-1 text-xs font-medium text-indigo-600 shadow-sm transition hover:bg-indigo-100 hover:text-indigo-700"
+                  >
+                    Create violation
+                  </button>
+                )}
+                {comment.violation_id && (
+                  <Link
+                    to={`/violation/${comment.violation_id}`}
+                    className="inline-flex items-center rounded-full border border-transparent bg-white/80 px-3 py-1 text-xs font-medium text-green-700 shadow-sm transition hover:bg-green-100"
+                  >
+                    View #{comment.violation_id}
+                  </Link>
+                )}
+              </div>
               <p className="text-gray-700 whitespace-pre-line">{comment.content}</p>
               {Array.isArray(comment.mentions) && comment.mentions.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -190,7 +213,26 @@ const UnitComments = ({ unitId, addressId }) => {
           <p>No comments available.</p>
         )}
       </ul>
-    </div>
+      </div>
+      {violationComment && (
+        <CreateViolationFromCommentModal
+          comment={violationComment}
+          onClose={() => setViolationComment(null)}
+          onCreated={(newViolation) => {
+            if (newViolation?.id) {
+              setComments((prev) =>
+                prev.map((existing) =>
+                  existing.id === violationComment.id
+                    ? { ...existing, violation_id: newViolation.id }
+                    : existing
+                )
+              );
+              setViolationComment((prev) => (prev ? { ...prev, violation_id: newViolation.id } : prev));
+            }
+          }}
+        />
+      )}
+    </>
   );
 };
 

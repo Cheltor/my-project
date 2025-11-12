@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 ﻿import React, { useEffect, useRef, useState } from 'react';
+=======
+/* eslint-disable no-unused-vars, react-hooks/exhaustive-deps */
+import React, { useState } from 'react';
+>>>>>>> change
 import Welcome from './Dashboard/Welcome';
 import WeeklyStats from './Dashboard/WeeklyStats';
 import RecentComments from './Dashboard/RecentComments';
@@ -213,11 +218,11 @@ export default function Example() {
 
       {(user.role === 2 || user.role === 1 || user.role === 3) && (
         <>
-          <div className="mt-5 mb-4 flex justify-end">
+          <div className="mt-5 mb-4 flex justify-center">
             <button
               type="button"
               onClick={toggleQuickActions}
-              className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              className="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-2 text-sm font-semibold text-white shadow-lg transition transform hover:scale-[1.03] hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-offset-2"
             >
               {showQuickActions ? 'Hide Quick Actions' : 'Show Quick Actions'}
             </button>
@@ -231,9 +236,9 @@ export default function Example() {
                     key={index}
                     type="button"
                     onClick={button.toggle}
-                    className={`relative flex items-center space-x-3 rounded-lg border border-gray-300 px-6 py-5 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-gray-400 ${button.color}`}
+                    className={`relative flex items-center space-x-3 rounded-lg border border-transparent px-6 py-5 text-white shadow-lg transition transform hover:-translate-y-1 hover:shadow-xl focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-300 ${button.color}`}
                   >
-                    <span className="w-full text-white font-semibold">
+                    <span className="w-full font-semibold">
                       {button.label}
                     </span>
                   </button>
@@ -242,32 +247,66 @@ export default function Example() {
 
               {showNewViolationForm && (
                 <NewViolationForm
+<<<<<<< HEAD
                   onCreated={() => handleQuickActionCreated('Violation submitted successfully.')}
+=======
+                  isOpen={showNewViolationForm}
+                  onClose={() => setShowNewViolationForm(false)}
+>>>>>>> change
                 />
               )}
               {showNewComplaint && (
                 <NewComplaint
+<<<<<<< HEAD
                   onCreated={() => handleQuickActionCreated('Complaint submitted successfully.')}
+=======
+                  isOpen={showNewComplaint}
+                  onClose={() => setShowNewComplaint(false)}
+>>>>>>> change
                 />
               )}
               {showNewMFLicense && (
                 <NewMFLicense
+<<<<<<< HEAD
                   onCreated={() => handleQuickActionCreated('Multifamily license inspection submitted successfully.')}
+=======
+                  isOpen={showNewMFLicense}
+                  onClose={() => setShowNewMFLicense(false)}
+                  renderAsModal
+>>>>>>> change
                 />
               )}
               {showNewSFLicense && (
                 <NewSFLicense
+<<<<<<< HEAD
                   onCreated={() => handleQuickActionCreated('Single family license inspection submitted successfully.')}
+=======
+                  isOpen={showNewSFLicense}
+                  onClose={() => setShowNewSFLicense(false)}
+                  renderAsModal
+>>>>>>> change
                 />
               )}
               {showNewBuildingPermit && (
                 <NewBuildingPermit
+<<<<<<< HEAD
                   onCreated={() => handleQuickActionCreated('Building permit inspection submitted successfully.')}
+=======
+                  isOpen={showNewBuildingPermit}
+                  onClose={() => setShowNewBuildingPermit(false)}
+                  renderAsModal
+>>>>>>> change
                 />
               )}
               {showNewBusinessLicense && (
                 <NewBusinessLicense
+<<<<<<< HEAD
                   onCreated={() => handleQuickActionCreated('Business license inspection submitted successfully.')}
+=======
+                  isOpen={showNewBusinessLicense}
+                  onClose={() => setShowNewBusinessLicense(false)}
+                  renderAsModal
+>>>>>>> change
                 />
               )}
             </>
@@ -307,7 +346,7 @@ export default function Example() {
           <button
             type="button"
             onClick={toggleAdminWidgets}
-            className="mt-4 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            className="mt-4 inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-2 text-sm font-semibold text-white shadow-lg transition transform hover:scale-[1.03] hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-orange-300 focus:ring-offset-2"
           >
             {showAdminWidgets ? 'Hide Admin Activity' : 'Show Admin Activity'}
           </button>
@@ -317,7 +356,7 @@ export default function Example() {
               type="button"
               onClick={sendTestEmail}
               disabled={emailTestLoading}
-              className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              className="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-sky-500 to-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-lg transition transform hover:scale-[1.03] hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-sky-300 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {emailTestLoading ? 'Sending…' : 'Send Test Email'}
             </button>
