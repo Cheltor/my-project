@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { formatPhoneNumber } from '../utils';
+import { fetchJson } from '../Services/http';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
@@ -20,21 +21,24 @@ export default function Contacts() {
   const contactsPerPage = 10;
 
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/contacts/`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch contacts');
-        }
-        return response.json();
-      })
-      .then((data) => {
-        setContacts(data);
+    let isActive = true;
+
+    (async () => {
+      try {
+        const data = await fetchJson('/contacts/');
+        if (!isActive) return;
+        setContacts(Array.isArray(data) ? data : []);
         setLoading(false);
-      })
-      .catch((error) => {
-        setError(error.message);
+      } catch (err) {
+        if (!isActive) return;
+        setError(err.message || 'Failed to fetch contacts');
         setLoading(false);
-      });
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   const filteredContacts = contacts.filter((contact) =>
@@ -90,7 +94,7 @@ export default function Contacts() {
       return;
     }
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/contacts/`, {
+      const created = await fetchJson('/contacts/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -99,8 +103,6 @@ export default function Contacts() {
           phone: (newContact.phone || '').trim() || null,
         }),
       });
-      if (!res.ok) throw new Error('Failed to create contact');
-      const created = await res.json();
       setContacts((prev) => [created, ...prev]);
       setShowNewContact(false);
       setNewContact({ name: '', email: '', phone: '' });
