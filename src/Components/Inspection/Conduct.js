@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import NewUnit from './NewUnit';
 import { toEasternLocaleTimeString } from '../../utils';
@@ -175,7 +175,7 @@ export default function Conduct() {
     }
   };
 
-  const fetchAreaCount = async (unitId) => {
+  const fetchAreaCount = useCallback(async (unitId) => {
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/unit/${unitId}/areas/count`);
       const areaCount = await response.json();
@@ -183,14 +183,14 @@ export default function Conduct() {
     } catch (error) {
       console.error('Failed to fetch area count', error);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     // Fetch area counts for all units when units are loaded
     units.forEach(unit => {
       fetchAreaCount(unit.id);
     });
-  }, [units]);
+  }, [units, fetchAreaCount]);
 
   const handleSearchChange = (event) => {
     setSearchQuery(event.target.value);

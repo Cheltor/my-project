@@ -59,7 +59,11 @@ export default function Sidebar({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(''); // State for search input
   const [filteredAddresses, setFilteredAddresses] = useState([]); // State for filtered addresses
+  // The component only uses the setters for these states (we don't read the value);
+  // silence the no-unused-vars rule for the unused first element.
+  /* eslint-disable-next-line no-unused-vars */
   const [loading, setLoading] = useState(false); // Loading state for API call
+  /* eslint-disable-next-line no-unused-vars */
   const [error, setError] = useState(null); // Error state for API call
   const [showDropdown, setShowDropdown] = useState(false); // State to show/hide dropdown
   const [activeIndex, setActiveIndex] = useState(-1); // Track active/focused dropdown item
@@ -111,7 +115,7 @@ export default function Sidebar({ children }) {
         }
       }
     },
-    [token, user]
+    [token, user, logout]
   );
 
   // Search addresses via API when query changes (debounced)

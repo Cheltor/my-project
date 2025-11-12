@@ -151,7 +151,7 @@ export default function LicenseDetail() {
     return preferred || null;
   }, [business, license?.business_id]);
 
-  const { user, token } = useAuth();
+  const { token } = useAuth();
   const [isDownloadingLicense, setIsDownloadingLicense] = useState(false);
 
   const handleDownloadLicense = async () => {

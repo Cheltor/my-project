@@ -31,7 +31,7 @@ export default function Violations() {
 
   const capitalize = (str) => (str ? str.charAt(0).toUpperCase() + str.slice(1) : '');
 
-  const buildQueryParams = (includePagination = true) => {
+  const buildQueryParams = React.useCallback((includePagination = true) => {
     const params = new URLSearchParams();
     if (includePagination) {
       const offset = Math.max(0, (currentPage - 1) * violationsPerPage);
@@ -47,7 +47,7 @@ export default function Violations() {
       params.set('user_email', emailFilter);
     }
     return params;
-  };
+  }, [currentPage, violationsPerPage, statusFilter, user, showMyViolations, emailFilter]);
 
   useEffect(() => {
     let isActive = true;
@@ -137,7 +137,7 @@ export default function Violations() {
     loadViolations();
 
     return () => controller.abort();
-  }, [currentPage, statusFilter, emailFilter, showMyViolations, user]);
+  }, [currentPage, statusFilter, emailFilter, showMyViolations, user, buildQueryParams]);
 
   const totalPages = Math.max(1, Math.ceil(totalViolations / violationsPerPage));
 

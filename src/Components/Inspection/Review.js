@@ -16,7 +16,7 @@ export default function Review() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [areasById, setAreasById] = useState({});
+  // areasById removed (was assigned but not referenced)
   const [violationCodes, setViolationCodes] = useState([]); // codes to prefill violation form
   const [violationFileUrls, setViolationFileUrls] = useState([]); // photo URLs to prefill attachments
   const [showViolationForm, setShowViolationForm] = useState(false);
@@ -56,12 +56,8 @@ export default function Review() {
 
   useEffect(() => {
     if (!id) return;
-    // fetch areas for mapping area_id -> name
-    fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/areas`).then(r=>r.json()).then(list => {
-      const map = {};
-      list.forEach(a => { map[a.id] = a; });
-      setAreasById(map);
-    }).catch(()=>{});
+    // fetch areas for mapping area_id -> name (legacy - result not stored)
+    fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/areas`).then(r => r.json()).catch(()=>{});
   }, [id]);
 
   const allChecked = useMemo(() => selectedIds.size > 0 && selectedIds.size === potentials.length, [selectedIds, potentials]);
@@ -152,8 +148,7 @@ export default function Review() {
     }
   };
 
-  const initialAddressId = inspection?.address?.id;
-  const initialAddressLabel = inspection?.address?.combadd;
+  // initialAddressId/Label removed (unused)
 
   // When a violation is created from this page, mark the inspection as Completed
   // If a created violation object is provided, redirect to its detail page.
@@ -296,7 +291,7 @@ export default function Review() {
                         <img
                           key={idx}
                           src={ph.url}
-                          alt={`Observation ${p.id} photo ${idx + 1}`}
+                          alt={`Observation ${p.id} ${idx + 1}`}
               className="w-24 h-24 object-cover rounded border cursor-pointer"
               onClick={() => setViewerUrl(ph.url)}
                         />

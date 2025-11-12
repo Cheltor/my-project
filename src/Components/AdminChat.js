@@ -32,7 +32,7 @@ const AdminChat = ({ user: userProp, chatEnabled: initialChatEnabled, setChatEna
   // We'll check admin permission after all hooks are declared.
 
   // Fetch recent logs on mount
-  const buildLogsUrl = (opts = {}) => {
+  const buildLogsUrl = React.useCallback((opts = {}) => {
     const params = new URLSearchParams();
     params.set('limit', opts.limit ?? limit);
     params.set('offset', opts.offset ?? offset);
@@ -52,7 +52,7 @@ const AdminChat = ({ user: userProp, chatEnabled: initialChatEnabled, setChatEna
     if (opts.start_date ?? filterStart) params.set('start_date', opts.start_date ?? filterStart);
     if (opts.end_date ?? filterEnd) params.set('end_date', opts.end_date ?? filterEnd);
     return `${process.env.REACT_APP_API_URL}/settings/chat/logs?${params.toString()}`;
-  };
+  }, [limit, offset, filterUserId, filterThreadId, filterQ, filterStart, filterEnd]);
 
   useEffect(() => {
     let mounted = true;
@@ -86,7 +86,7 @@ const AdminChat = ({ user: userProp, chatEnabled: initialChatEnabled, setChatEna
     return () => {
       mounted = false;
     };
-  }, [ctxUser, limit, offset, filterUserId, filterThreadId, filterQ, filterStart, filterEnd]);
+  }, [ctxUser, limit, offset, filterUserId, filterThreadId, filterQ, filterStart, filterEnd, buildLogsUrl]);
 
   // Don't render UI if not admin
   if (!user || user.role !== 3) return null;
