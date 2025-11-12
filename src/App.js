@@ -1,4 +1,5 @@
-﻿// src/App.js
+// src/App.js
+/* eslint-disable no-unused-vars, react-hooks/exhaustive-deps */
 import React, { useEffect } from 'react';
 import useVisibilityAwareInterval from './Hooks/useVisibilityAwareInterval';
 import { apiFetch } from './api';
