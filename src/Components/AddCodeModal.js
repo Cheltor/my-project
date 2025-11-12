@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { fetchJson } from "../Services/http";
 
 const INITIAL_FORM = {
   chapter: "",
@@ -53,8 +54,8 @@ export default function AddCodeModal({
     setSubmitting(true);
     setError("");
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/codes/`,
+      const created = await fetchJson(
+        "/codes/",
         {
           method: "POST",
           headers: {
@@ -69,19 +70,6 @@ export default function AddCodeModal({
           }),
         }
       );
-
-      if (!response.ok) {
-        let message = "Unable to create code.";
-        try {
-          const payload = await response.json();
-          if (payload?.detail) message = payload.detail;
-        } catch {
-          message = await response.text().catch(() => message);
-        }
-        throw new Error(message || "Unable to create code.");
-      }
-
-      const created = await response.json();
       onCreated?.(created);
       onClose?.();
     } catch (err) {
