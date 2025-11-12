@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { formatPhoneNumber, toEasternLocaleDateString } from '../utils';
+import useContactLinking from '../Hooks/useContactLinking';
+import ContactLinkModal from './Contact/ContactLinkModal';
 
 const BusinessDetails = () => {
   const { id } = useParams();
@@ -24,13 +26,26 @@ const BusinessDetails = () => {
   });
   const [units, setUnits] = useState([]);
 
-  // Contacts state (copied/adapted from AddressDetail.js)
-  const [contacts, setContacts] = useState([]);
+  // Contacts state
   const [showAddContact, setShowAddContact] = useState(false);
-  const [contactSearch, setContactSearch] = useState('');
-  const [contactResults, setContactResults] = useState([]);
-  const [newContact, setNewContact] = useState({ name: '', email: '', phone: '' });
-  const [addContactError, setAddContactError] = useState(null);
+  const {
+    contacts,
+    searchTerm: contactSearchTerm,
+    setSearchTerm: setContactSearchTerm,
+    searchResults: contactSearchResults,
+    isSearching: isSearchingContacts,
+    newContact,
+    setNewContact,
+    handleAddExistingContact,
+    handleCreateAndAddContact,
+    handleRemoveContact,
+    submissionError: addContactError,
+    duplicateWarning: contactDuplicateWarning,
+    setDuplicateWarning: setContactDuplicateWarning,
+    linkingExisting: isLinkingExistingContact,
+    creatingNew: isCreatingNewContact,
+    clearTransientState: resetContactLinkState,
+  } = useContactLinking('businesses', id);
 
   // Fetch business details
   useEffect(() => {
@@ -69,82 +84,10 @@ const BusinessDetails = () => {
       });
   }, [id]);
 
-  // Fetch contacts for this business
-  useEffect(() => {
-    if (!id) return;
-    fetch(`${process.env.REACT_APP_API_URL}/businesses/${id}/contacts`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to fetch contacts');
-        return res.json();
-      })
-      .then(setContacts)
-      .catch(() => setContacts([]));
-  }, [id]);
-
-  // Search for existing contacts
-  useEffect(() => {
-    if (contactSearch.trim().length < 2) {
-      setContactResults([]);
-      return;
-    }
-    fetch(`${process.env.REACT_APP_API_URL}/contacts?search=${encodeURIComponent(contactSearch)}`)
-      .then((res) => res.ok ? res.json() : [])
-      .then(setContactResults)
-      .catch(() => setContactResults([]));
-  }, [contactSearch]);
-
-  // Add existing contact to business
-  const handleAddExistingContact = async (contactId) => {
-    setAddContactError(null);
-    try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/businesses/${id}/contacts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contact_id: contactId })
-      });
-      if (!res.ok) throw new Error('Failed to add contact');
-      const updated = await res.json();
-      setContacts(updated);
-      setShowAddContact(false);
-      setContactSearch('');
-    } catch (err) {
-      setAddContactError('Could not add contact.');
-    }
-  };
-
-  // Create new contact and add to business
-  const handleCreateAndAddContact = async (e) => {
-    e.preventDefault();
-    setAddContactError(null);
-    try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/businesses/${id}/contacts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newContact)
-      });
-      if (!res.ok) throw new Error('Failed to create contact');
-      const updated = await res.json();
-      setContacts(updated);
-      setShowAddContact(false);
-      setNewContact({ name: '', email: '', phone: '' });
-    } catch (err) {
-      setAddContactError('Could not create contact.');
-    }
-  };
-
-  // Remove contact from business
-  const handleRemoveContact = async (contactId) => {
-    if (!window.confirm('Remove this contact from the business?')) return;
-    try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/businesses/${id}/contacts/${contactId}`, {
-        method: 'DELETE'
-      });
-      if (!res.ok) throw new Error('Failed to remove contact');
-      setContacts(contacts.filter(c => c.id !== contactId));
-    } catch (err) {
-      alert('Could not remove contact.');
-    }
-  };
+  const closeContactModal = useCallback(() => {
+    setShowAddContact(false);
+    resetContactLinkState();
+  }, [resetContactLinkState]);
 
   if (loading) {
     return (
@@ -507,7 +450,14 @@ const BusinessDetails = () => {
                   <button
                     type="button"
                     className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
-                    onClick={() => setShowAddContact((prev) => !prev)}
+                    onClick={() => {
+                      if (showAddContact) {
+                        closeContactModal();
+                      } else {
+                        resetContactLinkState();
+                        setShowAddContact(true);
+                      }
+                    }}
                   >
                     {showAddContact ? 'Cancel' : 'Add Contact'}
                   </button>
@@ -556,7 +506,7 @@ const BusinessDetails = () => {
                         <button
                           type="button"
                           className="inline-flex items-center justify-center rounded-full bg-rose-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2"
-                          onClick={() => handleRemoveContact(contact.id)}
+                          onClick={() => handleRemoveContact(contact.id, { confirmMessage: 'Remove this contact from the business?' })}
                         >
                           Remove
                         </button>
@@ -566,85 +516,35 @@ const BusinessDetails = () => {
                 </ul>
 
                 {showAddContact && (
-                  <div className="rounded-3xl border border-indigo-100 bg-indigo-50/80 p-6 shadow-xl">
-                    <h3 className="text-base font-semibold text-slate-900">Add Existing Contact</h3>
-                    <p className="mt-1 text-sm text-slate-500">Search for an existing person in the system and link them to this business.</p>
-                    <input
-                      type="text"
-                      className="mt-4 w-full rounded-xl border border-indigo-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                      placeholder="Search by name, email, or phone…"
-                      value={contactSearch}
-                      onChange={(e) => setContactSearch(e.target.value)}
-                    />
-                    {contactResults.length > 0 && (
-                      <ul className="mt-3 max-h-48 overflow-auto rounded-2xl border border-indigo-100 bg-white/90 text-sm shadow-inner">
-                        {contactResults.map((c) => (
-                          <li key={c.id} className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 last:border-0">
-                            <span className="text-slate-700">
-                              {c.name}
-                              {c.email && <span className="ml-2 text-xs text-slate-400">({c.email})</span>}
-                            </span>
-                            <button
-                              type="button"
-                              className="inline-flex items-center justify-center rounded-full bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-500"
-                              onClick={() => handleAddExistingContact(c.id)}
-                            >
-                              Add
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    <div className="mt-6 space-y-4 rounded-2xl border border-indigo-100 bg-white/90 p-5 shadow-inner">
-                      <h3 className="text-sm font-semibold text-slate-900">Or Create a New Contact</h3>
-                      <form onSubmit={handleCreateAndAddContact} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div className="sm:col-span-2 space-y-2">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Name</label>
-                          <input
-                            required
-                            type="text"
-                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                            placeholder="Contact name"
-                            value={newContact.name}
-                            onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Email</label>
-                          <input
-                            type="email"
-                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                            placeholder="name@example.com"
-                            value={newContact.email}
-                            onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</label>
-                          <input
-                            type="text"
-                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                            placeholder="(555) 555-5555"
-                            value={newContact.phone}
-                            onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
-                          />
-                        </div>
-                        <div className="sm:col-span-2">
-                          <button
-                            type="submit"
-                            className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
-                          >
-                            Create & Add Contact
-                          </button>
-                        </div>
-                      </form>
-                      {addContactError && (
-                        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-600">
-                          {addContactError}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <ContactLinkModal
+                    isOpen={showAddContact}
+                    onClose={closeContactModal}
+                    title="Add Business Contact"
+                    description="Search for an existing person or create a new contact to link with this business."
+                    searchTerm={contactSearchTerm}
+                    onSearchTermChange={setContactSearchTerm}
+                    searchResults={contactSearchResults}
+                    isSearching={isSearchingContacts}
+                    onSelectContact={async (contactId) => {
+                      const success = await handleAddExistingContact(contactId);
+                      if (success) {
+                        closeContactModal();
+                      }
+                    }}
+                    newContact={newContact}
+                    onNewContactChange={setNewContact}
+                    onSubmitNewContact={async (event) => {
+                      const success = await handleCreateAndAddContact(event);
+                      if (success) {
+                        closeContactModal();
+                      }
+                    }}
+                    duplicateWarning={contactDuplicateWarning}
+                    clearDuplicateWarning={() => setContactDuplicateWarning('')}
+                    errorMessage={addContactError}
+                    isAddingExisting={isLinkingExistingContact}
+                    isCreatingNew={isCreatingNewContact}
+                  />
                 )}
               </section>
             )}
