@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PaginationInput from '../Common/PaginationInput';
 
 const AddressPhotos = ({ addressId }) => {
   const [photos, setPhotos] = useState([]);
@@ -6,8 +7,6 @@ const AddressPhotos = ({ addressId }) => {
   const [error, setError] = useState(null);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(null); // Track the absolute index of the selected photo
   const [currentPage, setCurrentPage] = useState(1); // Current page state
-  const [editingPage, setEditingPage] = useState(false); // Track whether the page number is being edited
-  const [pageInput, setPageInput] = useState(''); // Page input value (string)
   const [loadedImages, setLoadedImages] = useState([]); // Track loaded images
   const photosPerPage = 6; // Define how many photos you want per page
 
@@ -84,7 +83,7 @@ const AddressPhotos = ({ addressId }) => {
   }, [addressId]);
 
   // Calculate total number of pages
-  const totalPages = Math.ceil(photos.length / photosPerPage);
+  const totalPages = Math.max(1, Math.ceil(photos.length / photosPerPage));
 
   // Get the current photos to display based on the current page
   const currentPhotos = photos.slice(
@@ -104,20 +103,6 @@ const AddressPhotos = ({ addressId }) => {
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
     }
-  };
-
-  // Inline edit helpers (match Inspections.js behavior)
-  const startEditPage = () => {
-    setPageInput(String(currentPage));
-    setEditingPage(true);
-  };
-
-  const applyPageInput = () => {
-    const n = parseInt(pageInput, 10);
-    if (!Number.isNaN(n) && n >= 1 && n <= totalPages) {
-      setCurrentPage(n);
-    }
-    setEditingPage(false);
   };
 
   // Function to close the modal when clicking outside
@@ -194,26 +179,12 @@ const AddressPhotos = ({ addressId }) => {
         </button>
 
         <div className="text-sm text-gray-700">
-          {editingPage ? (
-            <input
-              type="number"
-              min={1}
-              max={totalPages}
-              value={pageInput}
-              onChange={(e) => setPageInput(e.target.value)}
-              onBlur={applyPageInput}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') applyPageInput();
-                if (e.key === 'Escape') setEditingPage(false);
-              }}
-              className="w-20 px-2 py-1 border rounded text-center"
-              autoFocus
-            />
-          ) : (
-            <button onClick={startEditPage} className="underline">
-              Page {currentPage} of {totalPages}
-            </button>
-          )}
+          <PaginationInput
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            inputClassName="w-20 px-2 py-1 border rounded text-center"
+          />
         </div>
 
         <button

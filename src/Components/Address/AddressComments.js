@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import NewAddressComment from './NewAddressComment';
 import FullScreenPhotoViewer from '../FullScreenPhotoViewer';
 import CreateViolationFromCommentModal from '../Comment/CreateViolationFromCommentModal';
+import PaginationInput from '../Common/PaginationInput';
 import {
   toEasternLocaleString,
   getAttachmentFilename,
@@ -31,24 +32,11 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
   const [error, setError] = useState(null);
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState(null);
   const [page, setPage] = useState(initialPage);
-  const [editingPage, setEditingPage] = useState(false);
-  const [pageInputVal, setPageInputVal] = useState('');
-  const [pageError, setPageError] = useState('');
   const [total, setTotal] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [violationComment, setViolationComment] = useState(null);
 
-  const startEditPage = () => { setPageInputVal(String(page)); setPageError(''); setEditingPage(true); };
-  const applyPageInput = () => {
-    const n = parseInt(pageInputVal, 10);
   const totalPages = total > 0 ? Math.ceil(total / pageSize) : 1;
-    if (Number.isNaN(n) || n < 1 || n > totalPages) {
-      setPageError(`Enter a number between 1 and ${totalPages}`);
-      return;
-    }
-    setPage(n);
-    setEditingPage(false);
-  };
 
   const resolveUnitNumber = useCallback((comment) => {
     if (!comment || !comment.unit) return comment?.unit_id;
@@ -214,20 +202,18 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
   }, [addressId, initialPage]);
 
   useEffect(() => {
-    const totalPages = total > 0 ? Math.ceil(total / pageSize) : 1;
     if (page > totalPages) {
       setPage(totalPages);
     } else if (page < 1) {
       setPage(1);
     }
-  }, [page, total, pageSize]);
+  }, [page, totalPages]);
 
   const handleCommentAdded = () => {
     setPage(1);
     setRefreshKey((key) => key + 1);
   };
 
-  const totalPages = total > 0 ? Math.ceil(total / pageSize) : 1;
   const startIdx = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const endIdx = total === 0 ? 0 : Math.min(total, startIdx + Math.max(comments.length - 1, 0));
 
@@ -271,27 +257,25 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
               Prev
             </button>
             <span>
-              {editingPage ? (
-                <span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={totalPages}
-                    value={pageInputVal}
-                    onChange={(e) => { setPageInputVal(e.target.value); setPageError(''); }}
-                    onBlur={applyPageInput}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') applyPageInput();
-                      if (e.key === 'Escape') setEditingPage(false);
-                    }}
-                    className={`w-20 px-2 py-1 border rounded ${pageError ? 'border-red-500' : ''}`}
-                    autoFocus
-                  />
-                  {pageError && <div className="text-xs text-red-600 mt-1">{pageError}</div>}
-                </span>
-              ) : (
-                <button onClick={startEditPage} className="underline">Page <span className="font-medium">{page}</span> of <span className="font-medium">{totalPages}</span></button>
-              )}
+              <PaginationInput
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                renderDisplay={({ currentPage: displayPage, totalPages: displayTotal, startEditing }) => (
+                  <button type="button" onClick={startEditing} className="underline">
+                    Page <span className="font-medium">{displayPage}</span> of <span className="font-medium">{displayTotal}</span>
+                  </button>
+                )}
+                renderEditing={({ inputProps, error }) => (
+                  <span>
+                    <input
+                      {...inputProps}
+                      className={`w-20 px-2 py-1 border rounded ${error ? 'border-red-500' : ''}`}
+                    />
+                    {error ? <div className="text-xs text-red-600 mt-1">{error}</div> : null}
+                  </span>
+                )}
+              />
             </span>
             <button
               type="button"

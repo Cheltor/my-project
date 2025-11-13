@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../AuthContext";
 import { Link } from "react-router-dom";
+import PaginationInput from "../Common/PaginationInput";
 
 // Format helper: convert strings like "overgrown_yard" to "Overgrown Yard"
 function formatViolationType(str) {
@@ -47,26 +48,12 @@ export default function ActiveViolations() {
     fetchActiveViolations();
   }, [user.id]);
 
-  const totalPages = Math.ceil(violations.length / violationsPerPage);
+  const totalPages = Math.max(1, Math.ceil(violations.length / violationsPerPage));
   const indexOfLastViolation = currentPage * violationsPerPage;
   const indexOfFirstViolation = indexOfLastViolation - violationsPerPage;
   const currentViolations = violations.slice(indexOfFirstViolation, indexOfLastViolation);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  const [editingPage, setEditingPage] = useState(false);
-  const [pageInput, setPageInput] = useState('');
-  const [pageError, setPageError] = useState('');
-
-  const startEditPage = () => { setPageInput(String(currentPage)); setPageError(''); setEditingPage(true); };
-  const applyPageInput = () => {
-    const n = parseInt(pageInput, 10);
-    if (Number.isNaN(n) || n < 1 || n > totalPages) {
-      setPageError(`Enter a number between 1 and ${totalPages}`);
-      return;
-    }
-    paginate(n);
-    setEditingPage(false);
-  };
 
   if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
   if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
@@ -146,27 +133,11 @@ export default function ActiveViolations() {
                 Previous
               </button>
               <div className="text-sm text-gray-700">
-                {editingPage ? (
-                  <div>
-                    <input
-                      type="number"
-                      min={1}
-                      max={totalPages}
-                      value={pageInput}
-                      onChange={(e) => { setPageInput(e.target.value); setPageError(''); }}
-                      onBlur={applyPageInput}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') applyPageInput();
-                        if (e.key === 'Escape') setEditingPage(false);
-                      }}
-                      className={`w-20 px-2 py-1 border rounded ${pageError ? 'border-red-500' : ''}`}
-                      autoFocus
-                    />
-                    {pageError && <div className="text-xs text-red-600 mt-1">{pageError}</div>}
-                  </div>
-                ) : (
-                  <button onClick={startEditPage} className="underline">Page {currentPage} of {totalPages}</button>
-                )}
+                <PaginationInput
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={paginate}
+                />
               </div>
               <button
                 onClick={() => paginate(currentPage + 1)}

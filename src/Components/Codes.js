@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom'; // Import Link for navigation
 import { useAuth } from '../AuthContext';
 import AddCodeModal from './AddCodeModal';
+import PaginationInput from './Common/PaginationInput';
 
 const Codes = () => {
   const { user, token } = useAuth();
@@ -20,9 +21,6 @@ const Codes = () => {
   const [searchTerm, setSearchTerm] = useState(''); // State for text-based filtering
   const [selectedChapter, setSelectedChapter] = useState(''); // State for chapter filter
 
-  const [editingPage, setEditingPage] = useState(false);
-  const [pageInput, setPageInput] = useState('');
-  const [pageError, setPageError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -93,23 +91,6 @@ const Codes = () => {
 
   // Change page
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
-  const startEditPage = () => {
-    setPageInput(String(currentPage));
-    setPageError('');
-    setEditingPage(true);
-  };
-
-  const applyPageInput = () => {
-    const n = parseInt(pageInput, 10);
-    const maxPage = maxFilteredPages;
-    if (Number.isNaN(n) || n < 1 || n > maxPage) {
-      setPageError(`Enter a number between 1 and ${maxPage}`);
-      return;
-    }
-    paginate(n);
-    setEditingPage(false);
-  };
 
   // Get unique chapters for filtering options
   const uniqueChapters = useMemo(() => {
@@ -322,32 +303,11 @@ const Codes = () => {
             Previous
           </button>
           <div className="text-sm text-gray-700">
-            {editingPage ? (
-              <div>
-                <input
-                  type="number"
-                  min={1}
-                  max={maxFilteredPages}
-                  value={pageInput}
-                  onChange={(e) => {
-                    setPageInput(e.target.value);
-                    setPageError('');
-                  }}
-                  onBlur={applyPageInput}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') applyPageInput();
-                    if (e.key === 'Escape') setEditingPage(false);
-                  }}
-                  className={`w-20 px-2 py-1 border rounded ${pageError ? 'border-red-500' : ''}`}
-                  autoFocus
-                />
-                {pageError && <div className="text-xs text-red-600 mt-1">{pageError}</div>}
-              </div>
-            ) : (
-              <button onClick={startEditPage} className="underline">
-                Page {currentPage} of {maxFilteredPages}
-              </button>
-            )}
+          <PaginationInput
+            currentPage={currentPage}
+            totalPages={maxFilteredPages}
+            onPageChange={paginate}
+          />
           </div>
           <button
             onClick={() => paginate(Math.min(maxFilteredPages, currentPage + 1))}

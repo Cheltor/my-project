@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toEasternLocaleString } from '../utils';
 import { useAuth } from '../AuthContext';
+import PaginationInput from './Common/PaginationInput';
 
 export default function Complaints() {
   const [complaints, setComplaints] = useState([]);
@@ -78,27 +79,12 @@ export default function Complaints() {
     return [...filteredComplaints].sort((a, b) => toMillis(b) - toMillis(a));
   }, [filteredComplaints]);
 
-  const totalPages = Math.ceil(sortedComplaints.length / complaintsPerPage) || 1;
+  const totalPages = Math.max(1, Math.ceil(sortedComplaints.length / complaintsPerPage));
   const indexOfLastComplaint = currentPage * complaintsPerPage;
   const indexOfFirstComplaint = indexOfLastComplaint - complaintsPerPage;
   const currentComplaints = sortedComplaints.slice(indexOfFirstComplaint, indexOfLastComplaint);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  const [editingPage, setEditingPage] = useState(false);
-  const [pageInput, setPageInput] = useState('');
-
-  const startEditPage = () => {
-    setPageInput(String(currentPage));
-    setEditingPage(true);
-  };
-
-  const applyPageInput = () => {
-    const n = parseInt(pageInput, 10);
-    if (!Number.isNaN(n) && n >= 1 && n <= totalPages) {
-      paginate(n);
-    }
-    setEditingPage(false);
-  };
 
   // Print helpers
   const statusFilterLabel = (() => {
@@ -356,26 +342,11 @@ export default function Complaints() {
                 Previous
               </button>
               <div className="text-sm text-gray-700">
-                {editingPage ? (
-                  <input
-                    type="number"
-                    min={1}
-                    max={totalPages}
-                    value={pageInput}
-                    onChange={(e) => setPageInput(e.target.value)}
-                    onBlur={applyPageInput}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') applyPageInput();
-                      if (e.key === 'Escape') setEditingPage(false);
-                    }}
-                    className="w-20 px-2 py-1 border rounded"
-                    autoFocus
-                  />
-                ) : (
-                  <button onClick={startEditPage} className="underline">
-                    Page {currentPage} of {totalPages}
-                  </button>
-                )}
+                <PaginationInput
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={paginate}
+                />
               </div>
               <button
                 onClick={() => paginate(currentPage + 1)}

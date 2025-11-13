@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import NewRoom from './NewRoom'; // Import the NewRoom component
+import PaginationInput from '../Common/PaginationInput';
 
 // Component to show all the rooms in the database
 export default function Rooms() {
@@ -35,7 +36,7 @@ export default function Rooms() {
   }, []); // Empty dependency array ensures this runs once when the component mounts
 
   // Calculate the total number of pages
-  const totalPages = Math.ceil(rooms.length / roomsPerPage);
+  const totalPages = Math.max(1, Math.ceil(rooms.length / roomsPerPage));
 
   // Get the current set of rooms to display
   const indexOfLastRoom = currentPage * roomsPerPage;
@@ -44,20 +45,6 @@ export default function Rooms() {
 
   // Change page
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  const [editingPage, setEditingPage] = useState(false);
-  const [pageInput, setPageInput] = useState('');
-  const [pageError, setPageError] = useState('');
-
-  const startEditPage = () => { setPageInput(String(currentPage)); setPageError(''); setEditingPage(true); };
-  const applyPageInput = () => {
-    const n = parseInt(pageInput, 10);
-    if (Number.isNaN(n) || n < 1 || n > totalPages) {
-      setPageError(`Enter a number between 1 and ${totalPages}`);
-      return;
-    }
-    paginate(n);
-    setEditingPage(false);
-  };
 
   if (loading) {
     return (
@@ -134,35 +121,29 @@ export default function Rooms() {
               Previous
             </button>
             <div className="text-sm text-gray-700">
-              {editingPage ? (
-                <div className="flex flex-col items-center gap-1 sm:flex-row sm:gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    max={totalPages}
-                    value={pageInput}
-                    onChange={(e) => {
-                      setPageInput(e.target.value);
-                      setPageError('');
-                    }}
-                    onBlur={applyPageInput}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') applyPageInput();
-                      if (e.key === 'Escape') setEditingPage(false);
-                    }}
-                    className={`w-20 rounded-md border px-2 py-1 text-center text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 ${pageError ? 'border-red-500 focus:border-red-500 focus:ring-red-300/60' : 'border-gray-300'}`}
-                    autoFocus
-                  />
-                  {pageError && <div className="text-xs font-medium text-red-600">{pageError}</div>}
-                </div>
-              ) : (
-                <button
-                  onClick={startEditPage}
-                  className="inline-flex items-center text-sm font-medium text-indigo-600 underline-offset-2 hover:text-indigo-500 hover:underline"
-                >
-                  Page {currentPage} of {totalPages}
-                </button>
-              )}
+              <PaginationInput
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={paginate}
+                renderDisplay={({ currentPage: displayPage, totalPages: displayTotal, startEditing }) => (
+                  <button
+                    type="button"
+                    onClick={startEditing}
+                    className="inline-flex items-center text-sm font-medium text-indigo-600 underline-offset-2 hover:text-indigo-500 hover:underline"
+                  >
+                    Page {displayPage} of {displayTotal}
+                  </button>
+                )}
+                renderEditing={({ inputProps, error }) => (
+                  <div className="flex flex-col items-center gap-1 sm:flex-row sm:gap-2">
+                    <input
+                      {...inputProps}
+                      className={`w-20 rounded-md border px-2 py-1 text-center text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-300/60' : 'border-gray-300'}`}
+                    />
+                    {error ? <div className="text-xs font-medium text-red-600">{error}</div> : null}
+                  </div>
+                )}
+              />
             </div>
             <button
               onClick={() => paginate(currentPage + 1)}

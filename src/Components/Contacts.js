@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { formatPhoneNumber } from '../utils';
+import PaginationInput from './Common/PaginationInput';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
@@ -44,28 +45,13 @@ export default function Contacts() {
       .includes(searchQuery.toLowerCase())
   );
 
-  const totalPages = Math.ceil(filteredContacts.length / contactsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filteredContacts.length / contactsPerPage));
 
   const indexOfLastContact = currentPage * contactsPerPage;
   const indexOfFirstContact = indexOfLastContact - contactsPerPage;
   const currentContacts = filteredContacts.slice(indexOfFirstContact, indexOfLastContact);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  const [editingPage, setEditingPage] = useState(false);
-  const [pageInput, setPageInput] = useState('');
-  const [pageError, setPageError] = useState('');
-
-  const startEditPage = () => { setPageInput(String(currentPage)); setPageError(''); setEditingPage(true); };
-  const applyPageInput = () => {
-    const n = parseInt(pageInput, 10);
-    if (Number.isNaN(n) || n < 1 || n > totalPages) {
-      setPageError(`Enter a number between 1 and ${totalPages}`);
-      return;
-    }
-    paginate(n);
-    setEditingPage(false);
-  };
-
   const handleSearchChange = (event) => {
     setSearchQuery(event.target.value);
     setCurrentPage(1);
@@ -263,27 +249,11 @@ export default function Contacts() {
           Previous
         </button>
         <div className="text-sm text-gray-700">
-          {editingPage ? (
-            <div>
-              <input
-                type="number"
-                min={1}
-                max={totalPages}
-                value={pageInput}
-                onChange={(e) => { setPageInput(e.target.value); setPageError(''); }}
-                onBlur={applyPageInput}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') applyPageInput();
-                  if (e.key === 'Escape') setEditingPage(false);
-                }}
-                className={`w-20 px-2 py-1 border rounded ${pageError ? 'border-red-500' : ''}`}
-                autoFocus
-              />
-              {pageError && <div className="text-xs text-red-600 mt-1">{pageError}</div>}
-            </div>
-          ) : (
-            <button onClick={startEditPage} className="underline">Page {currentPage} of {totalPages}</button>
-          )}
+          <PaginationInput
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={paginate}
+          />
         </div>
         <button
           onClick={() => paginate(currentPage + 1)}
