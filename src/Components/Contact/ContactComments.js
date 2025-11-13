@@ -1,17 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import NewContactComment from './NewContactComment';  // Assuming this is the component for adding a new comment
-import { toEasternLocaleString } from '../../utils';
+import useEntityComments from '../../Hooks/useEntityComments';
+import { formatCommentDate } from '../../Utils/comments';
 
-// Utility function to format the date
-const formatDate = (dateString) => {
-  const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-  return toEasternLocaleString(dateString, undefined, options);
-};
+const formatContactDate = (dateString) => formatCommentDate(dateString, { timeZoneName: undefined });
 
 export default function ContactComments({ contactId, contact }) {  // Accept contactId and optional contact context
-  const [comments, setComments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [attachments, setAttachments] = useState([]);
   const [attachmentsLoading, setAttachmentsLoading] = useState(false);
@@ -19,209 +13,23 @@ export default function ContactComments({ contactId, contact }) {  // Accept con
   const [usersMap, setUsersMap] = useState({}); // userId -> email
 
   const attachmentKey = (item) => (item ? `${item.type}:${item.id}` : '');
-  const contactAddresses = useMemo(() => Array.isArray(contact?.addresses) ? contact.addresses : [], [contact?.addresses]);
-  // contactAddressesKey removed (unused) — keep contactAddresses memo only
+  const contactAddresses = useMemo(() => (
+    Array.isArray(contact?.addresses) ? contact.addresses : []
+  ), [contact?.addresses]);
   const contactMeta = useMemo(() => ({
     name: (contact?.name || '').trim(),
     email: (contact?.email || '').trim(),
     phone: (contact?.phone || '').trim(),
   }), [contact?.name, contact?.email, contact?.phone]);
-  // contactMetaKey removed (unused)
 
-  const collectMentionedFromAddresses = async ({ baseUrl, addresses, contactId, contactMeta }) => {
-    const results = new Map();
-    if (!Array.isArray(addresses) || addresses.length === 0) return [];
-    const numericContactId = Number(contactId);
-    const stringContactId = String(contactId);
-    const nameTokens = new Set();
-    const emailToken = (contactMeta?.email || '').toLowerCase();
-    const normalizedName = (contactMeta?.name || '').trim().toLowerCase();
-    if (normalizedName) {
-      const spaced = normalizedName.replace(/\s+/g, ' ');
-      const compact = normalizedName.replace(/\s+/g, '');
-      nameTokens.add(normalizedName);
-      nameTokens.add(spaced);
-      if (compact) {
-        nameTokens.add(compact);
-      }
-    }
-    if (emailToken) {
-      nameTokens.add(emailToken);
-    }
-    const phoneDigits = (contactMeta?.phone || '').replace(/\D/g, '');
-    if (phoneDigits) {
-      nameTokens.add(phoneDigits);
-    }
-
-    const mentionRegex = /%([A-Za-z0-9@._\- ]+)/g;
-
-    const limitedAddresses = addresses.slice(0, 10);
-
-    for (const addr of limitedAddresses) {
-      const addressId = addr?.id;
-      if (!addressId) continue;
-      try {
-        const resp = await fetch(`${baseUrl}/comments/address/${addressId}`);
-        if (!resp.ok) continue;
-        const addressComments = await resp.json();
-        const list = Array.isArray(addressComments)
-          ? addressComments
-          : Array.isArray(addressComments?.results)
-            ? addressComments.results
-            : [];
-        for (const comment of list) {
-          if (!comment || results.has(comment.id)) continue;
-          const contactMentions = Array.isArray(comment.contact_mentions) ? comment.contact_mentions : [];
-          let matches = contactMentions.some(
-            (cm) =>
-              (Number(cm.id) === numericContactId && !Number.isNaN(numericContactId)) ||
-              String(cm.id) === stringContactId
-          );
-
-          if (!matches) {
-            const tokens = [];
-            const contentString = String(comment.content || '');
-            mentionRegex.lastIndex = 0;
-            let match;
-            while ((match = mentionRegex.exec(contentString)) !== null) {
-              const token = match[1]?.trim().toLowerCase();
-              if (token) tokens.push(token);
-            }
-            if (tokens.length > 0) {
-              matches = tokens.some((token) => nameTokens.has(token));
-            }
-          }
-
-          if (!matches) continue;
-
-          results.set(comment.id, {
-            id: comment.id,
-            type: 'linked',
-            text: comment.content,
-            created_at: comment.created_at,
-            updated_at: comment.updated_at,
-            user_id: comment.user_id,
-            mentions: Array.isArray(comment.mentions) ? comment.mentions : [],
-            contact_mentions: contactMentions,
-            address_id: comment.address_id,
-            combadd: comment.combadd || addr?.combadd || addr?.full_address || '',
-            unit_id: comment.unit_id,
-            raw: comment,
-          });
-        }
-      } catch {
-        // ignore individual address failures
-      }
-    }
-
-    return Array.from(results.values());
-  };
-
-  // Function to fetch comments
-  const fetchComments = useCallback(async () => {
-    setLoading(true);
-    const baseUrl = process.env.REACT_APP_API_URL;
-    try {
-      const [contactResp, mentionedResp] = await Promise.all([
-        fetch(`${baseUrl}/comments/contact/${contactId}`),
-        fetch(`${baseUrl}/comments/contact/${contactId}/mentioned`),
-      ]);
-
-      if (!contactResp.ok) {
-        throw new Error('Failed to fetch comments');
-      }
-
-      const contactData = await contactResp.json();
-      let mentionedData = [];
-      if (mentionedResp.ok) {
-        try {
-          const payload = await mentionedResp.json();
-          mentionedData = Array.isArray(payload) ? payload : [];
-        } catch {
-          mentionedData = [];
-        }
-      }
-
-      const contactItems = (await Promise.all((contactData || []).map(async (c) => {
-        try {
-          const resp = await fetch(`${baseUrl}/comments/${c.id}/mentions`);
-          const mentions = resp.ok ? await resp.json() : [];
-          return {
-            id: c.id,
-            type: 'contact',
-            text: c.comment,
-            created_at: c.created_at,
-            updated_at: c.updated_at,
-            user_id: c.user_id,
-            mentions,
-            contact_mentions: Array.isArray(c.contact_mentions) ? c.contact_mentions : [],
-            raw: c,
-          };
-        } catch {
-          return {
-            id: c.id,
-            type: 'contact',
-            text: c.comment,
-            created_at: c.created_at,
-            updated_at: c.updated_at,
-            user_id: c.user_id,
-            mentions: [],
-            contact_mentions: Array.isArray(c.contact_mentions) ? c.contact_mentions : [],
-            raw: c,
-          };
-        }
-      }))).filter(Boolean);
-
-      const contactIds = new Set(contactItems.map((item) => item.id));
-
-      let mentionItems = (mentionedData || []).map((c) => ({
-        id: c.id,
-        type: 'linked',
-        text: c.content,
-        created_at: c.created_at,
-        updated_at: c.updated_at,
-        user_id: c.user_id,
-        mentions: Array.isArray(c.mentions) ? c.mentions : [],
-        contact_mentions: Array.isArray(c.contact_mentions) ? c.contact_mentions : [],
-        address_id: c.address_id,
-        combadd: c.combadd,
-        unit_id: c.unit_id,
-        raw: c,
-      }));
-
-      if (mentionItems.length === 0 && contactAddresses.length > 0) {
-        try {
-          const fallbackMentioned = await collectMentionedFromAddresses({
-            baseUrl,
-            addresses: contactAddresses,
-            contactId,
-            contactMeta,
-          });
-          if (fallbackMentioned.length > 0) {
-            mentionItems = fallbackMentioned;
-          }
-        } catch {
-          // ignore fallback failures
-        }
-      }
-
-      const filteredMentionItems = mentionItems.filter((item) => !contactIds.has(item.id));
-
-      const combined = [...contactItems, ...filteredMentionItems].sort(
-        (a, b) => new Date(b.created_at) - new Date(a.created_at),
-      );
-      setComments(combined);
-      setAttachmentCounts({});
-      setLoading(false);
-    } catch (err) {
-      setError(err.message || 'Failed to load comments');
-      setLoading(false);
-    }
-  }, [contactId, contactAddresses, contactMeta]);
+  const { comments, loading, error, refresh } = useEntityComments('contact', contactId, {
+    contactAddresses,
+    contactMeta,
+  });
 
   useEffect(() => {
-    fetchComments();  // Fetch comments on component load and when identifiers change
-  }, [fetchComments]);
+    setAttachmentCounts({});
+  }, [comments]);
 
   // Fetch all users once to map user_id -> email
   useEffect(() => {
@@ -317,8 +125,8 @@ export default function ContactComments({ contactId, contact }) {  // Accept con
   return (
     <div className="mt-8">
       <h2 className="text-2xl font-semibold text-gray-700">Comments</h2>
-      {/* Add new comment form and pass fetchComments as a callback */}
-      <NewContactComment contactId={contactId} onCommentAdded={fetchComments} />
+      {/* Add new comment form and pass refresh as a callback */}
+      <NewContactComment contactId={contactId} onCommentAdded={refresh} />
       {comments.length === 0 ? (
         <p className='pt-4'>No comments available.</p>
       ) : (
@@ -370,9 +178,9 @@ export default function ContactComments({ contactId, contact }) {  // Accept con
 
                 <div className="mt-2 flex items-start justify-between">
                   <div className="text-sm text-gray-500">
-                    <p>Created on {formatDate(comment.created_at)}</p>
+                    <p>Created on {formatContactDate(comment.created_at)}</p>
                     {comment.updated_at && (
-                      <p>Updated on {formatDate(comment.updated_at)}</p>
+                      <p>Updated on {formatContactDate(comment.updated_at)}</p>
                     )}
                   </div>
                 </div>

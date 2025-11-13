@@ -4,51 +4,39 @@ import NewAddressComment from './NewAddressComment';
 import FullScreenPhotoViewer from '../FullScreenPhotoViewer';
 import CreateViolationFromCommentModal from '../Comment/CreateViolationFromCommentModal';
 import {
-  toEasternLocaleString,
   getAttachmentFilename,
   isImageAttachment,
   getAttachmentDisplayLabel
 } from '../../utils';
+import useEntityComments from '../../Hooks/useEntityComments';
+import { formatCommentDate, downloadCommentAttachments } from '../../Utils/comments';
 
-// Utility function to format the date
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  // Display Eastern time using a 12-hour clock with a short timezone suffix
-  return toEasternLocaleString(dateString, undefined, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-    timeZoneName: 'short'
-  });
-};
+const formatAddressDate = (dateString) => formatCommentDate(dateString);
 
 const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
-  const [comments, setComments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState(null);
-  const [page, setPage] = useState(initialPage);
   const [editingPage, setEditingPage] = useState(false);
   const [pageInputVal, setPageInputVal] = useState('');
   const [pageError, setPageError] = useState('');
-  const [total, setTotal] = useState(0);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [violationComment, setViolationComment] = useState(null);
 
-  const startEditPage = () => { setPageInputVal(String(page)); setPageError(''); setEditingPage(true); };
-  const applyPageInput = () => {
-    const n = parseInt(pageInputVal, 10);
-  const totalPages = total > 0 ? Math.ceil(total / pageSize) : 1;
-    if (Number.isNaN(n) || n < 1 || n > totalPages) {
-      setPageError(`Enter a number between 1 and ${totalPages}`);
-      return;
-    }
-    setPage(n);
-    setEditingPage(false);
-  };
+  const {
+    comments,
+    loading,
+    error,
+    refresh,
+    page,
+    setPage,
+    total,
+    setComments,
+  } = useEntityComments('address', addressId, {
+    pageSize,
+    initialPage,
+  });
+
+  useEffect(() => {
+    setPageInputVal(String(page));
+  }, [page]);
 
   const resolveUnitNumber = useCallback((comment) => {
     if (!comment || !comment.unit) return comment?.unit_id;
@@ -63,171 +51,41 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
     return trimmed ? trimmed : comment.unit_id;
   }, []);
 
-  const downloadAttachments = async (commentId) => {
-    if (!commentId) return;
-    try {
-      const resp = await fetch(`${process.env.REACT_APP_API_URL}/comments/${commentId}/photos?download=true`);
-      if (!resp.ok) throw new Error('Failed to get signed download URLs');
-      const downloadPhotos = await resp.json();
-      (downloadPhotos || []).forEach((att, idx) => {
-        const src = att?.url;
-        if (!src) return;
-        const name = att?.filename || `attachment-${idx + 1}`;
-        const a = document.createElement('a');
-        a.href = src; // already signed with content_disposition
-        a.download = name;
-        a.target = '_blank';
-        a.rel = 'noopener';
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => a.remove(), 0);
-      });
-    } catch (e) {
-      console.error('Download failed:', e);
-    }
-  };
-
-  const fetchCommentsPage = useCallback(
-    async (targetPage, signal) => {
-      const baseUrl = process.env.REACT_APP_API_URL;
-      if (!baseUrl) {
-        throw new Error('API URL is not configured');
-      }
-
-      const params = new URLSearchParams({
-        page: String(targetPage),
-        page_size: String(pageSize),
-      });
-
-      const response = await fetch(`${baseUrl}/comments/address/${addressId}?${params.toString()}`, {
-        signal,
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch comments');
-      }
-      const payload = await response.json();
-
-      let rawComments;
-      let totalCount;
-
-      if (Array.isArray(payload)) {
-        totalCount = payload.length;
-        const start = (targetPage - 1) * pageSize;
-        rawComments = payload.slice(start, start + pageSize);
-      } else {
-        rawComments = Array.isArray(payload?.results) ? payload.results : [];
-        totalCount = typeof payload?.total === 'number' ? payload.total : rawComments.length;
-      }
-
-      const enriched = await Promise.all(
-        rawComments.map(async (comment) => {
-          let photos = [];
-          try {
-            const photoResp = await fetch(`${baseUrl}/comments/${comment.id}/photos`, { signal });
-            if (photoResp.ok) {
-              photos = await photoResp.json();
-            }
-          } catch (error) {
-            if (error?.name !== 'AbortError') {
-              console.error(`Error fetching photos for comment ${comment.id}:`, error);
-            }
-          }
-
-          let unit = comment.unit;
-          if (!unit && comment.unit_id) {
-            try {
-              const unitResp = await fetch(`${baseUrl}/units/${comment.unit_id}`, { signal });
-              if (unitResp.ok) {
-                unit = await unitResp.json();
-              }
-            } catch (error) {
-              if (error?.name !== 'AbortError') {
-                console.error(`Error fetching unit for comment ${comment.id}:`, error);
-              }
-            }
-          }
-
-          let mentions = [];
-          try {
-            const mentionsResp = await fetch(`${baseUrl}/comments/${comment.id}/mentions`, { signal });
-            if (mentionsResp.ok) {
-              mentions = await mentionsResp.json();
-            }
-          } catch (error) {
-            if (error?.name !== 'AbortError') {
-              console.error(`Error fetching mentions for comment ${comment.id}:`, error);
-            }
-          }
-
-          return {
-            ...comment,
-            photos,
-            unit,
-            mentions,
-            contact_mentions: Array.isArray(comment.contact_mentions) ? comment.contact_mentions : [],
-          };
-        })
-      );
-
-      if (signal?.aborted) {
-        return;
-      }
-
-      setComments(enriched);
-      setTotal(totalCount);
-    },
-    [addressId, pageSize]
-  );
-
-  useEffect(() => {
-    let isActive = true;
-    const controller = new AbortController();
-
-    const load = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        await fetchCommentsPage(page, controller.signal);
-      } catch (err) {
-        if (!isActive || err?.name === 'AbortError') return;
-        setError(err.message || 'Failed to fetch comments');
-        setComments([]);
-        setTotal(0);
-      } finally {
-        if (isActive && !controller.signal.aborted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    load();
-
-    return () => {
-      isActive = false;
-      controller.abort();
-    };
-  }, [addressId, page, pageSize, refreshKey, fetchCommentsPage]);
-
-  useEffect(() => {
-    setPage(initialPage);
-  }, [addressId, initialPage]);
-
-  useEffect(() => {
-    const totalPages = total > 0 ? Math.ceil(total / pageSize) : 1;
-    if (page > totalPages) {
-      setPage(totalPages);
-    } else if (page < 1) {
-      setPage(1);
-    }
-  }, [page, total, pageSize]);
-
-  const handleCommentAdded = () => {
-    setPage(1);
-    setRefreshKey((key) => key + 1);
+  const startEditPage = () => {
+    setPageInputVal(String(page));
+    setPageError('');
+    setEditingPage(true);
   };
 
   const totalPages = total > 0 ? Math.ceil(total / pageSize) : 1;
+
+  const applyPageInput = useCallback(() => {
+    const n = parseInt(pageInputVal, 10);
+    const totalPagesLocal = total > 0 ? Math.ceil(total / pageSize) : 1;
+    if (Number.isNaN(n) || n < 1 || n > totalPagesLocal) {
+      setPageError(`Enter a number between 1 and ${totalPagesLocal}`);
+      return;
+    }
+    setPage(n);
+    setEditingPage(false);
+  }, [pageInputVal, pageSize, setPage, total]);
+
+  useEffect(() => {
+    const totalPagesLocal = total > 0 ? Math.ceil(total / pageSize) : 1;
+    if (page > totalPagesLocal) {
+      setPage(totalPagesLocal);
+    } else if (page < 1) {
+      setPage(1);
+    }
+  }, [page, pageSize, setPage, total]);
+
+  const handleCommentAdded = () => {
+    setPage(1);
+    setEditingPage(false);
+    setPageInputVal('1');
+    refresh();
+  };
+
   const startIdx = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const endIdx = total === 0 ? 0 : Math.min(total, startIdx + Math.max(comments.length - 1, 0));
 
@@ -349,7 +207,7 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
                   ))}
                 </div>
               )}
-              <p className="text-sm text-gray-500 mt-2">Posted on {formatDate(comment.created_at)}</p>
+              <p className="text-sm text-gray-500 mt-2">Posted on {formatAddressDate(comment.created_at)}</p>
               {comment.user && (
                 <p className="text-sm text-gray-500">
                   By {comment.user.name ? comment.user.name : comment.user.email}
@@ -375,7 +233,7 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
                     <button
                       type="button"
                       className="text-indigo-600 hover:underline text-sm font-medium"
-                      onClick={() => downloadAttachments(comment.id)}
+                      onClick={() => downloadCommentAttachments(comment.id)}
                     >
                       Download attachments ({comment.photos.length})
                     </button>
@@ -475,8 +333,16 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
           comment={violationComment}
           onClose={() => setViolationComment(null)}
           onCreated={(newViolation) => {
-            setRefreshKey((key) => key + 1);
-            if (newViolation?.id) {
+            const currentId = violationComment?.id;
+            refresh();
+            if (newViolation?.id && currentId) {
+              setComments((prev) =>
+                prev.map((existing) =>
+                  existing.id === currentId
+                    ? { ...existing, violation_id: newViolation.id }
+                    : existing
+                )
+              );
               setViolationComment((prev) => (prev ? { ...prev, violation_id: newViolation.id } : prev));
             }
           }}
