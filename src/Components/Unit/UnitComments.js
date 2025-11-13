@@ -1,114 +1,58 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import NewUnitComment from './NewUnitComment';
 import FullScreenPhotoViewer from '../FullScreenPhotoViewer';
 import CreateViolationFromCommentModal from '../Comment/CreateViolationFromCommentModal';
-import { toEasternLocaleString } from '../../utils';
+import useEntityComments from '../../Hooks/useEntityComments';
+import { formatCommentDate, downloadCommentAttachments } from '../../Utils/comments';
 
-// Utility function to format the date
-const formatDate = (dateString) => {
-  const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-  return toEasternLocaleString(dateString, undefined, options);
-};
+const formatUnitDate = (dateString) => formatCommentDate(dateString, { timeZoneName: undefined });
 
 const UnitComments = ({ unitId, addressId }) => {
-  const [comments, setComments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState(null);
   const [violationComment, setViolationComment] = useState(null);
 
-  const downloadAttachments = async (commentId) => {
-    if (!commentId) return;
-    try {
-      const resp = await fetch(`${process.env.REACT_APP_API_URL}/comments/${commentId}/photos?download=true`);
-      if (!resp.ok) throw new Error('Failed to get signed download URLs');
-      const downloadPhotos = await resp.json();
-      (downloadPhotos || []).forEach((att, idx) => {
-        const src = att?.url;
-        if (!src) return;
-        const name = att?.filename || `attachment-${idx + 1}`;
-        const a = document.createElement('a');
-        a.href = src;
-        a.download = name;
-        a.target = '_blank';
-        a.rel = 'noopener';
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => a.remove(), 0);
-      });
-    } catch (e) {
-      console.error('Download failed:', e);
-    }
-  };
-
-  useEffect(() => {
-    // Ensure unitId is always an integer for API calls
-    const unitIdInt = Number(unitId);
-    fetch(`${process.env.REACT_APP_API_URL}/comments/unit/${unitIdInt}`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch comments');
-        }
-        return response.json();
-      })
-      .then((data) => {
-        // For each comment, fetch photos and mentions
-        const fetchExtrasPromises = data.map(async (comment) => {
-          let photos = [];
-          try {
-            const resp = await fetch(`${process.env.REACT_APP_API_URL}/comments/${comment.id}/photos`);
-            photos = resp.ok ? await resp.json() : [];
-          } catch { photos = []; }
-
-          let mentions = [];
-          try {
-            const mResp = await fetch(`${process.env.REACT_APP_API_URL}/comments/${comment.id}/mentions`);
-            mentions = mResp.ok ? await mResp.json() : [];
-          } catch { mentions = []; }
-
-          return { ...comment, photos, mentions };
-        });
-        Promise.all(fetchExtrasPromises)
-          .then((commentsWithExtras) => {
-            setComments(commentsWithExtras);
-            setLoading(false);
-          })
-          .catch((error) => {
-            setError(error.message);
-            setLoading(false);
-          });
-      })
-      .catch((error) => {
-        setError(error.message);
-        setLoading(false);
-      });
-  }, [unitId]);
+  const {
+    comments,
+    loading,
+    error,
+    refresh,
+    setComments,
+  } = useEntityComments('unit', Number(unitId));
 
   const handleCommentAdded = (newComment) => {
-    if (!newComment || typeof newComment.id === 'undefined' || newComment.id === null) {
-      setComments([newComment, ...comments]);
+    if (!newComment) {
+      refresh();
       return;
     }
+
+    if (typeof newComment.id === 'undefined' || newComment.id === null) {
+      setComments((prev) => [newComment, ...prev]);
+      return;
+    }
+
     (async () => {
       try {
         let photos = [];
         try {
           const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/${newComment.id}/photos`);
           photos = response.ok ? await response.json() : [];
-        } catch { photos = []; }
+        } catch {
+          photos = [];
+        }
 
         let mentions = [];
         try {
           const mResp = await fetch(`${process.env.REACT_APP_API_URL}/comments/${newComment.id}/mentions`);
           mentions = mResp.ok ? await mResp.json() : [];
-        } catch { mentions = []; }
+        } catch {
+          mentions = [];
+        }
 
         const newCommentWithExtras = { ...newComment, photos, mentions };
-        setComments([newCommentWithExtras, ...comments]);
+        setComments((prev) => [newCommentWithExtras, ...prev]);
       } catch {
-        setComments([newComment, ...comments]);
+        setComments((prev) => [newComment, ...prev]);
       }
     })();
   };
@@ -169,7 +113,7 @@ const UnitComments = ({ unitId, addressId }) => {
                   ))}
                 </div>
               )}
-              <p className="text-sm text-gray-500 mt-2">Posted on {formatDate(comment.created_at)}</p>
+              <p className="text-sm text-gray-500 mt-2">Posted on {formatUnitDate(comment.created_at)}</p>
               {comment.user && (
                 <p className="text-sm text-gray-500">
                   By {comment.user.name ? comment.user.name : comment.user.email}
@@ -189,7 +133,7 @@ const UnitComments = ({ unitId, addressId }) => {
                     <button
                       type="button"
                       className="text-indigo-600 hover:underline text-sm font-medium"
-                      onClick={() => downloadAttachments(comment.id)}
+                      onClick={() => downloadCommentAttachments(comment.id)}
                     >
                       Download attachments ({comment.photos.length})
                     </button>
