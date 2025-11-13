@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toEasternLocaleString } from '../utils';
+import PageLoading from './Common/PageLoading';
+import PageError from './Common/PageError';
 
 export default function Inspections() {
   const [inspections, setInspections] = useState([]);
@@ -98,8 +100,13 @@ export default function Inspections() {
     setEditingPage(false);
   };
 
-  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
+  if (loading) {
+    return <PageLoading message="Loading inspections…" />;
+  }
+
+  if (error) {
+    return <PageError title="Unable to load inspections" error={error} />;
+  }
 
   return (
     <div className="px-4 sm:px-6 lg:px-8">

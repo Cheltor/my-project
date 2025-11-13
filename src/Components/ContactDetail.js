@@ -3,6 +3,8 @@ import AsyncSelect from 'react-select/async';
 import { Link, useParams } from 'react-router-dom';
 import ContactComments from './Contact/ContactComments';
 import { formatPhoneNumber, toEasternLocaleDateString } from '../utils';
+import PageLoading from './Common/PageLoading';
+import PageError from './Common/PageError';
 
 const SECTION_KEYS = ['addresses', 'businesses', 'inspections', 'permits', 'complaints'];
 const createInitialSectionState = () => SECTION_KEYS.reduce((acc, key) => {
@@ -325,11 +327,11 @@ export default function ContactDetail() {
   };
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+    return <PageLoading message="Loading contact…" />;
   }
 
   if (error) {
-    return <div className="mt-10 text-center text-red-500">Error: {error}</div>;
+    return <PageError title="Unable to load contact" error={error} />;
   }
 
   if (!contact) {

@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toEasternLocaleDateString, toEasternLocaleString } from '../utils';
+import PageLoading from './Common/PageLoading';
+import PageError from './Common/PageError';
 
 export default function PermitDetail() {
   const { id } = useParams();
@@ -165,28 +167,17 @@ export default function PermitDetail() {
     }
   };
 
-  if (loading)
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center bg-slate-50 px-4">
-        <span className="text-sm font-medium text-slate-600">Loading…</span>
-      </div>
-    );
+  if (loading) {
+    return <PageLoading message="Loading permit…" />;
+  }
 
-  if (error)
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center bg-slate-50 px-4">
-        <div className="rounded-lg border border-rose-200 bg-white/80 px-6 py-5 text-sm text-rose-600 shadow-sm">
-          Error: {error}
-        </div>
-      </div>
-    );
+  if (error) {
+    return <PageError title="Unable to load permit" error={error} />;
+  }
 
-  if (!permit)
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center bg-slate-50 px-4">
-        <span className="text-sm font-medium text-slate-600">Not found</span>
-      </div>
-    );
+  if (!permit) {
+    return <PageError title="Permit not found" message="The requested permit could not be located." />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white py-10">

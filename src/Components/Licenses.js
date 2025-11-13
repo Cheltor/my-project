@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AddLicenseModal from './AddLicenseModal';
 import { toEasternLocaleDateString } from '../utils';
+import PageLoading from './Common/PageLoading';
+import PageError from './Common/PageError';
 
 export default function Licenses() {
   const LICENSE_TYPE_LABELS = {
@@ -99,8 +101,13 @@ export default function Licenses() {
     setEditingPage(false);
   };
 
-  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
+  if (loading) {
+    return <PageLoading message="Loading licenses…" />;
+  }
+
+  if (error) {
+    return <PageError title="Unable to load licenses" error={error} />;
+  }
 
   return (
     <div className="px-4 sm:px-6 lg:px-8">

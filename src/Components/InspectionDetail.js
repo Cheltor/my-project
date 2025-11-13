@@ -10,6 +10,8 @@ import {
   formatPhoneNumber
 } from '../utils';
 import FileUploadInput from './Common/FileUploadInput';
+import PageLoading from './Common/PageLoading';
+import PageError from './Common/PageError';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -428,11 +430,11 @@ export default function InspectionDetail() {
   const assignedInspectorName = inspection?.inspector?.name || inspection?.inspector?.email || 'Unassigned';
 
   if (loading) {
-    return <p>Loading inspection...</p>;
+    return <PageLoading message="Loading inspection…" />;
   }
 
   if (error) {
-    return <p>Error: {error}</p>;
+    return <PageError title="Unable to load inspection" error={error} />;
   }
   return (
     <div className="max-w-5xl mx-auto space-y-8 px-4 pb-12 sm:px-6 lg:px-8">

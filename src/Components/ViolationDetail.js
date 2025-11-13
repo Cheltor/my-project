@@ -6,6 +6,8 @@ import CitationsList from "./CitationsList";
 import CodeDrawerLink from "./Codes/CodeDrawerLink";
 import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
 import FileUploadInput from "./Common/FileUploadInput";
+import PageLoading from "./Common/PageLoading";
+import PageError from "./Common/PageError";
 import {
   getAttachmentDisplayLabel,
   getAttachmentFilename,
@@ -389,16 +391,16 @@ const ViolationDetail = () => {
       return [...list].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     }, [violation?.violation_comments]);
 
-    if (loading) {
-      return <p>Loading violation...</p>;
-    }
+  if (loading) {
+    return <PageLoading message="Loading violation…" />;
+  }
 
   if (error) {
-    return <p className="text-red-500">Error: {error}</p>;
+    return <PageError title="Unable to load violation" error={error} />;
   }
 
   if (!violation) {
-    return <p>No violation available.</p>;
+    return <PageError title="Violation not found" message="The requested violation could not be located." />;
   }
 
   const handleDownloadComplianceLetter = async (closeModal = false) => {

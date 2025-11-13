@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AddPermitModal from './AddPermitModal';
 import { toEasternLocaleDateString } from '../utils';
+import PageLoading from './Common/PageLoading';
+import PageError from './Common/PageError';
 
 // Feature flag: hide Add Permit for now
 const ENABLE_ADD_PERMIT = false;
@@ -95,8 +97,13 @@ export default function Permits() {
     setEditingPage(false);
   };
 
-  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
+  if (loading) {
+    return <PageLoading message="Loading permits…" />;
+  }
+
+  if (error) {
+    return <PageError title="Unable to load permits" error={error} />;
+  }
 
   return (
     <div className="px-4 sm:px-6 lg:px-8">

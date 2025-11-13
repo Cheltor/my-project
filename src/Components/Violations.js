@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { Link } from 'react-router-dom';
 import { toEasternLocaleDateString, toEasternLocaleString } from '../utils';
+import PageLoading from './Common/PageLoading';
+import PageError from './Common/PageError';
 
 export default function Violations() {
   const { user } = useAuth();
@@ -203,8 +205,13 @@ export default function Violations() {
     }
   };
 
-  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
+  if (loading) {
+    return <PageLoading message="Loading violations…" />;
+  }
+
+  if (error) {
+    return <PageError title="Unable to load violations" error={error} />;
+  }
 
   return (
     <div className="px-4 sm:px-6 lg:px-8">

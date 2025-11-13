@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toEasternLocaleDateString, toEasternLocaleString } from '../utils';
+import PageLoading from './Common/PageLoading';
+import PageError from './Common/PageError';
 // import CitationDetails from './CitationDetails';
 
 export default function Citations() {
@@ -134,8 +136,13 @@ export default function Citations() {
   // Add loading state for status update
   const [loadingStatus, setLoadingStatus] = useState(false);
 
-  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
+  if (loading) {
+    return <PageLoading message="Loading citations…" />;
+  }
+
+  if (error) {
+    return <PageError title="Unable to load citations" error={error} />;
+  }
 
   return (
     <div className="flex flex-col md:flex-row px-4 sm:px-6 lg:px-8 gap-8">

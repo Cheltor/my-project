@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import CitationDetails from "./CitationDetails";
+import PageLoading from "./Common/PageLoading";
+import PageError from "./Common/PageError";
 
 export default function CitationDetailsPage() {
   const { id } = useParams();
@@ -47,8 +49,13 @@ export default function CitationDetailsPage() {
     }
   };
 
-  if (loading) return <div className="text-center mt-10">Loading...</div>;
-  if (error) return <div className="text-red-500 text-center mt-10">{error}</div>;
+  if (loading) {
+    return <PageLoading message="Loading citation…" />;
+  }
+
+  if (error) {
+    return <PageError title="Unable to load citation" error={error} />;
+  }
 
   return <CitationDetails citation={citation} submitting={submitting} onStatusChange={handleStatusChange} />;
 }

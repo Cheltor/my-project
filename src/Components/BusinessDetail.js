@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { formatPhoneNumber, toEasternLocaleDateString } from '../utils';
+import PageLoading from './Common/PageLoading';
+import PageError from './Common/PageError';
 
 const BusinessDetails = () => {
   const { id } = useParams();
@@ -148,23 +150,30 @@ const BusinessDetails = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 via-white to-slate-200">
-        <div className="inline-flex items-center gap-3 rounded-full bg-white/90 px-5 py-2 text-sm font-medium text-slate-500 shadow-lg ring-1 ring-slate-200">
-          <span className="h-3 w-3 animate-ping rounded-full bg-indigo-500/80" />
-          Loading business…
-        </div>
-      </div>
+      <PageLoading
+        message="Loading business…"
+        className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-slate-200"
+      />
     );
   }
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-rose-50 via-white to-rose-100">
-        <div className="rounded-3xl border border-rose-200 bg-white/90 px-6 py-5 text-center shadow-xl">
-          <p className="text-base font-semibold text-rose-700">Something went wrong</p>
-          <p className="mt-2 text-sm text-rose-500">{error}</p>
-        </div>
-      </div>
+      <PageError
+        title="Unable to load business"
+        error={error}
+        className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-rose-100"
+      />
+    );
+  }
+
+  if (!business) {
+    return (
+      <PageError
+        title="Business not found"
+        message="The requested business could not be located."
+        className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-slate-200"
+      />
     );
   }
 
