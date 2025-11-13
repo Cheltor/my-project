@@ -25,7 +25,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'; // Import Lin
 import Logout from '../Components/Logout'; // Import the Logout component
 import { useAuth } from '../AuthContext'; // Import useAuth hook
 import { apiFetch } from '../api';
-import { toEasternLocaleString } from '../utils';
+import { classNames, toEasternLocaleString } from '../utils';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon, current: false },
@@ -50,10 +50,6 @@ const navigation = [
   { name: 'Admin Code Sync', href: '/admin/code-sync', icon: Cog6ToothIcon, current: false, roles: ['Admin'] },
   { name: 'Admin Chat', href: '/admin-chat', icon: Cog6ToothIcon, current: false, roles: ['Admin'] },
 ];
-
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}
 
 export default function Sidebar({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);

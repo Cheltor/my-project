@@ -2,10 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ArrowDownIcon, ArrowUpIcon } from '@heroicons/react/20/solid';
 
 import { useAuth } from "../../AuthContext";
-
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}
+import { classNames } from '../../utils';
 
 export default function WeeklyStats() {
   const [stats, setStats] = useState([

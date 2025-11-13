@@ -18,6 +18,8 @@ export const truncateEmail = (email) => {
   return email.split('@')[0];
 };
 
+export const classNames = (...classes) => classes.filter(Boolean).join(' ');
+
 export const roles = {
   0: 'Guest',
   1: 'ONS',

@@ -9,6 +9,7 @@ import FileUploadInput from "./Common/FileUploadInput";
 import {
   getAttachmentDisplayLabel,
   getAttachmentFilename,
+  classNames,
   isImageAttachment,
   toEasternLocaleDateString,
   toEasternLocaleString
@@ -21,10 +22,6 @@ const statusMapping = {
   2: 'Pending Trial',
   3: 'Dismissed'
 };
-
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}
 
 const statusToneMap = {
   0: 'bg-rose-50 text-rose-700 ring-rose-200',

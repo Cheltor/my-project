@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars, react-hooks/exhaustive-deps */
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { toEasternLocaleDateString, toEasternLocaleString } from '../utils';
+import { classNames, toEasternLocaleDateString, toEasternLocaleString } from '../utils';
 // import CitationDetails from './CitationDetails';
 
 export default function Citations() {
@@ -405,6 +405,3 @@ export default function Citations() {
   );
 }
 
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}

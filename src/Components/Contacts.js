@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { formatPhoneNumber } from '../utils';
-
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}
+import { classNames, formatPhoneNumber } from '../utils';
 
 export default function Contacts() {
   const [contacts, setContacts] = useState([]);

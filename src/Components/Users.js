@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom'; // Import Link for navigation
-import { getRoleName, formatPhoneNumber, toEasternLocaleDateString } from './../utils'; // Import utility functions
+import { classNames, formatPhoneNumber, getRoleName, toEasternLocaleDateString } from '../utils'; // Import utility functions
 
 const Users = () => {
   const [users, setUsers] = useState([]); // State to store all users
@@ -216,9 +216,5 @@ const Users = () => {
     </div>
   );
 };
-
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}
 
 export default Users;

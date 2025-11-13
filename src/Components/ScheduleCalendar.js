@@ -9,6 +9,7 @@ import {
   UserIcon,
 } from '@heroicons/react/20/solid';
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
+import { classNames } from '../utils';
 
 const pad = (value) => String(value).padStart(2, '0');
 const startOfDay = (date) => {
@@ -37,8 +38,6 @@ const getCalendarEnd = (date) => {
 const MONTH_FORMATTER = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
 const DATE_FORMATTER = new Intl.DateTimeFormat(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
 const TIME_FORMATTER = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
-const classNames = (...classes) => classes.filter(Boolean).join(' ');
-
 const ScheduleCalendar = () => {
   const [inspections, setInspections] = useState([]);
   const [complaints, setComplaints] = useState([]);

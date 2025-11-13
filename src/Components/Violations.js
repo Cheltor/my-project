@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { Link } from 'react-router-dom';
-import { toEasternLocaleDateString, toEasternLocaleString } from '../utils';
+import { classNames, toEasternLocaleDateString, toEasternLocaleString } from '../utils';
 
 export default function Violations() {
   const { user } = useAuth();
@@ -512,6 +512,3 @@ export default function Violations() {
   );
 }
 
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}

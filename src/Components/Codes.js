@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom'; // Import Link for navigation
+import { classNames } from '../utils';
 import { useAuth } from '../AuthContext';
 import AddCodeModal from './AddCodeModal';
 
@@ -370,10 +371,6 @@ const Codes = () => {
     </>
   );
 };
-
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}
 
 function truncateString(str, maxLength) {
   return str.length > maxLength ? str.substring(0, maxLength) + '...' : str;
