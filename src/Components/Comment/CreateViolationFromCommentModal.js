@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import CodeSelect from '../CodeSelect';
 import { useAuth } from '../../AuthContext';
 import CodeDrawerLink from '../Codes/CodeDrawerLink';
+import LoadingSpinner from '../Common/LoadingSpinner';
 import {
   getAttachmentDisplayLabel,
   getAttachmentFilename,
@@ -652,7 +653,14 @@ export default function CreateViolationFromCommentModal({ comment, onClose, onCr
                   className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-indigo-300"
                   disabled={submitting || (Array.isArray(selectedCodes) && selectedCodes.length === 0)}
                 >
-                  {submitting ? 'Saving…' : 'Create violation'}
+                  {submitting ? (
+                    <span className="inline-flex items-center gap-2">
+                      <LoadingSpinner />
+                      Saving…
+                    </span>
+                  ) : (
+                    'Create violation'
+                  )}
                 </button>
               )}
             </div>

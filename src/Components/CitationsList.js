@@ -1,6 +1,7 @@
 import React from "react";
 import CodeDrawerLink from "./Codes/CodeDrawerLink";
 import { toEasternLocaleDateString, toEasternLocaleString } from "../utils";
+import LoadingSpinner from "./Common/LoadingSpinner";
 
 const statusOptions = [
   { value: 0, label: "Unpaid" },
@@ -98,7 +99,14 @@ function CitationsList({ citations, submitting, refreshCitations }) {
                     className="ml-2 px-2 py-0.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
                     disabled={submitting}
                   >
-                    Update
+                    {submitting ? (
+                      <span className="inline-flex items-center gap-1">
+                        <LoadingSpinner className="h-3.5 w-3.5" />
+                        Updating…
+                      </span>
+                    ) : (
+                      "Update"
+                    )}
                   </button>
                 </form>
                 {citation.trial_date && (

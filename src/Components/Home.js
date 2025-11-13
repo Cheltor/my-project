@@ -172,6 +172,13 @@ export default function Example() {
     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
       <Welcome />
 
+      {/* Show WeeklyStats on top for admins so "This Week" appears first */}
+      {user.role === 3 && (
+        <div className="mt-6">
+          <WeeklyStats />
+        </div>
+      )}
+
       {(user.role === 2 || user.role === 1 || user.role === 3) && (
         <>
           <div className="mt-5 mb-4 flex justify-center">
@@ -271,9 +278,8 @@ export default function Example() {
 
       {user.role === 3 && (
         <div className="mt-6">
-          <WeeklyStats />
           <div className="mt-6">
-            <RecentComments limit={8} startExpanded />
+            <RecentComments limit={8} />
           </div>
           <button
             type="button"

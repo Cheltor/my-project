@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import LoadingSpinner from './Common/LoadingSpinner';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
@@ -1631,7 +1632,14 @@ const AddressDetails = () => {
                       disabled={submittingBusiness || !newBusiness.name.trim()}
                       className="px-3 py-1 rounded-md bg-green-600 text-white text-sm disabled:bg-gray-300"
                     >
-                      {submittingBusiness ? 'Saving...' : 'Save Business'}
+                      {submittingBusiness ? (
+                        <span className="inline-flex items-center gap-2">
+                          <LoadingSpinner className="h-4 w-4" />
+                          Saving...
+                        </span>
+                      ) : (
+                        'Save Business'
+                      )}
                     </button>
                   </div>
                 </form>
@@ -2403,7 +2411,14 @@ const AddressDetails = () => {
                 disabled={submittingQuick || (!quickContent.trim() && quickFiles.length === 0) || !user?.id}
                 className="inline-flex items-center justify-center h-14 px-8 rounded-lg bg-indigo-600 text-white text-lg font-semibold hover:bg-indigo-500 disabled:bg-gray-300 min-w-[10rem]"
               >
-                {submittingQuick ? 'Posting...' : 'Post'}
+                {submittingQuick ? (
+                  <span className="inline-flex items-center gap-2">
+                    <LoadingSpinner className="h-5 w-5" />
+                    Posting...
+                  </span>
+                ) : (
+                  'Post'
+                )}
               </button>
             </div>
           </form>

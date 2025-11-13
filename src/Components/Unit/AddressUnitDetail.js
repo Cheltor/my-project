@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import UnitComments from './UnitComments';
 import { useAuth } from '../../AuthContext';
 import { toEasternLocaleString } from '../../utils';
+import LoadingSpinner from '../Common/LoadingSpinner';
 
 const RELATIVE_TIME_DIVISIONS = [
   { amount: 60, unit: 'second' },
@@ -507,7 +508,14 @@ const AddressUnitDetail = () => {
                 disabled={submittingQuick || (!quickContent.trim() && quickFiles.length === 0) || !user?.id}
                 className="inline-flex items-center justify-center h-14 px-8 rounded-lg bg-indigo-600 text-white text-lg font-semibold hover:bg-indigo-500 disabled:bg-gray-300 min-w-[10rem]"
               >
-                {submittingQuick ? 'Posting...' : 'Post'}
+                {submittingQuick ? (
+                  <span className="inline-flex items-center gap-2">
+                    <LoadingSpinner className="h-5 w-5" />
+                    Posting...
+                  </span>
+                ) : (
+                  'Post'
+                )}
               </button>
             </div>
           </form>

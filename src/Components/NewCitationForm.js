@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CodeSelect from "./CodeSelect";
+import LoadingSpinner from "./Common/LoadingSpinner";
 
 export default function NewCitationForm({ violationId, onCitationAdded, codes, userId }) {
   const navigate = useNavigate();
@@ -108,7 +109,14 @@ export default function NewCitationForm({ violationId, onCitationAdded, codes, u
       </div>
       */}
       <button type="submit" className="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700" disabled={submitting || !selectedCode}>
-        {submitting ? "Adding..." : "Add Citation"}
+        {submitting ? (
+          <span className="inline-flex items-center gap-2 text-sm">
+            <LoadingSpinner className="h-4 w-4" />
+            Adding...
+          </span>
+        ) : (
+          "Add Citation"
+        )}
       </button>
     </form>
   );

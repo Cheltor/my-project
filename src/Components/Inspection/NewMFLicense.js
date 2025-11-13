@@ -3,6 +3,7 @@ import { useAuth } from "../../AuthContext";
 import AsyncSelect from "react-select/async";
 import ContactSelection from "../Contact/ContactSelection";
 import FileUploadInput from "../Common/FileUploadInput";
+import LoadingSpinner from "../Common/LoadingSpinner";
 
 const addressSelectStyles = {
   control: (provided, state) => ({
@@ -592,7 +593,14 @@ export default function NewMFLicense({
                   className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
                   disabled={!canSubmit}
                 >
-                  {submitting ? "Creating…" : "Submit License"}
+                  {submitting ? (
+                    <span className="inline-flex items-center gap-2">
+                      <LoadingSpinner />
+                      Creating…
+                    </span>
+                  ) : (
+                    "Submit License"
+                  )}
                 </button>
               )}
             </div>

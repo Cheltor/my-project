@@ -6,6 +6,7 @@ import CitationsList from "./CitationsList";
 import CodeDrawerLink from "./Codes/CodeDrawerLink";
 import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
 import FileUploadInput from "./Common/FileUploadInput";
+import LoadingSpinner from "./Common/LoadingSpinner";
 import {
   getAttachmentDisplayLabel,
   getAttachmentFilename,
@@ -995,7 +996,14 @@ const ViolationDetail = () => {
                   className="inline-flex items-center justify-center rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={submitting || !newComment.trim()}
                 >
-                  {submitting ? 'Posting…' : 'Post Comment'}
+                  {submitting ? (
+                    <span className="inline-flex items-center gap-2">
+                      <LoadingSpinner className="h-4 w-4" />
+                      Posting…
+                    </span>
+                  ) : (
+                    'Post Comment'
+                  )}
                 </button>
               </div>
             </form>
@@ -1099,30 +1107,32 @@ const ViolationDetail = () => {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 px-6 py-6">
-          <div className="flex flex-col gap-1">
-            <h3 className="text-xl font-semibold text-gray-900">Citations</h3>
-            <p className="text-sm text-gray-500">Manage enforcement activity for this violation.</p>
+      {violation?.status === 0 && deadlineMeta && deadlineMeta.deadline < new Date() && (
+        <section className="rounded-3xl border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-100 px-6 py-6">
+            <div className="flex flex-col gap-1">
+              <h3 className="text-xl font-semibold text-gray-900">Citations</h3>
+              <p className="text-sm text-gray-500">Manage enforcement activity for this violation.</p>
+            </div>
           </div>
-        </div>
-        <div className="space-y-6 px-6 py-6">
-          <ToggleCitationForm
-            violationId={id}
-            onCitationAdded={refreshCitations}
-            codes={violation.codes || []}
-            showCitationForm={showCitationForm}
-            setShowCitationForm={setShowCitationForm}
-            user={user}
-            violationStatus={violation.status}
-          />
-          <CitationsList
-            citations={citations}
-            submitting={submitting}
-            refreshCitations={refreshCitations}
-          />
-        </div>
-      </section>
+          <div className="space-y-6 px-6 py-6">
+            <ToggleCitationForm
+              violationId={id}
+              onCitationAdded={refreshCitations}
+              codes={violation.codes || []}
+              showCitationForm={showCitationForm}
+              setShowCitationForm={setShowCitationForm}
+              user={user}
+              violationStatus={violation.status}
+            />
+            <CitationsList
+              citations={citations}
+              submitting={submitting}
+              refreshCitations={refreshCitations}
+            />
+          </div>
+        </section>
+      )}
     </div>
   );
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AsyncSelect from 'react-select/async';
 import { useAuth } from '../../AuthContext';
+import LoadingSpinner from '../Common/LoadingSpinner';
 
 export default function NewBusinessForm({ onCancel, onCreated, embedded = false }) {
   const { user } = useAuth();
@@ -222,7 +223,14 @@ export default function NewBusinessForm({ onCancel, onCreated, embedded = false 
             disabled={submitting}
             className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60"
           >
-            {submitting ? 'Saving…' : 'Save Business'}
+            {submitting ? (
+              <span className="inline-flex items-center gap-2">
+                <LoadingSpinner />
+                Saving…
+              </span>
+            ) : (
+              'Save Business'
+            )}
           </button>
           <button
             type="button"
@@ -353,7 +361,14 @@ export default function NewBusinessForm({ onCancel, onCreated, embedded = false 
           disabled={submitting}
           className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60"
         >
-          {submitting ? 'Saving…' : 'Save Business'}
+          {submitting ? (
+            <span className="inline-flex items-center gap-2">
+              <LoadingSpinner />
+              Saving…
+            </span>
+          ) : (
+            'Save Business'
+          )}
         </button>
         <button
           type="button"

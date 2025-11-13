@@ -240,6 +240,20 @@ const RecentComments = ({ limit = 10, className = '', startExpanded = false }) =
                         ))}
                       </div>
                     )}
+                    {Array.isArray(comment.contact_mentions) && comment.contact_mentions.length > 0 && (
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        <span className="text-[11px] uppercase tracking-wide text-gray-500">Contact mentions:</span>
+                        {comment.contact_mentions.map((c) => (
+                          <span
+                            key={c.id}
+                            className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-700/10"
+                            title={c.email || c.phone || ''}
+                          >
+                            %{c.name || c.email || `contact-${c.id}`}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <p className="mt-1 text-xs text-gray-500">
                       {commentUserName} • {formatDateTime(comment.created_at)}
                     </p>

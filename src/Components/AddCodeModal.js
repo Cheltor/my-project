@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import LoadingSpinner from "./Common/LoadingSpinner";
 
 const INITIAL_FORM = {
   chapter: "",
@@ -182,7 +183,14 @@ export default function AddCodeModal({
               disabled={!canSubmit}
               className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50"
             >
-              {submitting ? "Saving..." : "Create"}
+              {submitting ? (
+                <span className="inline-flex items-center gap-2">
+                  <LoadingSpinner />
+                  Saving...
+                </span>
+              ) : (
+                "Create"
+              )}
             </button>
           </div>
         </form>

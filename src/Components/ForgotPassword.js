@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import API from '../Services/api';
+import LoadingSpinner from './Common/LoadingSpinner';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -61,7 +62,14 @@ const ForgotPassword = () => {
             disabled={submitting}
             className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:bg-indigo-300"
           >
-            {submitting ? 'Sending reset link...' : 'Email me a reset link'}
+            {submitting ? (
+              <span className="inline-flex items-center gap-2">
+                <LoadingSpinner />
+                Sending reset link...
+              </span>
+            ) : (
+              'Email me a reset link'
+            )}
           </button>
 
           <div className="text-center text-sm">
