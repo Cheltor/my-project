@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import LoadingSpinner from './Common/LoadingSpinner';
 import { createPortal } from 'react-dom';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { formatPhoneNumber, toEasternLocaleDateString, toEasternLocaleString } from '../utils';
 import useContactLinking from '../Hooks/useContactLinking';
@@ -21,6 +21,30 @@ import NewBusinessLicense from './Inspection/NewBusinessLicense';
 import NewMFLicense from './Inspection/NewMFLicense';
 import NewSFLicense from './Inspection/NewSFLicense';
 import ContactLinkModal from './Contact/ContactLinkModal';
+
+// Debug: log imported component types to catch any undefined imports at runtime
+try {
+  // eslint-disable-next-line no-console
+  console.log('AddressDetail imports debug:', {
+    LoadingSpinner: typeof LoadingSpinner,
+    AddressPhotos: typeof AddressPhotos,
+    Citations: typeof Citations,
+    Violations: typeof Violations,
+    Comments: typeof Comments,
+    Complaints: typeof Complaints,
+    Inspections: typeof Inspections,
+    AddressLicenses: typeof AddressLicenses,
+    AddressPermits: typeof AddressPermits,
+    NewUnit: typeof NewUnit,
+    NewBuildingPermit: typeof NewBuildingPermit,
+    NewBusinessLicense: typeof NewBusinessLicense,
+    NewMFLicense: typeof NewMFLicense,
+    NewSFLicense: typeof NewSFLicense,
+    ContactLinkModal: typeof ContactLinkModal,
+  });
+} catch (e) {
+  // ignore in non-browser environments
+}
 
 const TAB_META = {
   contacts: {
@@ -410,7 +434,9 @@ const AddressDetails = () => {
   const fileInputRef = useRef(null);
   const [commentsRefreshKey, setCommentsRefreshKey] = useState(0);
   const [selectedUnitId, setSelectedUnitId] = useState('');
+  const [quickReviewLater, setQuickReviewLater] = useState(false);
   const [modalTab, setModalTab] = useState(null);
+  const location = useLocation();
   // Contacts state
   const [showAddContact, setShowAddContact] = useState(false);
   const {
@@ -454,6 +480,20 @@ const AddressDetails = () => {
     setShowAddContact(false);
     resetContactLinkState();
   }, [resetContactLinkState]);
+  
+  // Open a modal tab if requested via query param (e.g. ?open=comments)
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(location.search);
+      const open = q.get('open');
+      if (open) {
+        setActiveTab(open);
+        setModalTab(open);
+      }
+    } catch (err) {
+      // ignore
+    }
+  }, [location.search, id]);
   const { searchTerm, showDropdown, filteredUnits, handleSearchChange } = useUnitSearch(id);
   const [showNewUnitForm, setShowNewUnitForm] = useState(false);  // State to toggle NewUnit form
   const [isEditing, setIsEditing] = useState(false); // State to toggle edit mode
@@ -2218,8 +2258,8 @@ const AddressDetails = () => {
           document.body
         )}
 
-      {/* Sticky Quick Comment Bar (mobile only) */}
-      <div className="fixed inset-x-0 bottom-0 sm:hidden z-40">
+      {/* Sticky Quick Comment Bar (touch devices) */}
+      <div className="fixed inset-x-0 bottom-0 z-40 quick-comment-bar">
         <div className="mx-auto max-w-4xl px-4 py-4 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
           <form
             onSubmit={async (e) => {
@@ -2232,6 +2272,7 @@ const AddressDetails = () => {
                 formData.append('content', quickContent.trim() || '');
                 formData.append('user_id', String(user.id));
                 if (selectedUnitId) formData.append('unit_id', String(selectedUnitId));
+                formData.append('review_later', quickReviewLater ? 'true' : 'false');
                 for (const f of quickFiles) formData.append('files', f);
                 const res = await fetch(`${process.env.REACT_APP_API_URL}/comments/${id}/address`, {
                   method: 'POST',
@@ -2241,6 +2282,7 @@ const AddressDetails = () => {
                 setQuickContent('');
                 setQuickFiles([]);
                 setSelectedUnitId('');
+                setQuickReviewLater(false);
                 setCommentsRefreshKey((k) => k + 1);
                 setActiveTab('comments');
                 setModalTab('comments');
@@ -2328,6 +2370,17 @@ const AddressDetails = () => {
                   ))}
                 </select>
               )}
+
+              <label className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  checked={quickReviewLater}
+                  disabled={submittingQuick}
+                  onChange={(e) => setQuickReviewLater(e.target.checked)}
+                />
+                <span>Review later</span>
+              </label>
 
               <button
                 type="submit"

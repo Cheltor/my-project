@@ -9,6 +9,7 @@ import {
   isImageAttachment,
   getAttachmentDisplayLabel
 } from '../../utils';
+import { useAuth } from '../../AuthContext';
 
 // Utility function to format the date
 const formatDate = (dateString) => {
@@ -37,6 +38,9 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
   const [total, setTotal] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [violationComment, setViolationComment] = useState(null);
+  const [reviewUpdating, setReviewUpdating] = useState({});
+  const [reviewError, setReviewError] = useState('');
+  const { token, user } = useAuth() || {};
 
   const startEditPage = () => { setPageInputVal(String(page)); setPageError(''); setEditingPage(true); };
   const applyPageInput = () => {
@@ -62,6 +66,63 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
     const trimmed = String(raw).trim();
     return trimmed ? trimmed : comment.unit_id;
   }, []);
+
+  const handleMarkReviewed = useCallback(
+    async (commentId) => {
+      if (!commentId || !user?.id) return;
+      const target = comments.find((comment) => comment.id === commentId);
+      if (!target || Number(target.user_id) !== Number(user.id)) {
+        return;
+      }
+      const baseUrl = process.env.REACT_APP_API_URL;
+      if (!baseUrl) {
+        setReviewError('API URL is not configured.');
+        return;
+      }
+      setReviewError('');
+      setReviewUpdating((prev) => ({ ...prev, [commentId]: true }));
+      try {
+        const response = await fetch(`${baseUrl}/comments/${commentId}/review`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ review_later: false }),
+        });
+        if (!response.ok) {
+          let message = 'Failed to update comment.';
+          try {
+            const data = await response.json();
+            message = data?.detail || message;
+          } catch {
+            try {
+              message = await response.text();
+            } catch {
+              // ignore fallback error
+            }
+          }
+          throw new Error(message);
+        }
+        const updated = await response.json();
+        setComments((prev) =>
+          prev.map((comment) =>
+            comment.id === updated.id ? { ...comment, review_later: updated.review_later } : comment
+          )
+        );
+      } catch (err) {
+        setReviewError(err.message || 'Failed to update comment.');
+      } finally {
+        setReviewUpdating((prev) => {
+          const next = { ...prev };
+          delete next[commentId];
+          return next;
+        });
+      }
+    },
+    [comments, token, user?.id]
+  );
+
 
   const downloadAttachments = async (commentId) => {
     if (!commentId) return;
@@ -244,6 +305,18 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
       <div className="border-b pb-4">
       <h2 className="text-2xl font-semibold text-gray-700">Comments</h2>
       <NewAddressComment addressId={addressId} onCommentAdded={handleCommentAdded} />
+      {reviewError && (
+        <div className="mt-4 flex items-start justify-between rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <span className="pr-4">{reviewError}</span>
+          <button
+            type="button"
+            onClick={() => setReviewError('')}
+            className="text-xs font-medium text-red-700 underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {selectedPhotoUrl && (
         <FullScreenPhotoViewer
           photoUrl={selectedPhotoUrl}
@@ -308,7 +381,20 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
         {comments.length > 0 ? (
           comments.map((comment) => (
             <li key={comment.id} className="relative rounded-lg bg-gray-100 p-4 shadow">
-              <div className="absolute right-3 top-3 flex items-center gap-2">
+              <div className="absolute right-3 top-3 flex flex-col items-end gap-2">
+                {comment.review_later && user?.id && Number(comment.user_id) === Number(user.id) && (
+                  <div className="flex flex-wrap items-center justify-end gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 shadow-sm">
+                    <span>Flagged for review</span>
+                    <button
+                      type="button"
+                      className="rounded bg-amber-600 px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-amber-500 disabled:bg-amber-300"
+                      onClick={() => handleMarkReviewed(comment.id)}
+                      disabled={Boolean(reviewUpdating[comment.id])}
+                    >
+                      {reviewUpdating[comment.id] ? 'Saving…' : 'Mark reviewed'}
+                    </button>
+                  </div>
+                )}
                 {!comment.violation_id && (
                   <button
                     type="button"
@@ -327,7 +413,7 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
                   </Link>
                 )}
               </div>
-              <p className="text-gray-700 whitespace-pre-line">{comment.content}</p>
+                <p className="text-gray-700 whitespace-pre-line">{comment.content}</p>
               {Array.isArray(comment.mentions) && comment.mentions.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {comment.mentions.map((u) => (
@@ -431,8 +517,8 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
                   </div>
                 </div>
               )}
-            </li>
-          ))
+              </li>
+            ))
         ) : (
           <p>No comments available.</p>
         )}

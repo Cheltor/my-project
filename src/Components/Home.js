@@ -14,6 +14,7 @@ import NewSFLicense from './Inspection/NewSFLicense';
 import NewBuildingPermit from './Inspection/NewBuildingPermit';
 import NewBusinessLicense from './Inspection/NewBusinessLicense';
 import { useAuth } from '../AuthContext';
+import ReviewLaterComments from './Dashboard/ReviewLaterComments';
 
 export default function Example() {
   const { user } = useAuth();
@@ -265,6 +266,9 @@ export default function Example() {
           <div className="mt-6">
             <RecentComments limit={8} />
           </div>
+          <div className="mt-6">
+            <ReviewLaterComments limit={6} />
+          </div>
           <div className="flex flex-wrap -mx-2">
             <div className="w-full xl:w-1/2 px-2 mb-6">
               <PendingInspections />
@@ -280,6 +284,9 @@ export default function Example() {
         <div className="mt-6">
           <div className="mt-6">
             <RecentComments limit={8} />
+          </div>
+          <div className="mt-6">
+            <ReviewLaterComments limit={6} />
           </div>
           <button
             type="button"
