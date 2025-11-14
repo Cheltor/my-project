@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import MentionsTextarea from '../MentionsTextarea';
 import FileUploadInput from '../Common/FileUploadInput';
+import LoadingSpinner from '../Common/LoadingSpinner';
 import { useAuth } from '../../AuthContext'; // Import the useAuth hook from the AuthContext
 
 const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }) => {
@@ -128,20 +129,34 @@ const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }
             className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
             disabled={submitting}
           >
-            {submitting ? 'Submitting...' : 'Add Comment'}
+            {submitting ? (
+              <span className="inline-flex items-center gap-2">
+                <LoadingSpinner />
+                Submitting...
+              </span>
+            ) : (
+              'Add Comment'
+            )}
           </button>
         </div>
       )}
 
       {isEditing && (
         <div className="mt-2">
-          <button
-            type="submit"
-            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
-            disabled={submitting}
-          >
-            {submitting ? 'Saving...' : 'Save Changes'}
-          </button>
+        <button
+          type="submit"
+          className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
+          disabled={submitting}
+        >
+          {submitting ? (
+            <span className="inline-flex items-center gap-2">
+              <LoadingSpinner />
+              Saving...
+            </span>
+          ) : (
+            'Save Changes'
+          )}
+        </button>
         </div>
       )}
     </form>

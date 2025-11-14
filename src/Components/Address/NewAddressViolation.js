@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../AuthContext';
 import CodeSelect from '../CodeSelect';
 import FileUploadInput from '../Common/FileUploadInput';
+import LoadingSpinner from '../Common/LoadingSpinner';
 
 const DEADLINE_OPTIONS = [
   'Immediate',
@@ -214,7 +215,14 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
               className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
               disabled={submitting || !addressId || !Array.isArray(selectedCodes) || selectedCodes.length === 0}
             >
-              {submitting ? 'Submitting...' : (!addressId || selectedCodes.length === 0 ? 'Add Violation' : 'Add Violation')}
+              {submitting ? (
+                <span className="inline-flex items-center gap-2">
+                  <LoadingSpinner />
+                  Submitting...
+                </span>
+              ) : (
+                (!addressId || selectedCodes.length === 0 ? 'Add Violation' : 'Add Violation')
+              )}
             </button>
             <button
               type="button"

@@ -4,6 +4,7 @@ import ContactSelection from "../Contact/ContactSelection";
 import BusinessSelection from "../Business/BusinessSelection";
 import NewBusinessForm from "../Business/NewBusinessForm";
 import FileUploadInput from "../Common/FileUploadInput";
+import LoadingSpinner from "../Common/LoadingSpinner";
 
 export default function NewBusinessLicense({
   defaultAddressId,
@@ -687,7 +688,14 @@ export default function NewBusinessLicense({
                   className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
                   disabled={!canSubmit}
                 >
-                  {submitting ? "Creating…" : "Submit Inspection"}
+                  {submitting ? (
+                    <span className="inline-flex items-center gap-2">
+                      <LoadingSpinner />
+                      Creating…
+                    </span>
+                  ) : (
+                    "Submit Inspection"
+                  )}
                 </button>
               )}
             </div>

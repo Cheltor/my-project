@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import AsyncSelect from "react-select/async";
 import FileUploadInput from "./Common/FileUploadInput";
 import NewContactForm from "./Contact/NewContactForm";
+import LoadingSpinner from "./Common/LoadingSpinner";
 
 const defaultFormState = {
   address_id: null,
@@ -686,7 +687,14 @@ export default function ResidentConcern() {
               className="w-full rounded-md bg-indigo-600 py-3 px-6 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-60"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Submitting..." : "Submit Concern"}
+              {isSubmitting ? (
+                <span className="inline-flex items-center gap-2">
+                  <LoadingSpinner className="h-5 w-5" />
+                  Submitting...
+                </span>
+              ) : (
+                "Submit Concern"
+              )}
             </button>
           </div>
 

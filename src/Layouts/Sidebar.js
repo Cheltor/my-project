@@ -537,8 +537,12 @@ export default function Sidebar({ children }) {
                 >
                   <BellIcon className="h-5 w-5" aria-hidden="true" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-semibold text-white">
-                      {unreadCount > 99 ? '99+' : unreadCount}
+                    <span className="absolute -top-1 -right-1 flex items-center justify-center" aria-hidden="true">
+                      {/* Subtle ping ripple behind the badge */}
+                      <span className="absolute inline-flex h-5 w-5 rounded-full bg-red-400 opacity-40 animate-ping" />
+                      <span className="relative inline-flex min-h-[1.25rem] min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-semibold text-white">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
                     </span>
                   )}
                 </button>

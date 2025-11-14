@@ -1,84 +1,142 @@
-# Getting Started with Create React App
+# CiviCode Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+> A role-aware React application for managing municipal code enforcement cases, inspections, complaints, licensing, permitting, and staff communication. The UI is branded as “CodeSoft” in several screens, but the codebase is referenced internally as **CiviCode**.
 
-## Available Scripts
+## Quick Start
 
-In the project directory, you can run:
+### Requirements
 
-### `npm start`
+- Node.js 18 LTS (or newer) and npm 9+
+- A running REST API that exposes the endpoints consumed throughout `src/Components`
+- A `.env` (or `.env.development`) with `REACT_APP_API_URL`
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### Setup
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+```bash
+npm install
+cp .env.development .env.local   # adjust API base URL
+npm start                        # http://localhost:3000
+```
 
-### `npm test`
+Scripts exposed in `package.json`:
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- `npm start` – CRA dev server with fast refresh.
+- `npm test` – React Testing Library/Jest in watch mode.
+- `npm run build` – Production build (`DISABLE_ESLINT_PLUGIN=true` to keep CI fast).
+- `npm run eject` – Standard CRA eject (irreversible; rarely needed).
 
-### `npm run build`
+## Technology Stack
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- **Framework**: React 18 + Create React App (CRA)
+- **Routing**: `react-router-dom@6`
+- **Styling/UI**: Tailwind CSS (`tailwind.config.js`), Headless UI dialogs, Heroicons, custom styles in `App.css`
+- **State & Data**: React Context (`src/AuthContext.js`), custom hooks (`src/Hooks/useVisibilityAwareInterval.js`), and lightweight fetch helpers (`src/api.js`, `src/Services/api.js`)
+- **Networking**: native `fetch`, Axios (chat + legacy calls), Server-Sent Events (`EventSource`)
+- **Tooling**: ESLint (CRA defaults), React Testing Library/Jest, Vercel Analytics, Workbox-powered service worker for offline caching
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## High-Level Architecture
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+| Layer | Description |
+| --- | --- |
+| **Routing (`src/App.js`)** | Authenticates users, mounts the global `Sidebar`, wires every `<Route>`, toggles the chat widget, handles service-worker update notices, and renders the `@vercel/analytics` tracker. |
+| **Auth (`src/AuthContext.js`)** | Stores the JWT + user object in context/localStorage, hydrates the current user via `${REACT_APP_API_URL}/user`, and exposes `login/logout`. Role codes live in `src/utils.js` (0 = Guest, 1 = ONS, 2 = OAS, 3 = Admin). |
+| **Data access (`src/api.js`, `src/Services/api.js`)** | `apiFetch` wraps native `fetch` to attach JWTs, redirect on 401, and allow per-call unauthorized handlers. The Axios instance in `src/Services/api.js` powers the chat widget and any endpoints that require interceptors. |
+| **Layout (`src/Layouts/Sidebar.js`)** | Houses navigation, search, notifications, service-worker banners, and logout controls. Links are rendered conditionally per role (Map, Admin tools, Rooms, Users, etc.). |
+| **Domain modules (`src/Components`)** | Dedicated folders for Address, Business, Contact, Dashboard, Inspection, Admin, Dashboard widgets, etc. Each module bundles list/detail pages, create/edit modals, and supporting utilities. |
+| **Background UX** | `useVisibilityAwareInterval` pauses polling when the tab is hidden (chat setting, notifications). Workbox (`service-worker.js`) precaches assets and broadcasts update events handled in `serviceWorkerRegistration.js`. |
 
-### `npm run eject`
+## Feature Overview
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- **Operational Dashboard** – `src/Components/Home.js` aggregates Welcome messaging, Weekly Stats, Pending Inspections, Active Violations, and role-gated admin widgets. Quick-action buttons open complaint, license, permit, business, and violation creation modals.
+- **Address Intelligence** – `src/Components/Address/*` composes detail tabs for citations, inspections, licenses, permits, owner info, photos, timelines, and comments. Shared hooks such as `useUnitSearch` and forms like `NewAddressForm` centralize address CRUD.
+- **Inspection Lifecycle** – `InspectionDetail`, `Inspection/Conduct`, `Inspection/Review`, `UnitDetail`, `AreaDetail`, `UnitAreaDetail`, and `Rooms` manage scheduling, conducting inspections, room/area observations, and converting findings into follow-up actions.
+- **Case & Compliance Modules** – Rich screens for Violations, Complaints, Citations, Codes (`Codes.js`, `CodeDetail.js`, `CodeEdit.js`), Permits, Licenses, Businesses, Users, Rooms, SIR, and Vacancy Statuses. Many modules include `Add*Modal` components so data can be created inline.
+- **Comments & Attachments** – Address/Contact/Unit comment threads (e.g., `ContactComments.js`, `UnitComments.js`) share upload widgets from `Components/Common/FileUploadInput.js` and rely on helper utilities in `src/utils.js` for consistent labeling.
+- **Notifications System** – `Sidebar.js` and `Components/NotificationsPage.js` fetch notification feeds via `apiFetch`, allow marking items read/unread, and deep link users back to the originating record (`origin_url_path` or inspection IDs).
+- **AI Chat & Admin Controls** – `Components/ChatWidget.js` offers authenticated users a markdown-enabled assistant hit via `/chat`. Admins can toggle availability, inspect logs, and filter transcripts inside `Components/AdminChat.js`.
+- **Public Resident Portal** – `Components/LandingPage.js` funnels anonymous visitors to `Components/ResidentConcern.js`, a guided form that searches addresses/contacts (`react-select/async`), deduplicates contacts, uploads attachments, and submits concerns without login.
+- **Maps, Calendar & Helpful Links** – `ScheduleCalendar`, `MapPage`, and `Helpful` provide quick access to scheduling, GIS, DPIE searches, and municipal code PDFs.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Directory Tour
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+```text
+my-project/
+├─ public/                     # CRA static assets + SW entry
+├─ src/
+│  ├─ App.js                   # Router + auth gate + background polling
+│  ├─ AuthContext.js           # Login/logout + user hydration
+│  ├─ api.js                   # fetch helper with JWT + 401 handling
+│  ├─ Hooks/useVisibilityAwareInterval.js
+│  ├─ Layouts/Sidebar.js       # Navigation, search, notifications
+│  ├─ Components/
+│  │   ├─ Dashboard/           # Home widgets
+│  │   ├─ Inspection/          # Conduct/Review/Creation flows
+│  │   ├─ Address/, Contact/, Business/, Unit/, Admin*, etc.
+│  │   ├─ ChatWidget.js, AdminChat.js, NotificationsPage.js, ...
+│  ├─ Services/api.js          # Axios instance w/ auth interceptor
+│  ├─ utils.js                 # Formatters, role helpers, attachment utils
+│  ├─ service-worker.js        # Workbox runtime config
+│  └─ serviceWorkerRegistration.js
+├─ .env.development            # Example API base
+├─ tailwind.config.js          # Tailwind + safelist + forms plugin
+├─ package.json
+└─ README.md                   # You are here
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Environment & API Integration
 
-## Learn More
+1. **API base URL** – Exposed as `REACT_APP_API_URL` (e.g., `http://localhost:8000`). CRA only inlines variables prefixed with `REACT_APP_`.
+2. **Authentication** – JWTs are stored in `localStorage` by `AuthContext`. On load, `${REACT_APP_API_URL}/user` must return the active staff member (including a numeric `role`).
+3. **Endpoints** – The UI expects REST resources for addresses, units, inspections, complaints, citations, violations, licenses, permits, businesses, contacts, notifications, chat, and resident concerns. Consult each component before changing backend routes.
+4. **Background polling** – `useVisibilityAwareInterval` powers periodic calls to `/settings/chat` and notification endpoints but pauses when the tab is hidden. `App.js` also subscribes to `${REACT_APP_API_URL}/settings/stream` via `EventSource` for push-style updates.
+5. **File uploads** – `FileUploadInput` emits `File` objects in arrays. Ensure the backend accepts `multipart/form-data` payloads with the field names used in each form (e.g., `attachments`, `photos`, etc.).
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## UI/UX Conventions
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+- Favor Tailwind utility classes inside JSX. Complex styling lives in `App.css`.
+- Name large feature files with the `<Feature>Detail`, `<Feature>List`, `New<Feature>Form`, or `Add<Feature>Modal` pattern used throughout `src/Components`.
+- Gate navigation or blocks with `user.role` (values from `roles` in `src/utils.js`).
+- Format dates/times via `toEasternLocaleString/DateString/TimeString` so every timestamp shows in the America/New_York timezone.
+- Dispatch/listen for window events when coordinating cross-component behavior (e.g., `civiccode:sw-updated`, `notifications:refresh`).
 
-### Code Splitting
+## Progressive Web App Behavior
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+- `service-worker.js` precaches build assets with Workbox, skips waiting, and broadcasts `SERVICE_WORKER_ACTIVATED`.
+- `serviceWorkerRegistration.js` registers the worker, forces reloads after updates (`onBeforeReload`, `onActivate`), and polls for updates hourly.
+- `App.js` listens for SW events and surfaces update notices via a banner in the sidebar layout.
 
-### Analyzing the Bundle Size
+## Testing & Quality
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+- Tests live next to the code under test (e.g., `src/App.test.js`). Use React Testing Library (`render`, `screen`, `userEvent`) for DOM interactions.
+- Jest config comes from CRA. Run `npm test` for watch mode or `CI=true npm test -- --runInBand` in pipelines.
+- ESLint extends CRA defaults plus Testing Library rules (see `.eslintrc.json`). Run `npx eslint src` manually if needed.
+- For network-heavy components, mock `fetch`/`apiFetch` or inject mock handlers through props to keep tests deterministic.
 
-### Making a Progressive Web App
+## Deployment Notes
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+1. `npm run build` outputs the production bundle in `build/`. Deploy the entire folder and configure your host for SPA fallbacks (serve `index.html` for unknown routes).
+2. Set `REACT_APP_API_URL` (and any other env vars) at build time. CRA cannot read runtime env vars without a rebuild.
+3. Ensure your API supports HTTPS + CORS for the deployed origin, especially for SSE endpoints used by `EventSource`.
+4. Vercel Analytics is mounted globally but becomes a no-op outside Vercel. Remove or guard the `<Analytics />` import if you do not want to send telemetry.
+5. After deployment, clear old caches when bumping versions. The service worker already calls `registration.update()`, but browsers may hang on to outdated caches for up to 24 hours.
 
-### Advanced Configuration
+## Troubleshooting
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+| Symptom | Likely Cause / Mitigation |
+| --- | --- |
+| “Failed to fetch” everywhere | `REACT_APP_API_URL` missing, unreachable, or blocked by CORS. Verify `.env` and restart `npm start`. |
+| Redirects back to LandingPage after login | `/user` endpoint returned 401/500. Inspect network tab, verify JWT issuance, and confirm HTTPS/CORS settings. |
+| Chat widget missing | User is unauthenticated or `/settings/chat` returned `enabled: false`. Admins can toggle the setting in `AdminChat`. |
+| Notifications badge stuck | SSE endpoint `${REACT_APP_API_URL}/settings/stream` not emitting JSON or being blocked by the browser. Confirm server keeps the connection open and sends `{ key: 'chat_enabled', enabled: true }` payloads. |
+| Uploads rejected | Backend must accept `multipart/form-data` with the exact field names used by `FileUploadInput`. Adjust max file size limits server-side if large photos fail. |
 
-### Deployment
+## Contributing Tips
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+1. Keep new code near the feature it belongs to (`src/Components/<Feature>`). Large screens (e.g., `AddressDetail`, `BusinessDetail`) already assemble many child components—extend them instead of duplicating logic.
+2. Reuse `apiFetch` for authenticated requests so 401 handling and logout flows stay consistent.
+3. When adding new background jobs, reuse `useVisibilityAwareInterval` to avoid wasted work on hidden tabs.
+4. Update this README whenever you add environment variables, deployment expectations, or new high-level features—the document doubles as the onboarding guide.
 
-### `npm run build` fails to minify
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
-
-## Working with Pull Requests
-
-### Targeting a different base branch
-
-If you opened a pull request against the wrong base branch (for example, `main`) but would prefer it to merge into another branch such as `v1`, you can update it without recreating the PR:
-
-1. Open the pull request in your Git hosting provider (e.g., GitHub).
-2. Locate the base branch selector near the top of the page. On GitHub this appears as `base: <branch-name>`.
-3. Change the base from the current branch to `v1`.
-4. Review the comparison view that appears. If the new base introduces merge conflicts, resolve them locally and push the fixes to your feature branch.
-5. Once everything looks correct, save the change. The PR will now target `v1`.
-
-If you are still creating the PR, simply choose `v1` as the base branch in the pull request form before submitting.
+Need a guided tour? Start with `src/App.js`, `src/Layouts/Sidebar.js`, and the relevant folder inside `src/Components/`—they illustrate how routing, data fetching, and role-aware UI all fit together.

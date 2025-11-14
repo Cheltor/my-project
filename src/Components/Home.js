@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-﻿import React, { useEffect, useRef, useState } from 'react';
-=======
 /* eslint-disable no-unused-vars, react-hooks/exhaustive-deps */
-import React, { useState } from 'react';
->>>>>>> change
+import React, { useEffect, useRef, useState } from 'react';
 import Welcome from './Dashboard/Welcome';
 import WeeklyStats from './Dashboard/WeeklyStats';
 import RecentComments from './Dashboard/RecentComments';
@@ -18,6 +14,7 @@ import NewSFLicense from './Inspection/NewSFLicense';
 import NewBuildingPermit from './Inspection/NewBuildingPermit';
 import NewBusinessLicense from './Inspection/NewBusinessLicense';
 import { useAuth } from '../AuthContext';
+import ReviewLaterComments from './Dashboard/ReviewLaterComments';
 
 export default function Example() {
   const { user } = useAuth();
@@ -203,6 +200,7 @@ export default function Example() {
     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
       <Welcome />
 
+
       {formToast.show && (
         <div
           role="status"
@@ -213,6 +211,13 @@ export default function Example() {
           }`}
         >
           {formToast.message}
+        </div>
+      )}
+
+      {/* Show WeeklyStats on top for admins so "This Week" appears first */}
+      {user.role === 3 && (
+        <div className="mt-6">
+          <WeeklyStats />
         </div>
       )}
 
@@ -247,66 +252,48 @@ export default function Example() {
 
               {showNewViolationForm && (
                 <NewViolationForm
-<<<<<<< HEAD
-                  onCreated={() => handleQuickActionCreated('Violation submitted successfully.')}
-=======
                   isOpen={showNewViolationForm}
                   onClose={() => setShowNewViolationForm(false)}
->>>>>>> change
+                  onCreated={() => handleQuickActionCreated('Violation submitted successfully.')}
                 />
               )}
               {showNewComplaint && (
                 <NewComplaint
-<<<<<<< HEAD
-                  onCreated={() => handleQuickActionCreated('Complaint submitted successfully.')}
-=======
                   isOpen={showNewComplaint}
                   onClose={() => setShowNewComplaint(false)}
->>>>>>> change
+                  onCreated={() => handleQuickActionCreated('Complaint submitted successfully.')}
                 />
               )}
               {showNewMFLicense && (
                 <NewMFLicense
-<<<<<<< HEAD
-                  onCreated={() => handleQuickActionCreated('Multifamily license inspection submitted successfully.')}
-=======
                   isOpen={showNewMFLicense}
                   onClose={() => setShowNewMFLicense(false)}
                   renderAsModal
->>>>>>> change
+                  onCreated={() => handleQuickActionCreated('Multifamily license inspection submitted successfully.')}
                 />
               )}
               {showNewSFLicense && (
                 <NewSFLicense
-<<<<<<< HEAD
-                  onCreated={() => handleQuickActionCreated('Single family license inspection submitted successfully.')}
-=======
                   isOpen={showNewSFLicense}
                   onClose={() => setShowNewSFLicense(false)}
                   renderAsModal
->>>>>>> change
+                  onCreated={() => handleQuickActionCreated('Single family license inspection submitted successfully.')}
                 />
               )}
               {showNewBuildingPermit && (
                 <NewBuildingPermit
-<<<<<<< HEAD
-                  onCreated={() => handleQuickActionCreated('Building permit inspection submitted successfully.')}
-=======
                   isOpen={showNewBuildingPermit}
                   onClose={() => setShowNewBuildingPermit(false)}
                   renderAsModal
->>>>>>> change
+                  onCreated={() => handleQuickActionCreated('Building permit inspection submitted successfully.')}
                 />
               )}
               {showNewBusinessLicense && (
                 <NewBusinessLicense
-<<<<<<< HEAD
-                  onCreated={() => handleQuickActionCreated('Business license inspection submitted successfully.')}
-=======
                   isOpen={showNewBusinessLicense}
                   onClose={() => setShowNewBusinessLicense(false)}
                   renderAsModal
->>>>>>> change
+                  onCreated={() => handleQuickActionCreated('Business license inspection submitted successfully.')}
                 />
               )}
             </>
@@ -326,6 +313,9 @@ export default function Example() {
           <div className="mt-6">
             <RecentComments limit={8} />
           </div>
+          <div className="mt-6">
+            <ReviewLaterComments limit={6} />
+          </div>
           <div className="flex flex-wrap -mx-2">
             <div className="w-full xl:w-1/2 px-2 mb-6">
               <PendingInspections />
@@ -339,9 +329,11 @@ export default function Example() {
 
       {user.role === 3 && (
         <div className="mt-6">
-          <WeeklyStats />
           <div className="mt-6">
-            <RecentComments limit={8} startExpanded />
+            <RecentComments limit={8} />
+          </div>
+          <div className="mt-6">
+            <ReviewLaterComments limit={6} />
           </div>
           <button
             type="button"

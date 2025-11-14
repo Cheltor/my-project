@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../AuthContext';
 import MentionsTextarea from '../MentionsTextarea';
 import FileUploadInput from '../Common/FileUploadInput';
+import LoadingSpinner from '../Common/LoadingSpinner';
 
 const NewUnitComment = ({ unitId, addressId, onCommentAdded }) => {
   const [newComment, setNewComment] = useState('');
@@ -119,7 +120,14 @@ const NewUnitComment = ({ unitId, addressId, onCommentAdded }) => {
           className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
           disabled={submitting}
         >
-          {submitting ? 'Submitting...' : 'Add Comment'}
+          {submitting ? (
+            <span className="inline-flex items-center gap-2">
+              <LoadingSpinner />
+              Submitting...
+            </span>
+          ) : (
+            'Add Comment'
+          )}
         </button>
       </div>
     </form>

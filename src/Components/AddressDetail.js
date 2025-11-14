@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import LoadingSpinner from './Common/LoadingSpinner';
 import { createPortal } from 'react-dom';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { formatPhoneNumber, toEasternLocaleDateString, toEasternLocaleString } from '../utils';
+import useContactLinking from '../Hooks/useContactLinking';
 import AddressPhotos from './Address/AddressPhotos'; // Update the import statement
 import Citations from './Address/AddressCitations';
 import Violations from './Address/AddressViolations';
@@ -18,6 +20,31 @@ import NewBuildingPermit from './Inspection/NewBuildingPermit';
 import NewBusinessLicense from './Inspection/NewBusinessLicense';
 import NewMFLicense from './Inspection/NewMFLicense';
 import NewSFLicense from './Inspection/NewSFLicense';
+import ContactLinkModal from './Contact/ContactLinkModal';
+
+// Debug: log imported component types to catch any undefined imports at runtime
+try {
+  // eslint-disable-next-line no-console
+  console.log('AddressDetail imports debug:', {
+    LoadingSpinner: typeof LoadingSpinner,
+    AddressPhotos: typeof AddressPhotos,
+    Citations: typeof Citations,
+    Violations: typeof Violations,
+    Comments: typeof Comments,
+    Complaints: typeof Complaints,
+    Inspections: typeof Inspections,
+    AddressLicenses: typeof AddressLicenses,
+    AddressPermits: typeof AddressPermits,
+    NewUnit: typeof NewUnit,
+    NewBuildingPermit: typeof NewBuildingPermit,
+    NewBusinessLicense: typeof NewBusinessLicense,
+    NewMFLicense: typeof NewMFLicense,
+    NewSFLicense: typeof NewSFLicense,
+    ContactLinkModal: typeof ContactLinkModal,
+  });
+} catch (e) {
+  // ignore in non-browser environments
+}
 
 const TAB_META = {
   contacts: {
@@ -407,14 +434,29 @@ const AddressDetails = () => {
   const fileInputRef = useRef(null);
   const [commentsRefreshKey, setCommentsRefreshKey] = useState(0);
   const [selectedUnitId, setSelectedUnitId] = useState('');
+  const [quickReviewLater, setQuickReviewLater] = useState(false);
   const [modalTab, setModalTab] = useState(null);
+  const location = useLocation();
   // Contacts state
-  const [contacts, setContacts] = useState([]);
   const [showAddContact, setShowAddContact] = useState(false);
-  const [contactSearch, setContactSearch] = useState('');
-  const [contactResults, setContactResults] = useState([]);
-  const [newContact, setNewContact] = useState({ name: '', email: '', phone: '' });
-  const [addContactError, setAddContactError] = useState(null);
+  const {
+    contacts,
+    searchTerm: contactSearchTerm,
+    setSearchTerm: setContactSearchTerm,
+    searchResults: contactSearchResults,
+    isSearching: isSearchingContacts,
+    newContact,
+    setNewContact,
+    handleAddExistingContact,
+    handleCreateAndAddContact,
+    handleRemoveContact,
+    submissionError: addContactError,
+    duplicateWarning: contactDuplicateWarning,
+    setDuplicateWarning: setContactDuplicateWarning,
+    linkingExisting: isLinkingExistingContact,
+    creatingNew: isCreatingNewContact,
+    clearTransientState: resetContactLinkState,
+  } = useContactLinking('addresses', id);
   // Add Business state
   const [showAddBusiness, setShowAddBusiness] = useState(false);
   const [newBusiness, setNewBusiness] = useState({
@@ -434,80 +476,24 @@ const AddressDetails = () => {
   const [businessDuplicateSummary, setBusinessDuplicateSummary] = useState('');
   const [addingSuggestedBusinessId, setAddingSuggestedBusinessId] = useState(null);
   const businessDuplicateRequestRef = useRef(0);
-  // Fetch contacts for this address
+  const closeContactModal = useCallback(() => {
+    setShowAddContact(false);
+    resetContactLinkState();
+  }, [resetContactLinkState]);
+  
+  // Open a modal tab if requested via query param (e.g. ?open=comments)
   useEffect(() => {
-    if (!id) return;
-    fetch(`${process.env.REACT_APP_API_URL}/addresses/${id}/contacts`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to fetch contacts');
-        return res.json();
-      })
-      .then(setContacts)
-      .catch(() => setContacts([]));
-  }, [id]);
-  // Search for existing contacts
-  useEffect(() => {
-    if (contactSearch.trim().length < 2) {
-      setContactResults([]);
-      return;
-    }
-    fetch(`${process.env.REACT_APP_API_URL}/contacts?search=${encodeURIComponent(contactSearch)}`)
-      .then((res) => res.ok ? res.json() : [])
-      .then(setContactResults)
-      .catch(() => setContactResults([]));
-  }, [contactSearch]);
-  // Add existing contact to address
-  const handleAddExistingContact = async (contactId) => {
-    setAddContactError(null);
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${id}/contacts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contact_id: contactId })
-      });
-      if (!res.ok) throw new Error('Failed to add contact');
-      const updated = await res.json();
-      setContacts(updated);
-      setShowAddContact(false);
-      setContactSearch('');
+      const q = new URLSearchParams(location.search);
+      const open = q.get('open');
+      if (open) {
+        setActiveTab(open);
+        setModalTab(open);
+      }
     } catch (err) {
-      setAddContactError('Could not add contact.');
+      // ignore
     }
-  };
-
-  // Create new contact and add to address
-  const handleCreateAndAddContact = async (e) => {
-    e.preventDefault();
-    setAddContactError(null);
-    try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${id}/contacts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newContact)
-      });
-      if (!res.ok) throw new Error('Failed to create contact');
-      const updated = await res.json();
-      setContacts(updated);
-      setShowAddContact(false);
-      setNewContact({ name: '', email: '', phone: '' });
-    } catch (err) {
-      setAddContactError('Could not create contact.');
-    }
-  };
-
-  // Remove contact from address
-  const handleRemoveContact = async (contactId) => {
-    if (!window.confirm('Remove this contact from the address?')) return;
-    try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${id}/contacts/${contactId}`, {
-        method: 'DELETE'
-      });
-      if (!res.ok) throw new Error('Failed to remove contact');
-      setContacts(contacts.filter(c => c.id !== contactId));
-    } catch (err) {
-      alert('Could not remove contact.');
-    }
-  };
+  }, [location.search, id]);
   const { searchTerm, showDropdown, filteredUnits, handleSearchChange } = useUnitSearch(id);
   const [showNewUnitForm, setShowNewUnitForm] = useState(false);  // State to toggle NewUnit form
   const [isEditing, setIsEditing] = useState(false); // State to toggle edit mode
@@ -1388,7 +1374,14 @@ const AddressDetails = () => {
               <h3 className="text-lg font-semibold text-gray-700">Contacts</h3>
               <button
                 className="px-3 py-1 bg-green-500 text-white rounded text-sm"
-                onClick={() => setShowAddContact(!showAddContact)}
+                onClick={() => {
+                  if (showAddContact) {
+                    closeContactModal();
+                  } else {
+                    resetContactLinkState();
+                    setShowAddContact(true);
+                  }
+                }}
               >
                 {showAddContact ? 'Cancel' : 'Add Contact'}
               </button>
@@ -1431,7 +1424,7 @@ const AddressDetails = () => {
                     </div>
                     <button
                       className="ml-2 px-2 py-1 bg-red-400 text-white rounded text-xs"
-                      onClick={() => handleRemoveContact(contact.id)}
+                      onClick={() => handleRemoveContact(contact.id, { confirmMessage: 'Remove this contact from the address?' })}
                     >
                       Remove
                     </button>
@@ -1440,64 +1433,35 @@ const AddressDetails = () => {
               </ul>
             )}
             {showAddContact && (
-              <div className="p-4 bg-white border rounded shadow">
-                <h4 className="font-semibold mb-2">Add Existing Contact</h4>
-                <input
-                  type="text"
-                  className="border px-2 py-1 rounded w-full mb-2"
-                  placeholder="Search by name, email, or phone..."
-                  value={contactSearch}
-                  onChange={(e) => setContactSearch(e.target.value)}
-                />
-                {contactResults.length > 0 && (
-                  <ul className="mb-2 max-h-40 overflow-auto">
-                    {contactResults.map((c) => (
-                      <li key={c.id} className="flex justify-between items-center p-1 hover:bg-gray-100 cursor-pointer">
-                        <span>
-                          {c.name} {c.email && <span className="text-gray-400">({c.email})</span>}
-                        </span>
-                        <button
-                          className="ml-2 px-2 py-1 bg-blue-500 text-white rounded text-xs"
-                          onClick={() => handleAddExistingContact(c.id)}
-                        >
-                          Add
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <div className="border-t pt-2 mt-2 space-y-2">
-                  <h4 className="font-semibold">Or Create New Contact</h4>
-                  <form onSubmit={handleCreateAndAddContact} className="space-y-2">
-                    <input
-                      required
-                      type="text"
-                      className="border px-2 py-1 rounded w-full"
-                      placeholder="Name"
-                      value={newContact.name}
-                      onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
-                    />
-                    <input
-                      type="email"
-                      className="border px-2 py-1 rounded w-full"
-                      placeholder="Email"
-                      value={newContact.email}
-                      onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
-                    />
-                    <input
-                      type="text"
-                      className="border px-2 py-1 rounded w-full"
-                      placeholder="Phone"
-                      value={newContact.phone}
-                      onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
-                    />
-                    <button type="submit" className="px-3 py-1 bg-green-600 text-white rounded">
-                      Create &amp; Add
-                    </button>
-                  </form>
-                  {addContactError && <div className="text-red-500">{addContactError}</div>}
-                </div>
-              </div>
+              <ContactLinkModal
+                isOpen={showAddContact}
+                onClose={closeContactModal}
+                title="Link a Contact"
+                description="Search for an existing person or create a new contact to associate with this address."
+                searchTerm={contactSearchTerm}
+                onSearchTermChange={setContactSearchTerm}
+                searchResults={contactSearchResults}
+                isSearching={isSearchingContacts}
+                onSelectContact={async (contactId) => {
+                  const success = await handleAddExistingContact(contactId);
+                  if (success) {
+                    closeContactModal();
+                  }
+                }}
+                newContact={newContact}
+                onNewContactChange={setNewContact}
+                onSubmitNewContact={async (event) => {
+                  const success = await handleCreateAndAddContact(event);
+                  if (success) {
+                    closeContactModal();
+                  }
+                }}
+                duplicateWarning={contactDuplicateWarning}
+                clearDuplicateWarning={() => setContactDuplicateWarning('')}
+                errorMessage={addContactError}
+                isAddingExisting={isLinkingExistingContact}
+                isCreatingNew={isCreatingNewContact}
+              />
             )}
           </div>
         );
@@ -1631,7 +1595,14 @@ const AddressDetails = () => {
                       disabled={submittingBusiness || !newBusiness.name.trim()}
                       className="px-3 py-1 rounded-md bg-green-600 text-white text-sm disabled:bg-gray-300"
                     >
-                      {submittingBusiness ? 'Saving...' : 'Save Business'}
+                      {submittingBusiness ? (
+                        <span className="inline-flex items-center gap-2">
+                          <LoadingSpinner className="h-4 w-4" />
+                          Saving...
+                        </span>
+                      ) : (
+                        'Save Business'
+                      )}
                     </button>
                   </div>
                 </form>
@@ -2287,8 +2258,8 @@ const AddressDetails = () => {
           document.body
         )}
 
-      {/* Sticky Quick Comment Bar (mobile only) */}
-      <div className="fixed inset-x-0 bottom-0 sm:hidden z-40">
+      {/* Sticky Quick Comment Bar (touch devices) */}
+      <div className="fixed inset-x-0 bottom-0 z-40 quick-comment-bar">
         <div className="mx-auto max-w-4xl px-4 py-4 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
           <form
             onSubmit={async (e) => {
@@ -2301,6 +2272,7 @@ const AddressDetails = () => {
                 formData.append('content', quickContent.trim() || '');
                 formData.append('user_id', String(user.id));
                 if (selectedUnitId) formData.append('unit_id', String(selectedUnitId));
+                formData.append('review_later', quickReviewLater ? 'true' : 'false');
                 for (const f of quickFiles) formData.append('files', f);
                 const res = await fetch(`${process.env.REACT_APP_API_URL}/comments/${id}/address`, {
                   method: 'POST',
@@ -2310,6 +2282,7 @@ const AddressDetails = () => {
                 setQuickContent('');
                 setQuickFiles([]);
                 setSelectedUnitId('');
+                setQuickReviewLater(false);
                 setCommentsRefreshKey((k) => k + 1);
                 setActiveTab('comments');
                 setModalTab('comments');
@@ -2398,12 +2371,30 @@ const AddressDetails = () => {
                 </select>
               )}
 
+              <label className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  checked={quickReviewLater}
+                  disabled={submittingQuick}
+                  onChange={(e) => setQuickReviewLater(e.target.checked)}
+                />
+                <span>Review later</span>
+              </label>
+
               <button
                 type="submit"
                 disabled={submittingQuick || (!quickContent.trim() && quickFiles.length === 0) || !user?.id}
                 className="inline-flex items-center justify-center h-14 px-8 rounded-lg bg-indigo-600 text-white text-lg font-semibold hover:bg-indigo-500 disabled:bg-gray-300 min-w-[10rem]"
               >
-                {submittingQuick ? 'Posting...' : 'Post'}
+                {submittingQuick ? (
+                  <span className="inline-flex items-center gap-2">
+                    <LoadingSpinner className="h-5 w-5" />
+                    Posting...
+                  </span>
+                ) : (
+                  'Post'
+                )}
               </button>
             </div>
           </form>

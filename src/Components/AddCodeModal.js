@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { fetchJson } from "../Services/http";
+import LoadingSpinner from "./Common/LoadingSpinner";
 
 const INITIAL_FORM = {
   chapter: "",
@@ -53,8 +55,8 @@ export default function AddCodeModal({
     setSubmitting(true);
     setError("");
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/codes/`,
+      const created = await fetchJson(
+        "/codes/",
         {
           method: "POST",
           headers: {
@@ -69,19 +71,6 @@ export default function AddCodeModal({
           }),
         }
       );
-
-      if (!response.ok) {
-        let message = "Unable to create code.";
-        try {
-          const payload = await response.json();
-          if (payload?.detail) message = payload.detail;
-        } catch {
-          message = await response.text().catch(() => message);
-        }
-        throw new Error(message || "Unable to create code.");
-      }
-
-      const created = await response.json();
       onCreated?.(created);
       onClose?.();
     } catch (err) {
@@ -182,7 +171,14 @@ export default function AddCodeModal({
               disabled={!canSubmit}
               className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50"
             >
-              {submitting ? "Saving..." : "Create"}
+              {submitting ? (
+                <span className="inline-flex items-center gap-2">
+                  <LoadingSpinner />
+                  Saving...
+                </span>
+              ) : (
+                "Create"
+              )}
             </button>
           </div>
         </form>

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { formatPhoneNumber } from '../utils';
+import usePaginatedSearch from '../Hooks/usePaginatedSearch';
+import PaginationControls from './Common/PaginationControls';
+import { fetchJson } from '../Services/http';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
@@ -10,8 +13,6 @@ export default function Contacts() {
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
   const [showNewContact, setShowNewContact] = useState(false);
   const [newContact, setNewContact] = useState({ name: '', email: '', phone: '' });
   const [creating, setCreating] = useState(false);
@@ -19,57 +20,42 @@ export default function Contacts() {
   const [duplicateMatch, setDuplicateMatch] = useState(null);
   const contactsPerPage = 10;
 
+  const {
+    searchQuery,
+    handleSearchChange,
+    currentPage,
+    totalPages,
+    currentItems: currentContacts,
+    goToPage,
+  } = usePaginatedSearch(contacts, {
+    itemsPerPage: contactsPerPage,
+    filterFn: (contact, query) =>
+      [contact.name, contact.email, contact.phone]
+        .join(' ')
+        .toLowerCase()
+        .includes(query),
+  });
+
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/contacts/`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch contacts');
-        }
-        return response.json();
-      })
-      .then((data) => {
-        setContacts(data);
+    let isActive = true;
+
+    (async () => {
+      try {
+        const data = await fetchJson('/contacts/');
+        if (!isActive) return;
+        setContacts(Array.isArray(data) ? data : []);
         setLoading(false);
-      })
-      .catch((error) => {
-        setError(error.message);
+      } catch (err) {
+        if (!isActive) return;
+        setError(err.message || 'Failed to fetch contacts');
         setLoading(false);
-      });
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
   }, []);
-
-  const filteredContacts = contacts.filter((contact) =>
-    [contact.name, contact.email, contact.phone]
-      .join(' ')
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-  );
-
-  const totalPages = Math.ceil(filteredContacts.length / contactsPerPage);
-
-  const indexOfLastContact = currentPage * contactsPerPage;
-  const indexOfFirstContact = indexOfLastContact - contactsPerPage;
-  const currentContacts = filteredContacts.slice(indexOfFirstContact, indexOfLastContact);
-
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  const [editingPage, setEditingPage] = useState(false);
-  const [pageInput, setPageInput] = useState('');
-  const [pageError, setPageError] = useState('');
-
-  const startEditPage = () => { setPageInput(String(currentPage)); setPageError(''); setEditingPage(true); };
-  const applyPageInput = () => {
-    const n = parseInt(pageInput, 10);
-    if (Number.isNaN(n) || n < 1 || n > totalPages) {
-      setPageError(`Enter a number between 1 and ${totalPages}`);
-      return;
-    }
-    paginate(n);
-    setEditingPage(false);
-  };
-
-  const handleSearchChange = (event) => {
-    setSearchQuery(event.target.value);
-    setCurrentPage(1);
-  };
 
   const handleCreateContact = async (e) => {
     e.preventDefault();
@@ -90,7 +76,7 @@ export default function Contacts() {
       return;
     }
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/contacts/`, {
+      const created = await fetchJson('/contacts/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -99,13 +85,11 @@ export default function Contacts() {
           phone: (newContact.phone || '').trim() || null,
         }),
       });
-      if (!res.ok) throw new Error('Failed to create contact');
-      const created = await res.json();
       setContacts((prev) => [created, ...prev]);
       setShowNewContact(false);
       setNewContact({ name: '', email: '', phone: '' });
       // Reset to first page so the new item is visible
-      setCurrentPage(1);
+      goToPage(1);
     } catch (err) {
       setCreateError(err.message || 'Could not create contact');
     } finally {
@@ -254,45 +238,12 @@ export default function Contacts() {
         </table>
       </div>
 
-      <div className="mt-4 flex justify-between items-center">
-        <button
-          onClick={() => paginate(currentPage - 1)}
-          disabled={currentPage === 1}
-          className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-500 disabled:bg-gray-300"
-        >
-          Previous
-        </button>
-        <div className="text-sm text-gray-700">
-          {editingPage ? (
-            <div>
-              <input
-                type="number"
-                min={1}
-                max={totalPages}
-                value={pageInput}
-                onChange={(e) => { setPageInput(e.target.value); setPageError(''); }}
-                onBlur={applyPageInput}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') applyPageInput();
-                  if (e.key === 'Escape') setEditingPage(false);
-                }}
-                className={`w-20 px-2 py-1 border rounded ${pageError ? 'border-red-500' : ''}`}
-                autoFocus
-              />
-              {pageError && <div className="text-xs text-red-600 mt-1">{pageError}</div>}
-            </div>
-          ) : (
-            <button onClick={startEditPage} className="underline">Page {currentPage} of {totalPages}</button>
-          )}
-        </div>
-        <button
-          onClick={() => paginate(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-500 disabled:bg-gray-300"
-        >
-          Next
-        </button>
-      </div>
+      <PaginationControls
+        className="mt-4"
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={goToPage}
+      />
     </div>
   );
 }

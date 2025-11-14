@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import LoadingSpinner from './Common/LoadingSpinner';
+import { fetchJson } from '../Services/http';
 
 export default function AddPermitModal({ open, onClose, onCreated }) {
   const [inspectionId, setInspectionId] = useState('');
@@ -42,16 +44,11 @@ export default function AddPermitModal({ open, onClose, onCreated }) {
         expiration_date: expirationDate || undefined,
         conditions: conditions || undefined,
       };
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/permits/`, {
+      const created = await fetchJson('/permits/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || 'Failed to create permit');
-      }
-      const created = await res.json();
       onCreated && onCreated(created);
       onClose();
     } catch (err) {
@@ -157,7 +154,14 @@ export default function AddPermitModal({ open, onClose, onCreated }) {
               disabled={submitting}
               className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500 disabled:opacity-60"
             >
-              {submitting ? 'Saving…' : 'Create'}
+              {submitting ? (
+                <span className="inline-flex items-center gap-2">
+                  <LoadingSpinner />
+                  Saving…
+                </span>
+              ) : (
+                'Create'
+              )}
             </button>
           </div>
         </form>

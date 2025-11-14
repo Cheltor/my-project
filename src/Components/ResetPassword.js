@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import API from '../Services/api';
+import LoadingSpinner from './Common/LoadingSpinner';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -117,7 +118,16 @@ const ResetPassword = () => {
             disabled={submitting || missingToken}
             className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:bg-indigo-300"
           >
-            {submitting ? 'Resetting password...' : missingToken ? 'Reset link invalid' : 'Reset password'}
+            {submitting ? (
+              <span className="inline-flex items-center gap-2">
+                <LoadingSpinner />
+                Resetting password...
+              </span>
+            ) : missingToken ? (
+              'Reset link invalid'
+            ) : (
+              'Reset password'
+            )}
           </button>
 
           <div className="text-center text-sm">

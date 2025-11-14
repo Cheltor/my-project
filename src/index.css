@@ -113,3 +113,15 @@
 		font-weight: 600;
 	}
 }
+
+/* Quick comment bar visibility for touch-first devices */
+.quick-comment-bar {
+	display: none;
+}
+
+/* Show on touch devices (coarse pointer, no hover) and limit to reasonably sized screens to avoid large touch-desktops */
+@media (hover: none) and (pointer: coarse) and (max-width: 1280px) {
+	.quick-comment-bar {
+		display: block !important;
+	}
+}

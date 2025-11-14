@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import LoadingSpinner from './Common/LoadingSpinner';
+import { fetchJson } from '../Services/http';
 
 const LICENSE_TYPES = [
   { value: '1', label: 'Business License' },
@@ -78,23 +80,21 @@ export default function AddLicenseModal({ open, onClose, onCreated }) {
     setBusinessError(null);
     const controller = new AbortController();
     const timeout = setTimeout(() => {
-      fetch(`${process.env.REACT_APP_API_URL}/businesses/search?query=${encodeURIComponent(query)}&limit=10`, { signal: controller.signal })
-        .then(async (res) => {
-          if (!res.ok) {
-            const txt = await res.text();
-            throw new Error(txt || 'Failed to search businesses');
-          }
-          return res.json();
-        })
-        .then((data) => {
+      (async () => {
+        try {
+          const data = await fetchJson(
+            `/businesses/search?query=${encodeURIComponent(query)}&limit=10`,
+            { signal: controller.signal }
+          );
+          if (controller.signal.aborted) return;
           setBusinessResults(Array.isArray(data) ? data : []);
           setBusinessLoading(false);
-        })
-        .catch((err) => {
+        } catch (err) {
           if (controller.signal.aborted) return;
           setBusinessError(err.message || 'Failed to search businesses');
           setBusinessLoading(false);
-        });
+        }
+      })();
     }, SEARCH_DELAY_MS);
     return () => {
       controller.abort();
@@ -115,23 +115,21 @@ export default function AddLicenseModal({ open, onClose, onCreated }) {
     setAddressError(null);
     const controller = new AbortController();
     const timeout = setTimeout(() => {
-      fetch(`${process.env.REACT_APP_API_URL}/addresses/search?query=${encodeURIComponent(query)}&limit=10`, { signal: controller.signal })
-        .then(async (res) => {
-          if (!res.ok) {
-            const txt = await res.text();
-            throw new Error(txt || 'Failed to search addresses');
-          }
-          return res.json();
-        })
-        .then((data) => {
+      (async () => {
+        try {
+          const data = await fetchJson(
+            `/addresses/search?query=${encodeURIComponent(query)}&limit=10`,
+            { signal: controller.signal }
+          );
+          if (controller.signal.aborted) return;
           setAddressResults(Array.isArray(data) ? data : []);
           setAddressLoading(false);
-        })
-        .catch((err) => {
+        } catch (err) {
           if (controller.signal.aborted) return;
           setAddressError(err.message || 'Failed to search addresses');
           setAddressLoading(false);
-        });
+        }
+      })();
     }, SEARCH_DELAY_MS);
     return () => {
       controller.abort();
@@ -182,16 +180,11 @@ export default function AddLicenseModal({ open, onClose, onCreated }) {
         payload.address_id = selectedAddress.id;
       }
 
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/licenses/`, {
+      const created = await fetchJson('/licenses/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || 'Failed to create license');
-      }
-      const created = await res.json();
       onCreated && onCreated(created);
       onClose();
     } catch (err) {
@@ -366,7 +359,14 @@ export default function AddLicenseModal({ open, onClose, onCreated }) {
               disabled={submitting}
               className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-500 disabled:opacity-60"
             >
-              {submitting ? 'Saving...' : 'Create'}
+              {submitting ? (
+                <span className="inline-flex items-center gap-2">
+                  <LoadingSpinner />
+                  Saving...
+                </span>
+              ) : (
+                'Create'
+              )}
             </button>
           </div>
         </form>
