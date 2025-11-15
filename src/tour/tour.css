@@ -1,0 +1,98 @@
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  pointer-events: none;
+}
+
+.tour-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  pointer-events: auto;
+}
+
+.tour-highlight {
+  position: fixed;
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.6), 0 0 0 2px #6366f1;
+  pointer-events: none;
+  transition: all 0.2s ease-in-out;
+}
+
+.tour-tooltip {
+  position: fixed;
+  max-width: min(24rem, calc(100vw - 2rem));
+  background: #ffffff;
+  color: #1f2937;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+  z-index: 1401;
+  pointer-events: auto;
+  transform-origin: top left;
+}
+
+.tour-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #111827;
+}
+
+.tour-footer {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.tour-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tour-skip,
+.tour-nav {
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 9999px;
+  padding: 0.5rem 1rem;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.tour-skip {
+  color: #475569;
+  background: rgba(148, 163, 184, 0.16);
+  border: none;
+}
+
+.tour-skip:hover {
+  background: rgba(148, 163, 184, 0.32);
+}
+
+.tour-nav {
+  border: 1px solid rgba(79, 70, 229, 0.2);
+  background: #ffffff;
+  color: #4338ca;
+}
+
+.tour-nav:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.tour-nav:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.tour-nav-primary {
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  color: #ffffff;
+  border: none;
+}
+
+.tour-nav-primary:hover {
+  background: linear-gradient(135deg, #4f46e5, #6d28d9);
+}

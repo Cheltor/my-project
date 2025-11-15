@@ -21,6 +21,7 @@ import NewBusinessLicense from './Inspection/NewBusinessLicense';
 import NewMFLicense from './Inspection/NewMFLicense';
 import NewSFLicense from './Inspection/NewSFLicense';
 import ContactLinkModal from './Contact/ContactLinkModal';
+import { useTour } from '../tour/TourProvider';
 
 // Debug: log imported component types to catch any undefined imports at runtime
 try {
@@ -437,6 +438,8 @@ const AddressDetails = () => {
   const [quickReviewLater, setQuickReviewLater] = useState(false);
   const [modalTab, setModalTab] = useState(null);
   const location = useLocation();
+  const { isOpen: tourOpen, currentStep: tourStep, meta: tourMeta } = useTour();
+  const tourOpenedCommentsRef = useRef(false);
   // Contacts state
   const [showAddContact, setShowAddContact] = useState(false);
   const {
@@ -494,6 +497,27 @@ const AddressDetails = () => {
       // ignore
     }
   }, [location.search, id]);
+
+  useEffect(() => {
+    if (!tourOpen) {
+      if (tourOpenedCommentsRef.current && modalTab === 'comments') {
+        setModalTab(null);
+        tourOpenedCommentsRef.current = false;
+      }
+      return;
+    }
+
+    if (
+      tourStep === 5 &&
+      tourMeta?.tourAddressId &&
+      Number(id) === Number(tourMeta.tourAddressId) &&
+      modalTab !== 'comments'
+    ) {
+      setActiveTab('comments');
+      setModalTab('comments');
+      tourOpenedCommentsRef.current = true;
+    }
+  }, [tourOpen, tourStep, tourMeta, id, modalTab]);
   const { searchTerm, showDropdown, filteredUnits, handleSearchChange } = useUnitSearch(id);
   const [showNewUnitForm, setShowNewUnitForm] = useState(false);  // State to toggle NewUnit form
   const [isEditing, setIsEditing] = useState(false); // State to toggle edit mode
@@ -2161,10 +2185,19 @@ const AddressDetails = () => {
                   {group.items.map((item) => {
                     const isActive = activeTab === item.id;
                     const badgeText = formatCountLabel(item.count, item.badgeLabel);
+                    const tourSelectorId =
+                      item.id === 'violations'
+                        ? 'address-tab-violations'
+                        : item.id === 'inspections'
+                          ? 'address-tab-inspections'
+                          : item.id === 'comments'
+                            ? 'address-tab-comments'
+                            : undefined;
                     return (
                       <button
                         key={item.id}
                         type="button"
+                        data-tour-id={tourSelectorId}
                         onClick={() => handleTabSelect(item.id)}
                         aria-pressed={isActive}
                         className={`group flex h-full flex-col justify-between rounded-lg border bg-white p-4 text-left shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${isActive ? 'border-indigo-500 shadow-md ring-1 ring-indigo-200' : 'border-gray-200 hover:border-indigo-400 hover:shadow-md'}`}

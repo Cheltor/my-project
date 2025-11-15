@@ -19,6 +19,7 @@ import {
   ArrowLeftIcon,
   BellIcon,
   MapIcon,
+  QuestionMarkCircleIcon,
 } from '@heroicons/react/24/outline';
 import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
 import { Link, useNavigate, useLocation } from 'react-router-dom'; // Import Link, useNavigate, and useLocation
@@ -26,6 +27,7 @@ import Logout from '../Components/Logout'; // Import the Logout component
 import { useAuth } from '../AuthContext'; // Import useAuth hook
 import { apiFetch } from '../api';
 import { toEasternLocaleString } from '../utils';
+import { useTour } from '../tour/TourProvider';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon, current: false },
@@ -76,6 +78,15 @@ export default function Sidebar({ children }) {
   const navigate = useNavigate(); // To navigate programmatically
   const location = useLocation(); // Track current location to refresh notifications on navigation
   const { user, token, logout } = useAuth(); // Get user data, token and logout from context
+  const {
+    isOpen: tourOpen,
+    currentStep: tourStep,
+    setIsOpen: setTourOpen,
+    setCurrentStep: setTourStep,
+    setMeta,
+  } = useTour();
+  const tourSearchInjectedRef = useRef(false);
+  const prevTourStepRef = useRef(tourStep);
   const hasFetchedNotificationsRef = useRef(false); // Track if we've already performed the initial fetch
 
   const fetchNotifications = useCallback(
@@ -156,6 +167,53 @@ export default function Sidebar({ children }) {
       clearTimeout(timeout);
     };
   }, [searchQuery]);
+
+  useEffect(() => {
+    if (!tourOpen) {
+      if (tourSearchInjectedRef.current) {
+        setSearchQuery('');
+        setFilteredAddresses([]);
+        setShowDropdown(false);
+        setActiveIndex(-1);
+        tourSearchInjectedRef.current = false;
+      }
+      prevTourStepRef.current = tourStep;
+      return;
+    }
+
+    if (tourStep === 0) {
+      if (searchQuery !== '5008 Queensbury') {
+        tourSearchInjectedRef.current = true;
+        setSearchQuery('5008 Queensbury');
+      }
+      if (filteredAddresses.length > 0) {
+        setShowDropdown(true);
+      }
+    }
+
+    if (tourStep === 1 && filteredAddresses.length > 0) {
+      setActiveIndex(0);
+      setShowDropdown(true);
+    }
+
+    if (tourStep === 2 && prevTourStepRef.current === 1) {
+      const [first] = filteredAddresses;
+      if (first) {
+        tourSearchInjectedRef.current = false;
+        setMeta({ tourAddressId: first.id });
+        handleDropdownSelect(first);
+      }
+    }
+
+    prevTourStepRef.current = tourStep;
+  }, [
+    tourOpen,
+    tourStep,
+    searchQuery,
+    filteredAddresses,
+    setMeta,
+    handleDropdownSelect,
+  ]);
 
   useEffect(() => {
     if (!token) {
@@ -249,12 +307,12 @@ export default function Sidebar({ children }) {
   };
 
   // Handle dropdown selection
-  const handleDropdownSelect = (address) => {
+  const handleDropdownSelect = useCallback((address) => {
     setSearchQuery(''); // Clear the search bar
     setFilteredAddresses([]); // Clear filtered results
     setShowDropdown(false); // Hide dropdown
     navigate(`/address/${address.id}`); // Navigate to the address details page
-  };
+  }, [navigate]);
 
   // Handle keyboard navigation
   const handleKeyDown = (event) => {
@@ -490,6 +548,7 @@ export default function Sidebar({ children }) {
                   onFocus={() => setShowDropdown(filteredAddresses.length > 0)}
                   onKeyDown={handleKeyDown} // Handle keyboard events for dropdown
                   autoComplete="off" // Disable browser's autocomplete
+                  data-tour-id="global-address-search"
                 />
               </form>
               
@@ -501,6 +560,7 @@ export default function Sidebar({ children }) {
           {filteredAddresses.map((address, index) => (
                       <li
                         key={address.id}
+                        data-tour-id={`address-search-result-${index}`}
                         onMouseDown={() => handleDropdownSelect(address)}
                         className={`cursor-pointer p-2 hover:bg-gray-200 ${
                           index === activeIndex ? 'bg-gray-200' : ''
@@ -525,6 +585,17 @@ export default function Sidebar({ children }) {
               >
                 <ArrowLeftIcon className="h-5 w-5 mr-1" aria-hidden="true" />
                 Back
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTourStep(0);
+                  setTourOpen(true);
+                }}
+                className="hidden sm:inline-flex items-center gap-2 rounded-md border border-indigo-200 bg-white px-3 py-1.5 text-sm font-semibold text-indigo-600 shadow-sm transition hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+              >
+                <QuestionMarkCircleIcon className="h-5 w-5" aria-hidden="true" />
+                Take a Tour
               </button>
               <div className="relative" ref={notificationsRef}>
                 <button
