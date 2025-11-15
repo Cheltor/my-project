@@ -7,6 +7,8 @@ import { AuthProvider, useAuth } from './AuthContext';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react'; // added import
 import './App.css';
+import { TourProvider } from '@reactour/tour';
+import tourSteps from './tourSteps';
 import Sidebar from './Layouts/Sidebar';  // Adjust path based on your project structure
 import Home from './Components/Home';
 import About from './Components/About';  // Example component
@@ -64,7 +66,27 @@ import ResetPassword from './Components/ResetPassword';
 function App() {
   return (
     <AuthProvider>
-      <MainApp />
+      <TourProvider
+        steps={tourSteps}
+        scrollSmooth
+        disableInteraction={false}
+        padding={10}
+        showBadge={false}
+        styles={{
+          popover: (base) => ({
+            ...base,
+            borderRadius: 16,
+            boxShadow: '0 20px 45px rgba(15, 23, 42, 0.25)',
+            maxWidth: 320,
+          }),
+          maskArea: (base) => ({
+            ...base,
+            rx: 12,
+          }),
+        }}
+      >
+        <MainApp />
+      </TourProvider>
     </AuthProvider>
   );
 }

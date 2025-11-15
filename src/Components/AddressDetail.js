@@ -2168,6 +2168,7 @@ const AddressDetails = () => {
                         onClick={() => handleTabSelect(item.id)}
                         aria-pressed={isActive}
                         className={`group flex h-full flex-col justify-between rounded-lg border bg-white p-4 text-left shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${isActive ? 'border-indigo-500 shadow-md ring-1 ring-indigo-200' : 'border-gray-200 hover:border-indigo-400 hover:shadow-md'}`}
+                        data-tour-target={`address-tab-${item.id}`}
                       >
                         <div className="flex items-start gap-3">
                           <span className={`flex h-10 w-10 items-center justify-center rounded-full transition ${isActive ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100'}`}>
