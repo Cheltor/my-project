@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import API from './Services/api';
 
 const AuthContext = createContext();
 
@@ -6,23 +7,20 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null); // Store user data or null if not authenticated
   const [token, setToken] = useState(null); // Store token for API requests
 
-  const login = (userData, token) => {
-    console.log('Setting user and token:', userData, token);
+  const login = (token) => {
     setToken(token);
     localStorage.setItem('token', token);
-  
-    // Fetch user data after login
-    fetch(`${process.env.REACT_APP_API_URL}/user`, {
+
+    // Fetch user data using the token
+    API.get('/user', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     })
-      .then(response => response.json())
-      .then(fetchedUserData => {
-        console.log('User data fetched after login:', fetchedUserData); // Ensure full user data
-        setUser(fetchedUserData);  // Store full user object in state
+      .then((response) => {
+        setUser(response.data); // Store the fetched user data
       })
-      .catch(error => {
+      .catch((error) => {
         console.error('Error fetching user data:', error);
       });
   };
@@ -39,15 +37,14 @@ export const AuthProvider = ({ children }) => {
     if (token) {
       setToken(token);
   
-      fetch(`${process.env.REACT_APP_API_URL}/user`, {
+      API.get('/user', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       })
-        .then((response) => response.json())
-        .then((userData) => {
-          console.log('Fetched user data:', userData);  // Ensure full user data is returned
-          setUser(userData);  // Store full user object in state
+        .then((response) => {
+          console.log('Fetched user data:', response.data);  // Ensure full user data is returned
+          setUser(response.data);  // Store full user object in state
         })
         .catch((error) => {
           console.error('Error fetching user data:', error);

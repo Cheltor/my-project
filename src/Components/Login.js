@@ -30,12 +30,10 @@ const Login = () => {
       const { access_token: token } = response.data; // Extract the token from the response
       console.log('Extracted token:', token);
 
-      // Fetch user data using the token
-      const user = { email }; // Example user data
-      
-      login(user, token); // Update context with user data and token
+      // The user object will be fetched and set in the AuthContext
+      login(token);
 
-      console.log('Login successful:', user);
+      console.log('Login initiated for:', email);
     } catch (error) {
       if (error.response?.status === 401) {
         // Show an error message if the credentials are incorrect
