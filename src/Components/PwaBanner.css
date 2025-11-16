@@ -1,0 +1,53 @@
+/* src/Components/PwaBanner.css */
+.pwa-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #f0f0f0;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.pwa-banner-content {
+  text-align: left;
+}
+
+.pwa-banner-content h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.pwa-banner-content p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.pwa-banner-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.pwa-install-button,
+.pwa-dismiss-button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.pwa-install-button {
+  background-color: #007bff;
+  color: white;
+}
+
+.pwa-dismiss-button {
+  background-color: #6c757d;
+  color: white;
+}
