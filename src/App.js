@@ -5,7 +5,7 @@ import useVisibilityAwareInterval from './Hooks/useVisibilityAwareInterval';
 import { apiFetch } from './api';
 import { AuthProvider, useAuth } from './AuthContext';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Analytics } from '@vercel/analytics/react'; // added import
+import { Analytics } from '@vercel/analytics/dist/react'; // added import
 import './App.css';
 import Sidebar from './Layouts/Sidebar';  // Adjust path based on your project structure
 import Home from './Components/Home';

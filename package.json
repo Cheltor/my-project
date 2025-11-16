@@ -14,17 +14,17 @@
     "axios-mock-adapter": "^2.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-markdown": "^9.0.1",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^6.26.1",
     "react-scripts": "5.0.1",
     "react-select": "^5.8.2",
-    "remark-gfm": "^3.0.1",
+    "remark-gfm": "^4.0.1",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "DISABLE_ESLINT_PLUGIN=true react-scripts build",
-    "test": "react-scripts test",
+    "test": "REACT_APP_API_URL=https://test.com react-scripts test",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -51,7 +51,7 @@
   },
   "jest": {
     "transformIgnorePatterns": [
-      "node_modules/(?!axios)/"
+      "node_modules/(?!axios|@vercel/analytics|unified|remark|rehype|vfile|unist-util-visit-parents)/"
     ]
   }
 }
