@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import API from '../Services/api';
+import PwaBanner from './PwaBanner';
+import './PwaBanner.css';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -9,6 +11,18 @@ const Login = () => {
   const [errorMessage, setErrorMessage] = useState(''); // State to store error messages
   const { login, user } = useAuth(); // Get login function from context
   const navigate = useNavigate();
+  const [showPwaBanner, setShowPwaBanner] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  useEffect(() => {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      if (localStorage.getItem('pwaBannerDismissed') !== 'true') {
+        setShowPwaBanner(true);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -44,6 +58,26 @@ const Login = () => {
       }
       console.error('Login error:', error.response?.data || error.message);
     }
+  };
+
+  const handleInstall = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('User accepted the A2HS prompt');
+        } else {
+          console.log('User dismissed the A2HS prompt');
+        }
+        setDeferredPrompt(null);
+        setShowPwaBanner(false);
+      });
+    }
+  };
+
+  const handleDismiss = () => {
+    localStorage.setItem('pwaBannerDismissed', 'true');
+    setShowPwaBanner(false);
   };
 
   return (
@@ -114,6 +148,7 @@ const Login = () => {
 
         </div>
       </div>
+      {showPwaBanner && <PwaBanner onInstall={handleInstall} onDismiss={handleDismiss} />}
     </>
   );
 };
