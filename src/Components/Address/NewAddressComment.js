@@ -93,7 +93,11 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
   
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4">
+    <form
+      onSubmit={handleSubmit}
+      className="mt-4"
+      data-tour-id="address-comment-form"
+    >
       <MentionsTextarea
         value={newComment}
         onChange={setNewComment}
