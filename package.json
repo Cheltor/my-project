@@ -52,6 +52,9 @@
   "jest": {
     "transformIgnorePatterns": [
       "node_modules/(?!axios|@vercel/analytics|unified|remark|rehype|vfile|unist-util-visit-parents)/"
-    ]
+    ],
+    "moduleNameMapper": {
+      "@vercel/analytics/react": "<rootDir>/node_modules/@vercel/analytics/dist/react/index.js"
+    }
   }
 }
