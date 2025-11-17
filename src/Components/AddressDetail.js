@@ -435,6 +435,15 @@ const AddressDetails = () => {
   const [commentsRefreshKey, setCommentsRefreshKey] = useState(0);
   const [selectedUnitId, setSelectedUnitId] = useState('');
   const [quickReviewLater, setQuickReviewLater] = useState(false);
+  const quickFormRef = useRef(null);
+
+  const scrollQuickFormIntoView = useCallback(() => {
+    const node = quickFormRef.current;
+    if (!node) return;
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Mobile Safari sometimes needs a second nudge after the keyboard finishes animating
+    setTimeout(() => node.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200);
+  }, []);
   const [modalTab, setModalTab] = useState(null);
   const location = useLocation();
   // Contacts state
@@ -2262,6 +2271,7 @@ const AddressDetails = () => {
       <div className="fixed inset-x-0 bottom-0 z-40 quick-comment-bar">
         <div className="mx-auto max-w-4xl px-4 py-4 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
           <form
+            ref={quickFormRef}
             onSubmit={async (e) => {
               e.preventDefault();
               if (!user?.id) return;
@@ -2335,6 +2345,7 @@ const AddressDetails = () => {
                 placeholder="Add a comment..."
                 value={quickContent}
                 onChange={(e) => setQuickContent(e.target.value)}
+                onFocus={scrollQuickFormIntoView}
                 className="flex-1 h-14 rounded-lg border border-gray-300 px-4 text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
