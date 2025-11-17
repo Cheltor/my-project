@@ -3,3 +3,11 @@
 // expect(element).toHaveTextContent(/react/i)
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
+
+jest.mock('react-markdown', () => (props) => {
+  return <>{props.children}</>;
+});
+
+jest.mock('remark-gfm', () => () => {});
+
+jest.mock('./Components/ChatWidget', () => () => <div />);
