@@ -39,7 +39,21 @@ const TownCode = () => {
 
   const codesInChapter = useMemo(() => {
     if (!selectedChapter) return [];
-    return codes.filter((code) => code.chapter === selectedChapter);
+    return codes
+      .filter((code) => code.chapter === selectedChapter)
+      .sort((a, b) => {
+        // Assuming section can be parsed as a number for correct sorting.
+        // Handles cases like "101.1" vs "101.10" correctly if they are numbers.
+        const sectionA = parseFloat(a.section);
+        const sectionB = parseFloat(b.section);
+
+        if (!isNaN(sectionA) && !isNaN(sectionB)) {
+          return sectionA - sectionB;
+        }
+
+        // Fallback to lexicographical sort if parsing fails
+        return a.section.localeCompare(b.section);
+      });
   }, [codes, selectedChapter]);
 
   if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
