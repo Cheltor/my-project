@@ -23,6 +23,7 @@ import {
 import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
 import { Link, useNavigate, useLocation } from 'react-router-dom'; // Import Link, useNavigate, and useLocation
 import Logout from '../Components/Logout'; // Import the Logout component
+import { useTour } from '@reactour/tour';
 import { useAuth } from '../AuthContext'; // Import useAuth hook
 import { apiFetch } from '../api';
 import { toEasternLocaleString } from '../utils';
@@ -77,6 +78,7 @@ export default function Sidebar({ children }) {
   const location = useLocation(); // Track current location to refresh notifications on navigation
   const { user, token, logout } = useAuth(); // Get user data, token and logout from context
   const hasFetchedNotificationsRef = useRef(false); // Track if we've already performed the initial fetch
+  const { setIsOpen: openTour, setCurrentStep } = useTour();
 
   const fetchNotifications = useCallback(
     async ({ showSpinner = false, signal } = {}) => {
@@ -490,13 +492,17 @@ export default function Sidebar({ children }) {
                   onFocus={() => setShowDropdown(filteredAddresses.length > 0)}
                   onKeyDown={handleKeyDown} // Handle keyboard events for dropdown
                   autoComplete="off" // Disable browser's autocomplete
+                  data-tour-target="address-search-input"
                 />
               </form>
               
 
               {/* Dropdown Search Results */}
               {showDropdown && (
-                <div className="absolute w-full bg-white shadow-md rounded-md z-50 mt-1">
+                <div
+                  className="absolute w-full bg-white shadow-md rounded-md z-50 mt-1"
+                  data-tour-target="address-search-results"
+                >
                   <ul className="dropdown-list max-h-60 overflow-auto">
           {filteredAddresses.map((address, index) => (
                       <li
@@ -517,6 +523,16 @@ export default function Sidebar({ children }) {
               )}
             </div>
             <div className="flex items-center gap-x-4 lg:gap-x-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentStep(0);
+                  openTour(true);
+                }}
+                className="hidden sm:inline-flex items-center rounded-md border border-indigo-200 bg-white px-3 py-1.5 text-sm font-semibold text-indigo-600 shadow-sm transition hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              >
+                Need a tour?
+              </button>
               {/* Back Button moved to right side */}
               <button
                 type="button"
