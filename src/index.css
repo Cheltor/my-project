@@ -1,3 +1,8 @@
+.highlight {
+  background-color: #fefcbf; /* A light yellow highlight */
+  transition: background-color 0.5s ease-in-out;
+}
+
 /* Prevent background scroll when fullscreen */
 .no-scroll {
 	overflow: hidden;
