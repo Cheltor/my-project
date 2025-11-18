@@ -837,8 +837,8 @@ const AddressDetails = () => {
         const nextHighlights = { comments: '', inspections: '', complaints: '', violations: '', citations: '' };
         let violationList = [];
 
-        results.forEach((res) => {
-          if (res.status !== 'fulfilled') return;
+        for (const res of results) {
+          if (res.status !== 'fulfilled') continue;
           const { key, data } = res.value;
           const list = Array.isArray(data) ? data : [];
           nextCounts[key] = list.length;
@@ -894,13 +894,35 @@ const AddressDetails = () => {
             if (list.length === 0) {
               nextHighlights.citations = 'No citations yet';
             } else {
-              const unpaidCount = list.filter(citationIsUnpaid).length;
+              // Compute unpaid from whatever status information is present.
+              // If some citations are missing status fields, try to enrich them
+              // by fetching their individual details (same strategy as AddressCitations).
+              let unpaidCount = list.filter(citationIsUnpaid).length;
+              const missing = list.filter((c) => c == null || (c.status === undefined && c.status_id === undefined && c.status_code === undefined && c.statusValue === undefined && c.status_label === undefined && c.status_name === undefined && c.statusText === undefined));
+              if (missing.length > 0) {
+                try {
+                  const detailPromises = missing.map((c) =>
+                    fetch(`${base}/citations/${c.id}`).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+                  );
+                  const details = await Promise.all(detailPromises);
+                  const byId = new Map();
+                  for (const d of details) {
+                    if (d && d.id) byId.set(d.id, d);
+                  }
+                  if (byId.size > 0) {
+                    const enriched = list.map((c) => (byId.has(c.id) ? { ...c, ...byId.get(c.id) } : c));
+                    unpaidCount = enriched.filter(citationIsUnpaid).length;
+                  }
+                } catch (e) {
+                  // ignore enrichment failures and fall back to optimistic count
+                }
+              }
               nextHighlights.citations = unpaidCount > 0
                 ? (unpaidCount === 1 ? '1 unpaid citation' : `${unpaidCount} unpaid citations`)
                 : 'No unpaid citations';
             }
           }
-        });
+        }
 
         try {
           let vList = Array.isArray(violationList) ? violationList : [];
