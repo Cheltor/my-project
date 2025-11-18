@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+// Note: Compliance & records tabs are shown under the 'Activity Feed' group
+// (moved from the previous 'compliance' group in AddressDetail.js).
 import { useParams, Link } from 'react-router-dom';
 import UnitComments from './UnitComments';
 import { useAuth } from '../../AuthContext';

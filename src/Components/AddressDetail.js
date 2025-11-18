@@ -92,25 +92,25 @@ const TAB_META = {
   violations: {
     label: 'Violations',
     description: 'Open and resolved code violations.',
-    group: 'compliance',
+    group: 'activity',
     badgeLabel: 'violation',
   },
   citations: {
     label: 'Citations',
     description: 'Citations and penalties issued for this address.',
-    group: 'compliance',
+    group: 'activity',
     badgeLabel: 'citation',
   },
   licenses: {
     label: 'Licenses',
     description: 'Housing and business licenses associated here.',
-    group: 'compliance',
+    group: 'activity',
     badgeLabel: 'license',
   },
   permits: {
     label: 'Permits',
     description: 'Permit history and active applications.',
-    group: 'compliance',
+    group: 'activity',
     badgeLabel: 'permit',
   },
 };
@@ -2170,16 +2170,47 @@ const AddressDetails = () => {
                   {group.items.map((item) => {
                     const isActive = activeTab === item.id;
                     const badgeText = formatCountLabel(item.count, item.badgeLabel);
+
+                    // Determine if this tab should show a stronger alert color
+                    const hasOpenViolation = item.id === 'violations' && (tabHighlights.violations || '').toLowerCase().includes('open');
+                    const hasUnpaidCitation = item.id === 'citations' && (tabHighlights.citations || '').toLowerCase().includes('unpaid');
+                    const hasPendingInspection = item.id === 'inspections' && (tabHighlights.inspections || '').toLowerCase().includes('pending');
+                    const hasPendingComplaint = item.id === 'complaints' && (tabHighlights.complaints || '').toLowerCase().includes('pending');
+
+                    let alertType = null; // 'red' | 'amber' | null
+                    if (hasOpenViolation || hasUnpaidCitation) alertType = 'red';
+                    else if (hasPendingInspection || hasPendingComplaint) alertType = 'amber';
+
+                    const borderClass = isActive
+                      ? 'border-indigo-500 shadow-md ring-1 ring-indigo-200'
+                      : alertType === 'red'
+                        ? 'border-red-300 hover:border-red-400 hover:shadow-md'
+                        : alertType === 'amber'
+                          ? 'border-amber-300 hover:border-amber-400 hover:shadow-md'
+                          : 'border-gray-200 hover:border-indigo-400 hover:shadow-md';
+
+                    const iconBaseClass = isActive ? 'bg-indigo-600 text-white' : `${alertType === 'red' ? 'bg-red-50 text-red-600 group-hover:bg-red-100' : alertType === 'amber' ? 'bg-amber-50 text-amber-600 group-hover:bg-amber-100' : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100'}`;
+
+                    const highlightTextClass = alertType === 'red' ? 'text-red-600' : alertType === 'amber' ? 'text-amber-600' : 'text-indigo-600';
+
+                    const badgeClass = isActive
+                      ? 'bg-indigo-600 text-white'
+                      : alertType === 'red'
+                        ? 'bg-red-600 text-white'
+                        : alertType === 'amber'
+                          ? 'bg-amber-600 text-white'
+                          : 'bg-gray-100 text-gray-700 group-hover:bg-indigo-600/10 group-hover:text-indigo-700';
+
                     return (
                       <button
                         key={item.id}
                         type="button"
                         onClick={() => handleTabSelect(item.id)}
                         aria-pressed={isActive}
-                        className={`group flex h-full flex-col justify-between rounded-lg border bg-white p-4 text-left shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${isActive ? 'border-indigo-500 shadow-md ring-1 ring-indigo-200' : 'border-gray-200 hover:border-indigo-400 hover:shadow-md'}`}
+                        className={`group flex h-full flex-col justify-between rounded-lg border bg-white p-4 text-left shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${borderClass}`}
                       >
                         <div className="flex items-start gap-3">
-                          <span className={`flex h-10 w-10 items-center justify-center rounded-full transition ${isActive ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100'}`}>
+                          <span className={`flex h-10 w-10 items-center justify-center rounded-full transition ${iconBaseClass}`}>
                             {renderTabIcon(item.id, 'h-5 w-5')}
                           </span>
                           <div className="flex flex-col gap-1">
@@ -2188,7 +2219,7 @@ const AddressDetails = () => {
                               <span className="text-xs leading-snug text-gray-500">{item.description}</span>
                             )}
                             {item.highlight && (
-                              <span className="text-xs font-semibold text-indigo-600">{item.highlight}</span>
+                              <span className={`text-xs font-semibold ${highlightTextClass}`}>{item.highlight}</span>
                             )}
                           </div>
                         </div>
@@ -2196,7 +2227,7 @@ const AddressDetails = () => {
                           <span className={`font-medium ${isActive ? 'text-indigo-600' : 'text-gray-500'}`}>
                             View section
                           </span>
-                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-semibold ${isActive ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 group-hover:bg-indigo-600/10 group-hover:text-indigo-700'}`}>
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-semibold ${badgeClass}`}>
                             {badgeText}
                           </span>
                         </div>
