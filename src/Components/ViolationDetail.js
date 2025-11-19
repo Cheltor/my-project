@@ -7,6 +7,7 @@ import CodeDrawerLink from "./Codes/CodeDrawerLink";
 import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
 import FileUploadInput from "./Common/FileUploadInput";
 import LoadingSpinner from "./Common/LoadingSpinner";
+import AbatementPhotoModal from "./AbatementPhotoModal";
 import {
   getAttachmentDisplayLabel,
   getAttachmentFilename,
@@ -177,6 +178,7 @@ const ViolationDetail = () => {
   const [isGeneratingCompliance, setIsGeneratingCompliance] = useState(false);
   const [abatingViolation, setAbatingViolation] = useState(false);
   const [isDownloadingNotice, setIsDownloadingNotice] = useState(false);
+  const [showAbatementModal, setShowAbatementModal] = useState(false);
 
   useEffect(() => {
     const prefetchCommentAttachments = async (comments) => {
@@ -524,11 +526,38 @@ const ViolationDetail = () => {
   };
 
 
-  // Handler for marking as abated (closed)
-  const handleMarkAbated = async () => {
+  // Handler for opening the abatement modal
+  const handleMarkAbated = () => {
+    setShowAbatementModal(true);
+  };
+
+  // Handler for submitting abatement photos and marking as abated
+  const handleAbatementSubmit = async (files) => {
+    if (!files || files.length === 0) {
+      throw new Error("At least one photo is required to mark as abated.");
+    }
+    setAbatingViolation(true);
     try {
-      setAbatingViolation(true);
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/abate`, {
+      // Create a new comment with "abated" and attach the photos
+      const formData = new FormData();
+      formData.append('content', 'abated');
+      formData.append('user_id', user.id);
+      for (const f of files) {
+        formData.append('files', f);
+      }
+
+      const commentResponse = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/comments/upload`, {
+        method: 'POST',
+        body: formData,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!commentResponse.ok) {
+        throw new Error("Failed to post abatement comment with photos.");
+      }
+
+      // Mark the violation as abated
+      const abateResponse = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/abate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -536,13 +565,40 @@ const ViolationDetail = () => {
         },
         body: JSON.stringify({ status: 1 }) // 1 = Resolved/Closed
       });
-      if (!response.ok) throw new Error("Failed to mark as abated");
-      // Refetch violation to update UI
-      const updated = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}`);
-      setViolation(await updated.json());
-      setShowComplianceModal(true);
+
+      if (!abateResponse.ok) {
+        throw new Error("Failed to mark as abated after posting comment.");
+      }
+
+      // Refresh violation data
+      const updatedResponse = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}`);
+      const updatedData = await updatedResponse.json();
+      setViolation(updatedData);
+
+      // After updating the violation, refetch the attachments for all comments
+      if (updatedData && Array.isArray(updatedData.violation_comments)) {
+        const entries = await Promise.all(
+          updatedData.violation_comments.map(async (c) => {
+            try {
+              const r = await fetch(`${process.env.REACT_APP_API_URL}/violation/comment/${c.id}/attachments`);
+              if (!r.ok) return [c.id, []];
+              const data = await r.json();
+              return [c.id, Array.isArray(data) ? data : []];
+            } catch {
+              return [c.id, []];
+            }
+          })
+        );
+        const map = {};
+        entries.forEach(([commentId, attachments]) => { map[commentId] = attachments; });
+        setCommentAttachments(map);
+      }
+
+      setShowComplianceModal(true); // Show the compliance letter modal
+      setShowAbatementModal(false); // Close the abatement modal
     } catch (err) {
-      alert(err.message);
+      // Re-throw to be handled by the modal's error state
+      throw err;
     } finally {
       setAbatingViolation(false);
     }
@@ -582,6 +638,12 @@ const ViolationDetail = () => {
 
   return (
     <div className="space-y-10">
+      <AbatementPhotoModal
+        isOpen={showAbatementModal}
+        onClose={() => setShowAbatementModal(false)}
+        onSubmit={handleAbatementSubmit}
+        violationId={id}
+      />
       {showComplianceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 py-6">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
