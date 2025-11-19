@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
 import { toEasternLocaleDateString } from '../utils';
 
 const CodeDetail = () => {
+  const { user } = useAuth();
   const { id } = useParams();
+  const navigate = useNavigate();
   const [code, setCode] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -47,6 +50,27 @@ const CodeDetail = () => {
     return violations.slice(start, start + violationsPerPage);
   }, [violations, currentPage]);
 
+  const handleDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this code?')) {
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/codes/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${user.token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete the code.');
+        }
+
+        navigate('/codes');
+      } catch (err) {
+        setError(err.message || 'An error occurred while deleting the code.');
+      }
+    }
+  };
+
   if (loading)
     return (
       <div className="flex min-h-[50vh] items-center justify-center bg-slate-50 px-4">
@@ -73,13 +97,21 @@ const CodeDetail = () => {
             <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900">Code #{id}</h1>
             <p className="mt-1 text-sm text-slate-600">Details and associated violations for this code.</p>
           </div>
-          <div>
+          <div className="flex space-x-2">
             <Link
               to={`/code/${id}/edit`}
               className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
             >
               Edit
             </Link>
+            {user.role === 3 && (
+              <button
+                onClick={handleDelete}
+                className="inline-flex items-center rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-red-500"
+              >
+                Delete
+              </button>
+            )}
           </div>
         </div>
 
