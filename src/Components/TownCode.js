@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import AddCodeModal from './AddCodeModal';
 
 const TownCode = () => {
   const { user, token } = useAuth();
@@ -11,7 +12,16 @@ const TownCode = () => {
   const [error, setError] = useState(null);
   const [selectedChapter, setSelectedChapter] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
   const codeRefs = useRef({});
+
+  const handleCodeCreated = (newCode) => {
+    if (!newCode) return;
+    setCodes((prev) => [newCode, ...prev]);
+    setStatusMessage('Code created successfully.');
+    setShowAddModal(false);
+  };
 
   const handleSearchResultClick = (code) => {
     setSelectedChapter(code.chapter);
@@ -19,7 +29,14 @@ const TownCode = () => {
     setTimeout(() => {
       const element = codeRefs.current[code.id];
       if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.scrollY - 64;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth',
+        });
+
         element.classList.add('highlight');
         setTimeout(() => element.classList.remove('highlight'), 2000);
       }
@@ -197,14 +214,37 @@ const TownCode = () => {
   }
 
   return (
-    <div className="bg-white shadow-lg rounded-lg max-w-4xl mx-auto my-12 p-8">
-      <h1 className="text-4xl font-bold text-center text-gray-800 mb-4 border-b-2 pb-4">
-        Town Code
-      </h1>
-      <div className="mb-8">
-        <input
-          type="text"
-          placeholder="Search codes..."
+    <>
+      <div className="bg-white shadow-lg rounded-lg max-w-4xl mx-auto my-12 p-8">
+        <div className="flex justify-between items-center mb-4 border-b-2 pb-4">
+          <h1 className="text-4xl font-bold text-center text-gray-800">
+            Town Code
+          </h1>
+          {(user.role === 1 || user.role === 3) && (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500"
+            >
+              Add Code
+            </button>
+          )}
+        </div>
+        {statusMessage && (
+          <div className="mb-4 flex items-start justify-between rounded-md border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700">
+            <span>{statusMessage}</span>
+            <button
+              type="button"
+              onClick={() => setStatusMessage('')}
+              className="ml-4 rounded border border-transparent px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+        <div className="mb-8">
+          <input
+            type="text"
+            placeholder="Search codes..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
@@ -212,7 +252,14 @@ const TownCode = () => {
       </div>
       {content}
     </div>
-  );
+    <AddCodeModal
+      open={showAddModal}
+      onClose={() => setShowAddModal(false)}
+      onCreated={handleCodeCreated}
+      authToken={authToken}
+    />
+  </>
+);
 };
 
 export default TownCode;
