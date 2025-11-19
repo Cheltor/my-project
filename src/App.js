@@ -19,6 +19,7 @@ import Violations from './Components/Violations';
 import Inspections from './Components/Inspections';
 import Businesses from './Components/Businesses';
 import BusinessDetail from './Components/BusinessDetail';
+import TownCode from './Components/TownCode';
 import Codes from './Components/Codes';
 import CodeDetail from './Components/CodeDetail';
 import CodeEdit from './Components/CodeEdit';
@@ -174,7 +175,7 @@ function MainApp() {
                 <Route path="/business/:id" element={<BusinessDetail />} />
                 <Route path="/calendar" element={<ScheduleCalendar />} />
                 <Route path="/map" element={<MapPage />} />
-                <Route path="/codes" element={<Codes />} />
+                <Route path="/codes" element={<TownCode />} />
                 <Route path="/code/:id" element={<CodeDetail />} />
                 <Route path="/code/:id/edit" element={<CodeEdit />} />
                 <Route path="/licenses" element={<Licenses />} />
