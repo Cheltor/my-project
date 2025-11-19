@@ -472,10 +472,10 @@ const AddressUnitDetail = () => {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => violationsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                onClick={() => setShowViolationsModal(true)}
                 className="inline-flex items-center rounded-md border border-indigo-600 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-600 hover:text-white"
               >
-                View violations
+                View violations ({unitViolations.length})
               </button>
             </div>
           </section>
@@ -567,27 +567,6 @@ const AddressUnitDetail = () => {
             <UnitComments key={`unit-comments-${commentsRefreshKey}`} unitId={unitId} addressId={address.id} />
           </section>
 
-          <section id="unit-violations" ref={violationsRef} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">Violations</h2>
-            <div className="mt-4">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowViolationsModal(true)}
-                  className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold ${ (alertCounts?.violations || 0) > 0 ? 'bg-red-600 text-white' : 'bg-indigo-50 text-indigo-700 border border-indigo-200' }`}
-                >
-                  View violations ({unitViolations.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowNewViolationModal(true)}
-                  className="inline-flex items-center gap-2 rounded-md border border-indigo-600 bg-white px-3 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-600 hover:text-white"
-                >
-                  Create violation for this unit
-                </button>
-              </div>
-            </div>
-          </section>
         </div>
       </div>
 
