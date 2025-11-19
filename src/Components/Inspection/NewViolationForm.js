@@ -18,6 +18,7 @@ export default function NewViolationForm({
   lockViolationType = false,
   initialFileUrls = [],
   initialFiles = [],
+  initialUnitId,
   isOpen = true,
   onClose,
   renderAsModal = true,
@@ -30,6 +31,8 @@ export default function NewViolationForm({
     codes: [], // array of code objects
     address_id: initialAddressId || ""
   });
+  const [units, setUnits] = useState([]);
+  const [selectedUnitId, setSelectedUnitId] = useState('');
   const [files, setFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
   const STEPS = [
@@ -124,7 +127,35 @@ export default function NewViolationForm({
     // Keep form in sync if initial props change
     setForm((prev) => ({ ...prev, address_id: initialAddressId || "" }));
     setAddressLabel(initialAddressLabel || "");
+    // prefill unit selection if provided
+    if (initialUnitId) setSelectedUnitId(String(initialUnitId));
   }, [initialAddressId, initialAddressLabel]);
+
+  // Fetch units for the selected address so user can optionally attach violation to a unit
+  React.useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const addr = form.address_id;
+      if (!addr) {
+        setUnits([]);
+        setSelectedUnitId('');
+        return;
+      }
+      try {
+        const r = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${addr}/units`);
+        if (!r.ok) {
+          setUnits([]);
+          return;
+        }
+        const d = await r.json();
+        if (!cancelled) setUnits(Array.isArray(d) ? d : []);
+      } catch (e) {
+        if (!cancelled) setUnits([]);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [form.address_id]);
   React.useEffect(() => {
     // Load ONS users only for admins (role 3 assumed admin)
     const loadOns = async () => {
@@ -280,6 +311,7 @@ export default function NewViolationForm({
         deadline: safeDeadline, // always valid
         violation_type: violationType, // new field
         inspection_id: inspectionId, // optionally link violation to inspection
+        unit_id: selectedUnitId ? parseInt(selectedUnitId, 10) : undefined,
         // Do NOT send status! Backend sets status=0 (current) by default
       };
       const response = await fetch(`${process.env.REACT_APP_API_URL}/violations/`, {
@@ -320,6 +352,7 @@ export default function NewViolationForm({
       setSuccess(true);
       setForm({ codes: [], address_id: "" });
       setSelectedCodes([]);
+  setSelectedUnitId('');
       if (onSelectedCodesChange) onSelectedCodesChange([]);
       // Clear files state so the picker is reset for the next violation
       setFiles([]);
@@ -436,6 +469,22 @@ export default function NewViolationForm({
                     className="mb-0"
                   />
                 </div>
+                  {units && units.length > 0 && (
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-gray-700">Attach to unit (optional)</label>
+                      <select
+                        className="w-full rounded border border-gray-300 px-2 py-1"
+                        value={selectedUnitId}
+                        onChange={(e) => setSelectedUnitId(e.target.value)}
+                        disabled={loading}
+                      >
+                        <option value="">No unit</option>
+                        {units.map((u) => (
+                          <option key={u.id} value={u.id}>{u.number ? `Unit ${u.number}` : u.name || `Unit ${u.id}`}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 <div className="text-xs text-gray-500">This field is required.</div>
                 {addressError && <div id="nvf-address-error" className="mt-1 text-xs text-red-600">{addressError}</div>}
               </div>

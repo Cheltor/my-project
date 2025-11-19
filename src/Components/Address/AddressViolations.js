@@ -130,6 +130,9 @@ const AddressViolations = ({ addressId }) => {
             <li key={violation.id} className="bg-gray-100 p-4 rounded-lg shadow relative">
               <div className="flex justify-between items-start">
                 <p className="text-gray-700">
+                  {violation.unit && violation.unit.number ? (
+                    <span className="text-sm text-gray-600 mr-2">Unit {violation.unit.number} — </span>
+                  ) : null}
                   <Link
                     to={`/violation/${violation.id}`}
                     className="font-semibold text-indigo-700 hover:underline"

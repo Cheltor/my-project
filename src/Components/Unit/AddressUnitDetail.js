@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 // (moved from the previous 'compliance' group in AddressDetail.js).
 import { useParams, Link } from 'react-router-dom';
 import UnitComments from './UnitComments';
+import CodeDrawerLink from '../Codes/CodeDrawerLink';
+import NewViolationForm from '../Inspection/NewViolationForm';
 import { useAuth } from '../../AuthContext';
 import { toEasternLocaleString } from '../../utils';
 import LoadingSpinner from '../Common/LoadingSpinner';
@@ -55,6 +57,11 @@ const AddressUnitDetail = () => {
   const { unitId } = useParams();
   const { user } = useAuth();
   const [unit, setUnit] = useState(null);
+  const [alertCounts, setAlertCounts] = useState({ inspections: 0, violations: 0, citations: 0 });
+  const [unitViolations, setUnitViolations] = useState([]);
+  const [loadingViolations, setLoadingViolations] = useState(true);
+  const [showViolationsModal, setShowViolationsModal] = useState(false);
+  const [showNewViolationModal, setShowNewViolationModal] = useState(false);
   const [editing, setEditing] = useState(false);
   const [newUnitNumber, setNewUnitNumber] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
@@ -67,6 +74,7 @@ const AddressUnitDetail = () => {
   const [submittingQuick, setSubmittingQuick] = useState(false);
   const fileInputRef = useRef(null);
   const [commentsRefreshKey, setCommentsRefreshKey] = useState(0);
+  const violationsRef = useRef(null);
 
   useEffect(() => {
     setLoading(true);
@@ -92,6 +100,96 @@ const AddressUnitDetail = () => {
         setLoading(false);
       });
   }, [unitId]);
+
+  // Helpers to determine statuses for unit-level resources
+  const inspectionStatusIsPendingLocal = (status) => {
+    const value = (status || '').toString().trim().toLowerCase();
+    if (!value) return true;
+    const closedKeywords = ['satisfactory', 'unsatisfactory', 'completed', 'complete', 'closed', 'cancelled', 'canceled', 'failed', 'passed'];
+    if (closedKeywords.some((k) => value.includes(k))) return false;
+    const pendingKeywords = ['pending', 'scheduled', 'open', 'in progress', 'in-progress', 'awaiting', 'requested', 'draft'];
+    return pendingKeywords.some((k) => value.includes(k));
+  };
+
+  const violationIsCurrentLocal = (violation) => {
+    if (!violation) return false;
+    const candidates = [violation.status, violation.status_id, violation.status_code];
+    for (const c of candidates) {
+      if (!c) continue;
+      const v = String(c).toLowerCase();
+      if (v.includes('open') || v.includes('active') || v.includes('unresolved') || v.includes('violation')) return true;
+      if (v.includes('closed') || v.includes('satisfied') || v.includes('resolved') || v.includes('dismissed')) return false;
+    }
+    // fallback: treat as current if there's no closed indicator
+    return true;
+  };
+
+  const citationIsUnpaidLocal = (citation) => {
+    if (!citation) return false;
+    const candidates = [citation.status, citation.status_id, citation.status_code, citation.statusValue, citation.status_label, citation.status_name, citation.statusText];
+    for (const c of candidates) {
+      if (!c) continue;
+      const v = String(c).toLowerCase();
+      if (v.includes('unpaid') || v.includes('open') || v.includes('outstanding') || v.includes('due')) return true;
+      if (v.includes('paid') || v.includes('closed') || v.includes('dismissed') || v.includes('satisfied')) return false;
+    }
+    // fallback: assume unpaid if no positive paid indicator
+    return true;
+  };
+
+  // Load unit-level counts for inspections, violations, and citations and compute alert counts
+  useEffect(() => {
+    if (!unit) return undefined;
+    let cancelled = false;
+    const base = process.env.REACT_APP_API_URL;
+
+    const tryFetchList = async (paths) => {
+      for (const p of paths) {
+        try {
+          const res = await fetch(`${base}${p}`);
+          if (!res.ok) continue;
+          const data = await res.json();
+          return Array.isArray(data) ? data : [];
+        } catch (e) {
+          // try next path
+        }
+      }
+      return [];
+    };
+
+    const loadUnitAlerts = async () => {
+      try {
+        const insPaths = [`/units/${unitId}/inspections`, `/inspections?unit_id=${unitId}`];
+        const vioPaths = [`/units/${unitId}/violations`, `/violations?unit_id=${unitId}`];
+        const citPaths = [`/units/${unitId}/citations`, `/citations?unit_id=${unitId}`];
+
+        const [insList, vioList, citList] = await Promise.all([
+          tryFetchList(insPaths),
+          tryFetchList(vioPaths),
+          tryFetchList(citPaths),
+        ]);
+
+        // Save fetched violations array so we can render them below
+        if (!cancelled) {
+          setUnitViolations(Array.isArray(vioList) ? vioList : []);
+          setLoadingViolations(false);
+        }
+
+        const pendingInspections = Array.isArray(insList) ? insList.filter((it) => inspectionStatusIsPendingLocal(it?.status)).length : 0;
+        const openViolations = Array.isArray(vioList) ? vioList.filter(violationIsCurrentLocal).length : 0;
+        const unpaidCitations = Array.isArray(citList) ? citList.filter(citationIsUnpaidLocal).length : 0;
+
+        if (!cancelled) {
+          setAlertCounts({ inspections: pendingInspections, violations: openViolations, citations: unpaidCitations });
+        }
+      } catch (e) {
+        // ignore errors
+      }
+    };
+
+    loadUnitAlerts();
+    return () => { cancelled = true; };
+  }, [unit, unitId]);
 
   const unitHighlights = useMemo(() => {
     if (!unit) return [];
@@ -304,19 +402,27 @@ const AddressUnitDetail = () => {
             </div>
             {unitHighlights.length > 0 && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {unitHighlights.map((highlight, index) => (
-                  <div
-                    key={`${highlight.label}-${index}`}
-                    className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-                  >
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {highlight.label}
+                {unitHighlights.map((highlight, index) => {
+                  // Determine unit-level alert state: red if open violations or unpaid citations, amber if pending inspections
+                  const hasRedAlert = (alertCounts.violations || 0) > 0 || (alertCounts.citations || 0) > 0;
+                  const hasAmberAlert = !hasRedAlert && (alertCounts.inspections || 0) > 0;
+                  const cardBorderClass = hasRedAlert ? 'border-red-300 hover:border-red-400' : hasAmberAlert ? 'border-amber-300 hover:border-amber-400' : 'border-slate-200';
+                  const highlightTextClass = hasRedAlert ? 'text-red-600' : hasAmberAlert ? 'text-amber-600' : 'text-slate-900';
+
+                  return (
+                    <div
+                      key={`${highlight.label}-${index}`}
+                      className={`rounded-xl border ${cardBorderClass} bg-white p-4 shadow-sm`}
+                    >
+                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {highlight.label}
+                      </div>
+                      <div className={`mt-1 text-lg font-semibold ${highlightTextClass}`}>
+                        {highlight.value}
+                      </div>
                     </div>
-                    <div className="mt-1 text-lg font-semibold text-slate-900">
-                      {highlight.value}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -347,8 +453,140 @@ const AddressUnitDetail = () => {
             </section>
           )}
 
+          {/* Quick violations summary and jump link */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Violations</h2>
+              <div className="text-sm text-slate-600">
+                {loadingViolations ? 'Loading…' : (
+                  <>
+                    {unitViolations.length} total
+                    <span className="mx-2 text-slate-400">·</span>
+                    <span className={`${(alertCounts?.violations || 0) > 0 ? 'text-red-600 font-semibold' : 'text-slate-600'}`}>
+                      {(alertCounts?.violations || 0)} current
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => violationsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                className="inline-flex items-center rounded-md border border-indigo-600 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-600 hover:text-white"
+              >
+                View violations
+              </button>
+            </div>
+          </section>
+          {/* Violations modal */}
+          {showViolationsModal && (
+            <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-900/60">
+              <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Violations for Unit {unit.number}</h3>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setShowNewViolationModal(true)} className="inline-flex items-center gap-2 rounded-md border border-indigo-600 bg-white px-3 py-1 text-sm font-semibold text-indigo-600 hover:bg-indigo-600 hover:text-white">Create violation</button>
+                    <button onClick={() => setShowViolationsModal(false)} className="rounded-full border border-gray-200 px-3 py-1 text-sm">Close</button>
+                  </div>
+                </div>
+                <div className="mt-4 max-h-[60vh] overflow-y-auto">
+                  {loadingViolations ? (
+                    <div className="mt-4"><LoadingSpinner /></div>
+                  ) : unitViolations.length === 0 ? (
+                    <p className="mt-4 text-gray-500 italic">No violations for this unit.</p>
+                  ) : (
+                    <ul className="space-y-4">
+                      {unitViolations.map((violation) => (
+                        <li key={violation.id} className="bg-gray-100 p-4 rounded-lg shadow relative">
+                          <div className="flex justify-between items-start">
+                            <p className="text-gray-700">
+                              <Link to={`/violation/${violation.id}`} className="font-semibold text-indigo-700 hover:underline">
+                                {violation.violation_type ? violation.violation_type.charAt(0).toUpperCase() + violation.violation_type.slice(1) : ''}
+                              </Link>
+                            </p>
+                            <span className={`ml-2 px-2 py-1 rounded text-xs whitespace-nowrap ${violation.status === 0 ? 'bg-red-100 text-red-800' : violation.status === 1 ? 'bg-green-100 text-green-800' : violation.status === 2 ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>
+                              {violation.status === 0 ? 'Current' : violation.status === 1 ? 'Resolved' : violation.status === 2 ? 'Pending Trial' : violation.status === 3 ? 'Dismissed' : ''}
+                            </span>
+                          </div>
+                          {violation.codes && violation.codes.length > 0 && (
+                            <div className="text-gray-700 text-sm mt-2">
+                              <span className="font-medium">Codes:</span>
+                              <ul className="list-disc ml-6">
+                                {violation.codes.map((code) => (
+                                  <li key={code.id} title={code.description}>
+                                    <CodeDrawerLink codeId={code.id} title={code.description || code.name}>
+                                      {code.chapter}{code.section ? `.${code.section}` : ''}: {code.name}
+                                    </CodeDrawerLink>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          <div className="mt-3 text-xs text-gray-500 flex justify-between">
+                            <div>Created {toEasternLocaleString(violation.created_at)}</div>
+                            {violation.updated_at && <div>Updated {toEasternLocaleString(violation.updated_at)}</div>}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* New violation modal (prefilled) */}
+          {showNewViolationModal && (
+            <div className="fixed inset-0 z-[1220] flex items-center justify-center bg-slate-900/60">
+              <div className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Create Violation for Unit {unit.number}</h3>
+                  <button onClick={() => setShowNewViolationModal(false)} className="rounded-full border border-gray-200 px-3 py-1 text-sm">Close</button>
+                </div>
+                <NewViolationForm
+                  onCreated={(created) => {
+                    // refresh local violations list and close modal
+                    setUnitViolations((prev) => [created, ...prev]);
+                    setShowNewViolationModal(false);
+                    setShowViolationsModal(false);
+                    // update alerts counts optimistically
+                    setAlertCounts((prev) => ({ ...prev, violations: (prev.violations || 0) + 1 }));
+                  }}
+                  initialAddressId={address.id}
+                  initialAddressLabel={address.combadd}
+                  initialUnitId={unit.id}
+                  renderAsModal={false}
+                  onClose={() => setShowNewViolationModal(false)}
+                />
+              </div>
+            </div>
+          )}
+
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <UnitComments key={`unit-comments-${commentsRefreshKey}`} unitId={unitId} addressId={address.id} />
+          </section>
+
+          <section id="unit-violations" ref={violationsRef} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900">Violations</h2>
+            <div className="mt-4">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowViolationsModal(true)}
+                  className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold ${ (alertCounts?.violations || 0) > 0 ? 'bg-red-600 text-white' : 'bg-indigo-50 text-indigo-700 border border-indigo-200' }`}
+                >
+                  View violations ({unitViolations.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowNewViolationModal(true)}
+                  className="inline-flex items-center gap-2 rounded-md border border-indigo-600 bg-white px-3 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-600 hover:text-white"
+                >
+                  Create violation for this unit
+                </button>
+              </div>
+            </div>
           </section>
         </div>
       </div>

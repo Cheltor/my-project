@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../AuthContext';
 import CodeSelect from '../CodeSelect';
 import FileUploadInput from '../Common/FileUploadInput';
@@ -29,6 +29,8 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
   const [success, setSuccess] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [files, setFiles] = useState([]);
+  const [units, setUnits] = useState([]);
+  const [selectedUnitId, setSelectedUnitId] = useState('');
 
   // Helper to reset attachment state to avoid no-undef and keep logic centralized
   const resetAttachmentState = () => {
@@ -81,6 +83,7 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
         violation_type: violationType,
         codes: selectedCodes.map(c => c.code.id),
         // Do NOT send status! Backend sets status=0 (current) by default
+        unit_id: selectedUnitId ? parseInt(selectedUnitId, 10) : undefined,
       };
       const response = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${addressId}/violations`, {
         method: 'POST',
@@ -119,6 +122,7 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
       }
       setSuccess(true);
       setSelectedCodes([]);
+  setSelectedUnitId('');
       setViolationType(VIOLATION_TYPE_OPTIONS[0].value);
       setDeadline(DEADLINE_OPTIONS[0]);
       resetAttachmentState();
@@ -131,6 +135,23 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
       setSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadUnits = async () => {
+      if (!addressId) return setUnits([]);
+      try {
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${addressId}/units`);
+        if (!res.ok) return setUnits([]);
+        const data = await res.json();
+        if (!cancelled) setUnits(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!cancelled) setUnits([]);
+      }
+    };
+    loadUnits();
+    return () => { cancelled = true; };
+  }, [addressId]);
 
   return (
     <div className="mt-4 mb-6">
@@ -199,6 +220,24 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
               ))}
             </select>
           </div>
+
+          {units && units.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Attach to unit (optional)</label>
+              <select
+                className="w-full border border-gray-300 rounded px-2 py-1"
+                value={selectedUnitId}
+                onChange={(e) => setSelectedUnitId(e.target.value)}
+                disabled={submitting}
+              >
+                <option value="">No unit</option>
+                {units.map((u) => (
+                  <option key={u.id} value={u.id}>{u.number ? `Unit ${u.number}` : u.name || `Unit ${u.id}`}</option>
+                ))}
+              </select>
+              <div className="text-xs text-gray-500 mt-1">Optional: attach this violation to a specific unit at the address.</div>
+            </div>
+          )}
           <div className="mb-4">
             <FileUploadInput
               label="Attachments"

@@ -427,6 +427,7 @@ const AddressDetails = () => {
     licenses: 0,
   });
   const [tabHighlights, setTabHighlights] = useState({});
+  const [alertCounts, setAlertCounts] = useState({ inspections: 0, complaints: 0, violations: 0, citations: 0 });
   // Quick comment (mobile) state
   const [quickContent, setQuickContent] = useState('');
   const [quickFiles, setQuickFiles] = useState([]);
@@ -833,9 +834,14 @@ const AddressDetails = () => {
           )
         );
 
-        const nextCounts = {};
-        const nextHighlights = { comments: '', inspections: '', complaints: '', violations: '', citations: '' };
-        let violationList = [];
+  const nextCounts = {};
+  const nextHighlights = { comments: '', inspections: '', complaints: '', violations: '', citations: '' };
+  let violationList = [];
+  // numeric alert counters (computed from raw arrays)
+  let pendingInspections = 0;
+  let pendingComplaints = 0;
+  let openViolations = 0;
+  let unpaidCitations = 0;
 
         for (const res of results) {
           if (res.status !== 'fulfilled') continue;
@@ -860,8 +866,10 @@ const AddressDetails = () => {
           if (key === 'inspections') {
             if (list.length === 0) {
               nextHighlights.inspections = 'No inspections yet';
+              pendingInspections = 0;
             } else {
               const pendingCount = list.filter((item) => inspectionStatusIsPending(item?.status)).length;
+              pendingInspections = pendingCount;
               nextHighlights.inspections = pendingCount > 0
                 ? (pendingCount === 1 ? '1 pending inspection' : `${pendingCount} pending inspections`)
                 : 'No pending inspections';
@@ -871,8 +879,10 @@ const AddressDetails = () => {
           if (key === 'complaints') {
             if (list.length === 0) {
               nextHighlights.complaints = 'No complaints yet';
+              pendingComplaints = 0;
             } else {
               const pendingCount = list.filter((item) => normalizeComplaintStatus(item?.status) === 'Pending').length;
+              pendingComplaints = pendingCount;
               nextHighlights.complaints = pendingCount > 0
                 ? (pendingCount === 1 ? '1 pending complaint' : `${pendingCount} pending complaints`)
                 : 'No pending complaints';
@@ -882,8 +892,10 @@ const AddressDetails = () => {
           if (key === 'violations') {
             if (list.length === 0) {
               nextHighlights.violations = 'No violations yet';
+              openViolations = 0;
             } else {
               const currentCount = list.filter(violationIsCurrent).length;
+              openViolations = currentCount;
               nextHighlights.violations = currentCount > 0
                 ? (currentCount === 1 ? '1 open violation' : `${currentCount} open violations`)
                 : 'No open violations';
@@ -893,6 +905,7 @@ const AddressDetails = () => {
           if (key === 'citations') {
             if (list.length === 0) {
               nextHighlights.citations = 'No citations yet';
+              unpaidCitations = 0;
             } else {
               // Compute unpaid from whatever status information is present.
               // If some citations are missing status fields, try to enrich them
@@ -917,6 +930,7 @@ const AddressDetails = () => {
                   // ignore enrichment failures and fall back to optimistic count
                 }
               }
+              unpaidCitations = unpaidCount;
               nextHighlights.citations = unpaidCount > 0
                 ? (unpaidCount === 1 ? '1 unpaid citation' : `${unpaidCount} unpaid citations`)
                 : 'No unpaid citations';
@@ -980,6 +994,7 @@ const AddressDetails = () => {
         if (!cancelled) {
           setCounts((prev) => ({ ...prev, ...nextCounts }));
           setTabHighlights((prev) => ({ ...prev, ...nextHighlights }));
+          setAlertCounts({ inspections: pendingInspections, complaints: pendingComplaints, violations: openViolations, citations: unpaidCitations });
         }
       } catch {
         if (!cancelled) {
@@ -2194,10 +2209,10 @@ const AddressDetails = () => {
                     const badgeText = formatCountLabel(item.count, item.badgeLabel);
 
                     // Determine if this tab should show a stronger alert color
-                    const hasOpenViolation = item.id === 'violations' && (tabHighlights.violations || '').toLowerCase().includes('open');
-                    const hasUnpaidCitation = item.id === 'citations' && (tabHighlights.citations || '').toLowerCase().includes('unpaid');
-                    const hasPendingInspection = item.id === 'inspections' && (tabHighlights.inspections || '').toLowerCase().includes('pending');
-                    const hasPendingComplaint = item.id === 'complaints' && (tabHighlights.complaints || '').toLowerCase().includes('pending');
+                    const hasOpenViolation = item.id === 'violations' && (alertCounts.violations || 0) > 0;
+                    const hasUnpaidCitation = item.id === 'citations' && (alertCounts.citations || 0) > 0;
+                    const hasPendingInspection = item.id === 'inspections' && (alertCounts.inspections || 0) > 0;
+                    const hasPendingComplaint = item.id === 'complaints' && (alertCounts.complaints || 0) > 0;
 
                     let alertType = null; // 'red' | 'amber' | null
                     if (hasOpenViolation || hasUnpaidCitation) alertType = 'red';
