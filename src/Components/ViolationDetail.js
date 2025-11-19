@@ -540,7 +540,7 @@ const ViolationDetail = () => {
     try {
       // Create a new comment with "abated" and attach the photos
       const formData = new FormData();
-      formData.append('content', 'abated');
+      formData.append('content', 'ABATED');
       formData.append('user_id', user.id);
       for (const f of files) {
         formData.append('files', f);
