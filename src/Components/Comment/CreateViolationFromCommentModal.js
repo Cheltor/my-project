@@ -36,7 +36,7 @@ const defaultNotes = (comment) => {
   return content.trim();
 };
 
-export default function CreateViolationFromCommentModal({ comment, onClose, onCreated }) {
+export default function CreateViolationFromCommentModal({ comment, unitId, onClose, onCreated }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [deadline, setDeadline] = useState(DEADLINE_OPTIONS[0]);
@@ -254,6 +254,7 @@ export default function CreateViolationFromCommentModal({ comment, onClose, onCr
       codes,
       description: resolvedNotes,
       comment: resolvedNotes,
+      unit_id: unitId ? Number(unitId) : undefined,
     };
 
     if (typeof resolvedUserId === 'number' && !Number.isNaN(resolvedUserId)) {
