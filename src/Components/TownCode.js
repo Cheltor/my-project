@@ -1,0 +1,265 @@
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
+import AddCodeModal from './AddCodeModal';
+
+const TownCode = () => {
+  const { user, token } = useAuth();
+  const authToken = token || user?.token;
+
+  const [codes, setCodes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedChapter, setSelectedChapter] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
+  const codeRefs = useRef({});
+
+  const handleCodeCreated = (newCode) => {
+    if (!newCode) return;
+    setCodes((prev) => [newCode, ...prev]);
+    setStatusMessage('Code created successfully.');
+    setShowAddModal(false);
+  };
+
+  const handleSearchResultClick = (code) => {
+    setSelectedChapter(code.chapter);
+    setSearchTerm(''); // Clear search term to hide search results
+    setTimeout(() => {
+      const element = codeRefs.current[code.id];
+      if (element) {
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.scrollY - 64;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth',
+        });
+
+        element.classList.add('highlight');
+        setTimeout(() => element.classList.remove('highlight'), 2000);
+      }
+    }, 100); // A small delay to allow the chapter view to render
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+
+    const apiUrl = process.env.REACT_APP_API_URL || '';
+    fetch(`${apiUrl}/codes/`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to fetch codes');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setCodes(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || 'Failed to fetch codes');
+        setLoading(false);
+      });
+  }, []);
+
+  const uniqueChapters = useMemo(() => {
+    const chapters = [...new Set(codes.map((code) => code.chapter).filter(Boolean))];
+    return chapters.sort((a, b) => a - b);
+  }, [codes]);
+
+  const filteredCodes = useMemo(() => {
+    if (!searchTerm) return [];
+    const lowercasedTerm = searchTerm.toLowerCase();
+    return codes.filter(
+      (code) =>
+        code.name.toLowerCase().includes(lowercasedTerm) ||
+        code.description.toLowerCase().includes(lowercasedTerm),
+    );
+  }, [codes, searchTerm]);
+
+  const codesInChapter = useMemo(() => {
+    if (!selectedChapter) return [];
+    return codes
+      .filter((code) => code.chapter === selectedChapter)
+      .sort((a, b) => {
+        // Assuming section can be parsed as a number for correct sorting.
+        // Handles cases like "101.1" vs "101.10" correctly if they are numbers.
+        const sectionA = parseFloat(a.section);
+        const sectionB = parseFloat(b.section);
+
+        if (!isNaN(sectionA) && !isNaN(sectionB)) {
+          return sectionA - sectionB;
+        }
+
+        // Fallback to lexicographical sort if parsing fails
+        return a.section.localeCompare(b.section);
+      });
+  }, [codes, selectedChapter]);
+
+  if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
+
+  let content;
+  if (searchTerm.length > 2) {
+    content = (
+      <div className="search-results">
+        {filteredCodes.length > 0 ? (
+          filteredCodes.map((code) => (
+            <div
+              key={code.id}
+              onClick={() => handleSearchResultClick(code)}
+              className="p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50"
+            >
+              <h3 className="text-lg font-semibold text-gray-800">
+                Chapter {code.chapter}, Section {code.section}: {code.name}
+              </h3>
+              <p className="mt-1 text-gray-600">
+                {code.description.substring(0, 150)}...
+              </p>
+            </div>
+          ))
+        ) : (
+          <p className="text-center text-gray-500 py-4">No results found.</p>
+        )}
+      </div>
+    );
+  } else if (selectedChapter) {
+    const currentIndex = uniqueChapters.indexOf(selectedChapter);
+    const prevChapter = currentIndex > 0 ? uniqueChapters[currentIndex - 1] : null;
+    const nextChapter = currentIndex < uniqueChapters.length - 1 ? uniqueChapters[currentIndex + 1] : null;
+
+    content = (
+      <div>
+        <button
+          onClick={() => setSelectedChapter(null)}
+          className="mb-8 text-indigo-600 hover:text-indigo-900"
+        >
+          &larr; Back to Table of Contents
+        </button>
+        <h1 className="text-3xl font-bold text-center text-gray-800 mb-8 border-b-2 pb-4">
+          Chapter {selectedChapter}
+        </h1>
+        <div className="space-y-6">
+          {codesInChapter.map((code) => (
+            <div
+              key={code.id}
+              ref={(el) => (codeRefs.current[code.id] = el)}
+              className="p-4 border-b border-gray-200"
+            >
+              <h2 className="text-xl font-semibold text-gray-800">
+                Section {code.section}: {code.name}
+              </h2>
+              <p className="mt-2 text-gray-600 leading-relaxed">
+                {code.description}
+              </p>
+              <div className="mt-4 flex space-x-4">
+                <Link
+                  to={`/code/${code.id}`}
+                  className="text-indigo-600 hover:text-indigo-900"
+                >
+                  Details
+                </Link>
+                {(user.role === 1 || user.role === 3) && (
+                  <Link
+                    to={`/code/${code.id}/edit`}
+                    className="text-indigo-600 hover:text-indigo-900"
+                  >
+                    Edit
+                  </Link>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-8 pt-4 border-t-2 flex justify-between">
+          <button
+            onClick={() => setSelectedChapter(prevChapter)}
+            disabled={!prevChapter}
+            className="text-indigo-600 hover:text-indigo-900 disabled:text-gray-400 disabled:cursor-not-allowed"
+          >
+            &larr; Previous Chapter
+          </button>
+          <button
+            onClick={() => setSelectedChapter(nextChapter)}
+            disabled={!nextChapter}
+            className="text-indigo-600 hover:text-indigo-900 disabled:text-gray-400 disabled:cursor-not-allowed"
+          >
+            Next Chapter &rarr;
+          </button>
+        </div>
+      </div>
+    );
+  } else {
+    content = (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+        {uniqueChapters.map((chapter) => (
+          <div
+            key={chapter}
+            onClick={() => setSelectedChapter(chapter)}
+            className="cursor-pointer group flex justify-between items-center py-2 border-b border-gray-200 hover:bg-gray-50"
+          >
+            <span className="text-lg text-gray-700 group-hover:text-indigo-600">
+              Chapter {chapter}
+            </span>
+            <span className="text-lg text-gray-400 group-hover:text-indigo-500 transition-transform duration-300 transform group-hover:translate-x-2">
+              &rarr;
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="bg-white shadow-lg rounded-lg max-w-4xl mx-auto my-12 p-8">
+        <div className="flex justify-between items-center mb-4 border-b-2 pb-4">
+          <h1 className="text-4xl font-bold text-center text-gray-800">
+            Town Code
+          </h1>
+          {(user.role === 1 || user.role === 3) && (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500"
+            >
+              Add Code
+            </button>
+          )}
+        </div>
+        {statusMessage && (
+          <div className="mb-4 flex items-start justify-between rounded-md border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700">
+            <span>{statusMessage}</span>
+            <button
+              type="button"
+              onClick={() => setStatusMessage('')}
+              className="ml-4 rounded border border-transparent px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+        <div className="mb-8">
+          <input
+            type="text"
+            placeholder="Search codes..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+        />
+      </div>
+      {content}
+    </div>
+    <AddCodeModal
+      open={showAddModal}
+      onClose={() => setShowAddModal(false)}
+      onCreated={handleCodeCreated}
+      authToken={authToken}
+    />
+  </>
+);
+};
+
+export default TownCode;
