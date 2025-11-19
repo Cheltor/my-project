@@ -217,6 +217,7 @@ const UnitComments = ({ unitId, addressId }) => {
       {violationComment && (
         <CreateViolationFromCommentModal
           comment={violationComment}
+          unitId={unitId}
           onClose={() => setViolationComment(null)}
           onCreated={(newViolation) => {
             if (newViolation?.id) {
