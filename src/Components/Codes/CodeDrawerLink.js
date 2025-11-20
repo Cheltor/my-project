@@ -20,34 +20,24 @@ export default function CodeDrawerLink({
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [code, setCode] = useState(null);
+  const [code, setCode] = useState(() => CODE_CACHE.get(codeId) || null);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    if (!codeId) {
-      setCode(null);
-      setError(null);
-      return;
-    }
-    if (CODE_CACHE.has(codeId)) {
-      setCode(CODE_CACHE.get(codeId));
-      setError(null);
-    } else {
-      setCode(null);
-      setError(null);
-    }
-  }, [codeId]);
+
 
   useEffect(() => {
     let cancelled = false;
-    if (!open || !codeId) return;
+    if (!codeId) return;
+
     const cached = CODE_CACHE.get(codeId);
     if (cached) {
       setCode(cached);
       return;
     }
+
     setLoading(true);
     setError(null);
+
     fetch(`${process.env.REACT_APP_API_URL}/codes/${codeId}`)
       .then((response) => {
         if (!response.ok) {
@@ -67,10 +57,11 @@ export default function CodeDrawerLink({
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
-  }, [open, codeId]);
+  }, [codeId]);
 
   const handleOpen = () => {
     if (!codeId) return;
@@ -81,6 +72,10 @@ export default function CodeDrawerLink({
     ? `${code.chapter}${code.section ? `.${code.section}` : ""}`
     : "Code Details";
 
+  const linkText = code
+    ? `${code.chapter}${code.section ? `.${code.section}` : ""} (${code.name})`
+    : children;
+
   return (
     <>
       <button
@@ -89,7 +84,7 @@ export default function CodeDrawerLink({
         className={className}
         {...buttonProps}
       >
-        {children}
+        {linkText}
       </button>
 
       <Dialog open={open} onClose={setOpen} className="relative z-[1300]">

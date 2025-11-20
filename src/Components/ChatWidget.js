@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars, react-hooks/exhaustive-deps */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -12,6 +12,8 @@ import {
 import API from '../Services/api';
 import { useAuth } from '../AuthContext';
 
+import CodeDrawerLink from './Codes/CodeDrawerLink';
+
 const INITIAL_GREETING = {
   role: 'assistant',
   content: "Hi there! I'm here to help. What would you like to know?",
@@ -21,12 +23,18 @@ function cleanResponseText(text) {
   if (typeof text !== 'string') return text;
   // Remove explicit patterns like [10:0†source†] or [10†source†]
   let cleaned = text.replace(/\[\d+:\d+†.*?†\]/g, '')
-                    .replace(/\[\d+†.*?†\]/g, '')
-                    .replace(/\[\d+:\d+†.*?\]/g, '')
-                    .replace(/\[\d+†.*?\]/g, '');
+    .replace(/\[\d+†.*?†\]/g, '')
+    .replace(/\[\d+:\d+†.*?\]/g, '')
+    .replace(/\[\d+†.*?\]/g, '');
   // General catch-all for any lingering bracketed citation with dagger markers
   cleaned = cleaned.replace(/\[\d+(?::\d+)?[^\]]*?†[^\]]*?\]/g, '');
   return cleaned.trim();
+}
+
+function processMessageContent(text) {
+  if (!text) return "";
+  // Convert [Code: 123] to [Code 123](code://123)
+  return text.replace(/\[Code:\s*(\d+)\]/g, '[Code $1](code://$1)');
 }
 
 export default function ChatWidget() {
@@ -42,6 +50,27 @@ export default function ChatWidget() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const messagesEndRef = useRef(null);
   const [isMobile, setIsMobile] = useState(false);
+
+  const markdownComponents = useMemo(() => ({
+    p: ({ node, ...props }) => <p {...props} />, // maintain default paragraph rendering
+    a: ({ node, children, href, ...props }) => {
+      if (href && href.startsWith('code://')) {
+        const codeId = href.replace('code://', '');
+        // Strip href/target/rel from props passed to button
+        const { href: _href, target: _target, rel: _rel, ...rest } = props;
+        return (
+          <CodeDrawerLink codeId={codeId} className="font-semibold text-blue-600 hover:underline cursor-pointer" {...rest}>
+            {children}
+          </CodeDrawerLink>
+        );
+      }
+      return (
+        <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+          {children}
+        </a>
+      );
+    },
+  }), []);
 
   // (auth check will be performed after all hooks are declared)
 
@@ -184,16 +213,10 @@ export default function ChatWidget() {
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     skipHtml
-                    components={{
-                      p: ({ node, ...props }) => <p {...props} />,
-                      a: ({ node, children, ...props }) => (
-                        <a target="_blank" rel="noopener noreferrer" {...props}>
-                          {children}
-                        </a>
-                      ),
-                    }}
+                    urlTransform={(value) => value}
+                    components={markdownComponents}
                   >
-                    {String(message.content ?? '')}
+                    {processMessageContent(String(message.content ?? ''))}
                   </ReactMarkdown>
                 </div>
               ))}
