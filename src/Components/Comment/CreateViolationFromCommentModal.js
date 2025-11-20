@@ -36,7 +36,7 @@ const defaultNotes = (comment) => {
   return content.trim();
 };
 
-export default function CreateViolationFromCommentModal({ comment, unitId, onClose, onCreated }) {
+export default function CreateViolationFromCommentModal({ comment, unitId, onClose, onCreated, initialData }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [deadline, setDeadline] = useState(DEADLINE_OPTIONS[0]);
@@ -149,8 +149,41 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
     if (!comment) return;
     setDeadline(DEADLINE_OPTIONS[0]);
     setViolationType(VIOLATION_TYPE_OPTIONS[0].value);
-    setSelectedCodes([]);
-    setNotes(defaultNotes(comment));
+
+    // Pre-fill from initialData (AI evaluation) if available
+    if (initialData) {
+      const prefilledCodes = (initialData.potential_violations || [])
+        .filter(v => v.code_id || v.code_citation)
+        .map(v => ({
+          label: v.code_citation ? `${v.code_citation} - ${v.description}` : v.description,
+          value: v.code_id || v.code_citation,
+          code: {
+            id: v.code_id,
+            name: v.code_citation,
+            description: v.description
+          }
+        }));
+
+      setSelectedCodes(prefilledCodes);
+
+      // Construct notes from observation and recommendation
+      let prefilledNotes = defaultNotes(comment);
+      if (initialData.observation || initialData.recommendation) {
+        prefilledNotes += '\n\n[AI Evaluation]\n';
+        if (initialData.observation) prefilledNotes += `Observation: ${initialData.observation}\n`;
+        if (initialData.recommendation) prefilledNotes += `Recommendation: ${initialData.recommendation}\n`;
+      }
+      setNotes(prefilledNotes);
+
+      // If we have codes, jump to the codes step or details step?
+      // Maybe stay on first step to let user review, but show the codes are selected.
+      // Or jump to codes step if we want to be helpful.
+      // Let's stay on step 0 so they see the comment context first.
+    } else {
+      setSelectedCodes([]);
+      setNotes(defaultNotes(comment));
+    }
+
     setError('');
     setStatusMessage('');
     setCreatedViolation(null);
@@ -163,7 +196,7 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
         ? String(comment.user_id)
         : '';
     setAssigneeId(defaultAssigneeId);
-  }, [comment, isAdmin, user?.id, user?.name, user?.email]);
+  }, [comment, isAdmin, user?.id, user?.name, user?.email, initialData]);
 
   const attachmentsMessage = useMemo(() => {
     if (!comment || !Array.isArray(comment.photos) || comment.photos.length === 0) {
@@ -302,9 +335,9 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
 
   const codeDescriptions = Array.isArray(selectedCodes)
     ? selectedCodes.map((opt) => {
-        const raw = opt?.code?.description || opt?.label || 'Selected code';
-        return raw.length > 80 ? `${raw.slice(0, 80)}...` : raw;
-      })
+      const raw = opt?.code?.description || opt?.label || 'Selected code';
+      return raw.length > 80 ? `${raw.slice(0, 80)}...` : raw;
+    })
     : [];
 
   const renderStepContent = () => {

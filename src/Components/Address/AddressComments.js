@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import NewAddressComment from './NewAddressComment';
 import FullScreenPhotoViewer from '../FullScreenPhotoViewer';
 import CreateViolationFromCommentModal from '../Comment/CreateViolationFromCommentModal';
+import ImageEvaluationModal from '../Comment/ImageEvaluationModal';
 import {
   toEasternLocaleString,
   getAttachmentFilename,
@@ -40,12 +41,20 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
   const [violationComment, setViolationComment] = useState(null);
   const [reviewUpdating, setReviewUpdating] = useState({});
   const [reviewError, setReviewError] = useState('');
+
+  // Evaluation state
+  const [evaluatingImage, setEvaluatingImage] = useState(null); // URL of image being evaluated
+  const [evaluationResult, setEvaluationResult] = useState(null);
+  const [showEvaluationModal, setShowEvaluationModal] = useState(false);
+  const [evaluationError, setEvaluationError] = useState('');
+  const [violationDraftData, setViolationDraftData] = useState(null); // Data to pass to CreateViolationFromCommentModal
+
   const { token, user } = useAuth() || {};
 
   const startEditPage = () => { setPageInputVal(String(page)); setPageError(''); setEditingPage(true); };
   const applyPageInput = () => {
     const n = parseInt(pageInputVal, 10);
-  const totalPages = total > 0 ? Math.ceil(total / pageSize) : 1;
+    const totalPages = total > 0 ? Math.ceil(total / pageSize) : 1;
     if (Number.isNaN(n) || n < 1 || n > totalPages) {
       setPageError(`Enter a number between 1 and ${totalPages}`);
       return;
@@ -146,6 +155,61 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
       });
     } catch (e) {
       console.error('Download failed:', e);
+    }
+  };
+
+  const handleEvaluateImage = async (url, comment) => {
+    if (!url) return;
+    setEvaluatingImage(url);
+    setEvaluationError('');
+    setEvaluationResult(null);
+
+    try {
+      // 1. Fetch the image blob
+      const imageResp = await fetch(url);
+      if (!imageResp.ok) throw new Error('Failed to fetch image data');
+      const blob = await imageResp.blob();
+
+      // 2. Send to evaluation endpoint
+      const formData = new FormData();
+      formData.append('file', blob, 'image.jpg'); // Filename doesn't matter much here
+
+      const evalResp = await fetch(`${process.env.REACT_APP_API_URL}/assistant/evaluate-image`, {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      });
+
+      if (!evalResp.ok) {
+        const errText = await evalResp.text();
+        throw new Error(`Evaluation failed: ${errText}`);
+      }
+
+      const result = await evalResp.json();
+      setEvaluationResult(result);
+      setShowEvaluationModal(true);
+
+      // Store comment context for drafting violation later
+      setViolationDraftData({
+        comment,
+        evaluation: result
+      });
+
+    } catch (err) {
+      console.error('Image evaluation failed:', err);
+      setEvaluationError(err.message || 'Failed to evaluate image');
+      alert(`Evaluation failed: ${err.message}`);
+    } finally {
+      setEvaluatingImage(null);
+    }
+  };
+
+  const handleDraftViolationFromEvaluation = (result) => {
+    setShowEvaluationModal(false);
+    if (violationDraftData?.comment) {
+      setViolationComment(violationDraftData.comment);
     }
   };
 
@@ -303,37 +367,37 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
   return (
     <>
       <div className="border-b pb-4">
-      <h2 className="text-2xl font-semibold text-gray-700">Comments</h2>
-      <NewAddressComment addressId={addressId} onCommentAdded={handleCommentAdded} />
-      {reviewError && (
-        <div className="mt-4 flex items-start justify-between rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          <span className="pr-4">{reviewError}</span>
-          <button
-            type="button"
-            onClick={() => setReviewError('')}
-            className="text-xs font-medium text-red-700 underline"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-      {selectedPhotoUrl && (
-        <FullScreenPhotoViewer
-          photoUrl={selectedPhotoUrl}
-          onClose={() => setSelectedPhotoUrl(null)}
-        />
-      )}
-      {/* Pagination header */}
-      <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-        <div>
-          {total > 0 ? (
-            <span>
-              Showing <span className="font-medium">{startIdx}-{endIdx}</span> of <span className="font-medium">{total}</span>
-            </span>
-          ) : (
-            <span>0 results</span>
-          )}
-        </div>
+        <h2 className="text-2xl font-semibold text-gray-700">Comments</h2>
+        <NewAddressComment addressId={addressId} onCommentAdded={handleCommentAdded} />
+        {reviewError && (
+          <div className="mt-4 flex items-start justify-between rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <span className="pr-4">{reviewError}</span>
+            <button
+              type="button"
+              onClick={() => setReviewError('')}
+              className="text-xs font-medium text-red-700 underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+        {selectedPhotoUrl && (
+          <FullScreenPhotoViewer
+            photoUrl={selectedPhotoUrl}
+            onClose={() => setSelectedPhotoUrl(null)}
+          />
+        )}
+        {/* Pagination header */}
+        <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
+          <div>
+            {total > 0 ? (
+              <span>
+                Showing <span className="font-medium">{startIdx}-{endIdx}</span> of <span className="font-medium">{total}</span>
+              </span>
+            ) : (
+              <span>0 results</span>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -375,186 +439,208 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
               Next
             </button>
           </div>
-      </div>
+        </div>
 
-      <ul className="space-y-4 mt-2">
-        {comments.length > 0 ? (
-          comments.map((comment) => (
-            <li key={comment.id} className="relative rounded-lg bg-gray-100 p-4 shadow">
-              <div className="absolute right-3 top-3 flex flex-col items-end gap-2">
-                {comment.review_later && user?.id && Number(comment.user_id) === Number(user.id) && (
-                  <div className="flex flex-wrap items-center justify-end gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 shadow-sm">
-                    <span>Flagged for review</span>
-                    <button
-                      type="button"
-                      className="rounded bg-amber-600 px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-amber-500 disabled:bg-amber-300"
-                      onClick={() => handleMarkReviewed(comment.id)}
-                      disabled={Boolean(reviewUpdating[comment.id])}
-                    >
-                      {reviewUpdating[comment.id] ? 'Saving…' : 'Mark reviewed'}
-                    </button>
-                  </div>
-                )}
-                {!comment.violation_id && (
-                  <button
-                    type="button"
-                    onClick={() => setViolationComment(comment)}
-                    className="inline-flex items-center rounded-full border border-transparent bg-white/80 px-3 py-1 text-xs font-medium text-indigo-600 shadow-sm transition hover:bg-indigo-100 hover:text-indigo-700"
-                  >
-                    Create violation
-                  </button>
-                )}
-                {comment.violation_id && (
-                  <Link
-                    to={`/violation/${comment.violation_id}`}
-                    className="inline-flex items-center rounded-full border border-transparent bg-white/80 px-3 py-1 text-xs font-medium text-green-700 shadow-sm transition hover:bg-green-100"
-                  >
-                    View #{comment.violation_id}
-                  </Link>
-                )}
-              </div>
-                <p className="text-gray-700 whitespace-pre-line">{comment.content}</p>
-              {Array.isArray(comment.mentions) && comment.mentions.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {comment.mentions.map((u) => (
-                    <span key={u.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-700 border border-indigo-200">
-                      @{u.name || u.email}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {Array.isArray(comment.contact_mentions) && comment.contact_mentions.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {comment.contact_mentions.map((c) => (
-                    <span
-                      key={c.id}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700 border border-emerald-200"
-                    >
-                      %{c.name || c.email || `contact-${c.id}`}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <p className="text-sm text-gray-500 mt-2">Posted on {formatDate(comment.created_at)}</p>
-              {comment.user && (
-                <p className="text-sm text-gray-500">
-                  By {comment.user.name ? comment.user.name : comment.user.email}
-                  {comment.unit_id && (
-                    <span>
-                      {' '}&middot;{' '}
-                      <Link
-                        to={`/address/${comment.address_id}/unit/${comment.unit_id}`}
-                        className="text-blue-500 hover:underline"
+        <ul className="space-y-4 mt-2">
+          {comments.length > 0 ? (
+            comments.map((comment) => (
+              <li key={comment.id} className="relative rounded-lg bg-gray-100 p-4 shadow">
+                <div className="absolute right-3 top-3 flex flex-col items-end gap-2">
+                  {comment.review_later && user?.id && Number(comment.user_id) === Number(user.id) && (
+                    <div className="flex flex-wrap items-center justify-end gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 shadow-sm">
+                      <span>Flagged for review</span>
+                      <button
+                        type="button"
+                        className="rounded bg-amber-600 px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-amber-500 disabled:bg-amber-300"
+                        onClick={() => handleMarkReviewed(comment.id)}
+                        disabled={Boolean(reviewUpdating[comment.id])}
                       >
-                        {`Unit ${resolveUnitNumber(comment)}`}
-                      </Link>
-                    </span>
+                        {reviewUpdating[comment.id] ? 'Saving…' : 'Mark reviewed'}
+                      </button>
+                    </div>
                   )}
-                </p>
-              )}
-              {comment.photos && comment.photos.length > 0 && (
-                <div className="mt-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-gray-600">
-                      Attachment{comment.photos.length > 1 ? 's' : ''}:
-                    </h3>
+                  {!comment.violation_id && (
                     <button
                       type="button"
-                      className="text-indigo-600 hover:underline text-sm font-medium"
-                      onClick={() => downloadAttachments(comment.id)}
+                      onClick={() => setViolationComment(comment)}
+                      className="inline-flex items-center rounded-full border border-transparent bg-white/80 px-3 py-1 text-xs font-medium text-indigo-600 shadow-sm transition hover:bg-indigo-100 hover:text-indigo-700"
                     >
-                      Download attachments ({comment.photos.length})
+                      Create violation
                     </button>
+                  )}
+                  {comment.violation_id && (
+                    <Link
+                      to={`/violation/${comment.violation_id}`}
+                      className="inline-flex items-center rounded-full border border-transparent bg-white/80 px-3 py-1 text-xs font-medium text-green-700 shadow-sm transition hover:bg-green-100"
+                    >
+                      View #{comment.violation_id}
+                    </Link>
+                  )}
+                </div>
+                <p className="text-gray-700 whitespace-pre-line">{comment.content}</p>
+                {Array.isArray(comment.mentions) && comment.mentions.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {comment.mentions.map((u) => (
+                      <span key={u.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        @{u.name || u.email}
+                      </span>
+                    ))}
                   </div>
-                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {comment.photos.map((attachment, index) => {
-                      const url = attachment?.url;
-                      if (!url) return null;
+                )}
+                {Array.isArray(comment.contact_mentions) && comment.contact_mentions.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {comment.contact_mentions.map((c) => (
+                      <span
+                        key={c.id}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      >
+                        %{c.name || c.email || `contact-${c.id}`}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <p className="text-sm text-gray-500 mt-2">Posted on {formatDate(comment.created_at)}</p>
+                {comment.user && (
+                  <p className="text-sm text-gray-500">
+                    By {comment.user.name ? comment.user.name : comment.user.email}
+                    {comment.unit_id && (
+                      <span>
+                        {' '}&middot;{' '}
+                        <Link
+                          to={`/address/${comment.address_id}/unit/${comment.unit_id}`}
+                          className="text-blue-500 hover:underline"
+                        >
+                          {`Unit ${resolveUnitNumber(comment)}`}
+                        </Link>
+                      </span>
+                    )}
+                  </p>
+                )}
+                {comment.photos && comment.photos.length > 0 && (
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-gray-600">
+                        Attachment{comment.photos.length > 1 ? 's' : ''}:
+                      </h3>
+                      <button
+                        type="button"
+                        className="text-indigo-600 hover:underline text-sm font-medium"
+                        onClick={() => downloadAttachments(comment.id)}
+                      >
+                        Download attachments ({comment.photos.length})
+                      </button>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {comment.photos.map((attachment, index) => {
+                        const url = attachment?.url;
+                        if (!url) return null;
 
-                      const filename = getAttachmentFilename(attachment, `Attachment ${index + 1}`);
-                      const isImage = isImageAttachment(attachment);
-                      const extensionLabel = getAttachmentDisplayLabel(attachment);
+                        const filename = getAttachmentFilename(attachment, `Attachment ${index + 1}`);
+                        const isImage = isImageAttachment(attachment);
+                        const extensionLabel = getAttachmentDisplayLabel(attachment);
 
-                      return (
-                        <div key={url || index} className="flex flex-col gap-2">
-                          {isImage ? (
-                            <button
-                              type="button"
-                              onClick={() => setSelectedPhotoUrl(url)}
-                              className="block w-full"
-                            >
-                              <img
-                                src={url}
-                                alt={filename}
-                                className="w-full h-24 object-cover rounded-md shadow"
-                              />
-                            </button>
-                          ) : (
+                        return (
+                          <div key={url || index} className="flex flex-col gap-2">
+                            {isImage ? (
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedPhotoUrl(url)}
+                                  className="block w-full"
+                                >
+                                  <img
+                                    src={url}
+                                    alt={filename}
+                                    className="w-full h-24 object-cover rounded-md shadow"
+                                  />
+                                  {evaluatingImage === url && (
+                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-md">
+                                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                                    </div>
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEvaluateImage(url, comment);
+                                  }}
+                                  disabled={!!evaluatingImage}
+                                  className="absolute top-1 right-1 rounded-full bg-white/90 p-1 text-indigo-600 shadow-sm hover:bg-white hover:text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                  title="Evaluate with AI"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                    <path d="M16.5 7.5h-9v9h9v-9z" />
+                                    <path fillRule="evenodd" d="M8.25 2.25A.75.75 0 019 3v.75h2.25V3a.75.75 0 011.5 0v.75H15V3a.75.75 0 011.5 0v.75h.75a3 3 0 013 3v.75H21A.75.75 0 0121 9h-.75v2.25H21a.75.75 0 010 1.5h-.75V15H21a.75.75 0 010 1.5h-.75v.75a3 3 0 01-3 3h-.75V21a.75.75 0 01-1.5 0v-.75H12.75V21a.75.75 0 01-1.5 0v-.75H9V21a.75.75 0 01-1.5 0v-.75h-.75a3 3 0 01-3-3v-.75H3A.75.75 0 013 15h.75v-2.25H3a.75.75 0 010-1.5h.75V9H3a.75.75 0 010-1.5h.75v-.75a3 3 0 013-3h.75V3a.75.75 0 01.75-.75zM6 6.75A.75.75 0 016.75 6h10.5a.75.75 0 01.75.75v10.5a.75.75 0 01-.75.75H6.75a.75.75 0 01-.75-.75V6.75z" clipRule="evenodd" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ) : (
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="block w-full"
+                              >
+                                <div className="w-full h-24 flex flex-col items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors">
+                                  <span className="text-3xl">📄</span>
+                                  <span className="mt-1 text-xs font-semibold uppercase">{extensionLabel}</span>
+                                </div>
+                              </a>
+                            )}
                             <a
                               href={url}
                               target="_blank"
                               rel="noreferrer"
-                              className="block w-full"
+                              className="text-indigo-600 hover:underline text-xs break-all"
+                              title={filename}
                             >
-                              <div className="w-full h-24 flex flex-col items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors">
-                                <span className="text-3xl">📄</span>
-                                <span className="mt-1 text-xs font-semibold uppercase">{extensionLabel}</span>
-                              </div>
+                              {filename}
                             </a>
-                          )}
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-indigo-600 hover:underline text-xs break-all"
-                            title={filename}
-                          >
-                            {filename}
-                          </a>
-                        </div>
-                      );
-                    })}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
               </li>
             ))
-        ) : (
-          <p>No comments available.</p>
-        )}
-      </ul>
+          ) : (
+            <p>No comments available.</p>
+          )}
+        </ul>
 
-      {/* Pagination footer (duplicate controls for convenience) */}
-      {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-          <div>
-            <span>
-              Showing <span className="font-medium">{startIdx + 1}-{endIdx}</span> of <span className="font-medium">{total}</span>
-            </span>
+        {/* Pagination footer (duplicate controls for convenience) */}
+        {totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
+            <div>
+              <span>
+                Showing <span className="font-medium">{startIdx + 1}-{endIdx}</span> of <span className="font-medium">{total}</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="px-2 py-1 rounded border border-gray-300 bg-white disabled:opacity-50"
+              >
+                Prev
+              </button>
+              <span>
+                Page <span className="font-medium">{page}</span> of <span className="font-medium">{totalPages}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="px-2 py-1 rounded border border-gray-300 bg-white disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="px-2 py-1 rounded border border-gray-300 bg-white disabled:opacity-50"
-            >
-              Prev
-            </button>
-            <span>
-              Page <span className="font-medium">{page}</span> of <span className="font-medium">{totalPages}</span>
-            </span>
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              className="px-2 py-1 rounded border border-gray-300 bg-white disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+        )}
       </div>
       {violationComment && (
         <CreateViolationFromCommentModal
@@ -566,8 +652,16 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
               setViolationComment((prev) => (prev ? { ...prev, violation_id: newViolation.id } : prev));
             }
           }}
+          initialData={violationDraftData?.comment?.id === violationComment?.id ? violationDraftData?.evaluation : null}
         />
       )}
+
+      <ImageEvaluationModal
+        isOpen={showEvaluationModal}
+        onClose={() => setShowEvaluationModal(false)}
+        evaluationResult={evaluationResult}
+        onDraftViolation={handleDraftViolationFromEvaluation}
+      />
     </>
   );
 };

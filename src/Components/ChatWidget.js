@@ -119,7 +119,7 @@ export default function ChatWidget() {
       if (threadId) payload.threadId = threadId;
 
       try {
-        const response = await API.post('/chat', payload);
+        const response = await API.post('/assistant/chat', payload);
         const { reply, threadId: nextThreadId } = response?.data ?? {};
 
         if (typeof nextThreadId === 'string' && nextThreadId.startsWith('thread_')) {
