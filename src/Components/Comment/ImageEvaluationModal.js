@@ -63,7 +63,35 @@ export default function ImageEvaluationModal({
                       <div className="flex-1">
                         <p className="text-sm font-medium text-gray-900">
                           {violation.code_citation ? (
-                            <span className="font-mono text-indigo-700 mr-2">{violation.code_citation}</span>
+                            violation.code_id ? (
+                              <span className="flex items-center gap-2 mr-2">
+                                <CodeDrawerLink
+                                  codeId={violation.code_id}
+                                  className="font-mono text-indigo-700 hover:underline cursor-pointer"
+                                >
+                                  {violation.code_citation}
+                                </CodeDrawerLink>
+                                {violation.confidence && (
+                                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${violation.confidence >= 80 ? 'bg-green-100 text-green-800' :
+                                    violation.confidence >= 50 ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-red-100 text-red-800'
+                                    }`}>
+                                    {violation.confidence}%
+                                  </span>
+                                )}
+                                {violation.related_image_indices && violation.related_image_indices.length > 0 && (
+                                  <span className="ml-2 inline-flex items-center gap-1">
+                                    {violation.related_image_indices.map((idx) => (
+                                      <span key={idx} className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
+                                        Image {idx}
+                                      </span>
+                                    ))}
+                                  </span>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="font-mono text-indigo-700 mr-2">{violation.code_citation}</span>
+                            )
                           ) : null}
                           {violation.description}
                         </p>

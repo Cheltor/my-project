@@ -1,9 +1,9 @@
 // src/App.js
 /* eslint-disable no-unused-vars, react-hooks/exhaustive-deps */
 import React, { useEffect } from 'react';
-import useVisibilityAwareInterval from './Hooks/useVisibilityAwareInterval';
-import { apiFetch } from './api';
+// useVisibilityAwareInterval and apiFetch are now used in SettingsContext
 import { AuthProvider, useAuth } from './AuthContext';
+import { SettingsProvider, useSettings } from './SettingsContext';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react'; // added import
 import './App.css';
@@ -53,79 +53,33 @@ import AdminCodeSync from './Components/AdminCodeSync';
 import AdminCommentEditor from './Components/AdminCommentEditor';
 import AdminContactCommentEditor from './Components/AdminContactCommentEditor';
 import ChatWidget from './Components/ChatWidget';
-import AdminChat from './Components/AdminChat';
-import NotificationsPage from './Components/NotificationsPage';
+import AdminImageAnalysis from './Components/AdminImageAnalysis';
 import ScheduleCalendar from './Components/ScheduleCalendar';
 import MapPage from './Components/MapPage';
+import AdminChat from './Components/AdminChat';
+import NotificationsPage from './Components/NotificationsPage';
 import ResidentConcern from './Components/ResidentConcern';
-import LandingPage from './Components/LandingPage';
 import ForgotPassword from './Components/ForgotPassword';
 import ResetPassword from './Components/ResetPassword';
+import LandingPage from './Components/LandingPage';
 
 function App() {
   return (
     <AuthProvider>
-      <MainApp />
+      <SettingsProvider>
+        <MainApp />
+      </SettingsProvider>
     </AuthProvider>
   );
 }
 
 function MainApp() {
-  const { user, logout } = useAuth(); // Get user data and logout from context
-  const [chatEnabled, setChatEnabled] = React.useState(true);
+  const { user } = useAuth(); // Get user data and logout from context
   const [showUpdateNotice, setShowUpdateNotice] = React.useState(false);
   const updateNoticeTimeoutRef = React.useRef(null);
-
-  // Poll the chat-enabled setting while the tab is visible. Pause when hidden.
-  const fetchChatSetting = React.useCallback(async () => {
-    try {
-      const resp = await apiFetch('/settings/chat', {}, { onUnauthorized: logout });
-      if (resp && resp.ok) {
-        const data = await resp.json();
-        if (typeof data.enabled === 'boolean') setChatEnabled(data.enabled);
-      }
-    } catch (e) {
-      // ignore and leave current value
-    }
-  }, [logout]);
-
-  // run every 60s while visible; run immediately on mount/when visibility resumes
-  useVisibilityAwareInterval(fetchChatSetting, 60_000, { immediate: true });
-
-  useEffect(() => {
-    // subscribe to server-sent events for settings updates
-    let es;
-    try {
-      es = new EventSource(`${process.env.REACT_APP_API_URL}/settings/stream`);
-      es.onmessage = (ev) => {
-        try {
-          const data = JSON.parse(ev.data);
-          if (data && data.key === 'chat_enabled') {
-            setChatEnabled(Boolean(data.enabled));
-          }
-        } catch (e) {
-          // ignore
-        }
-      };
-    } catch (e) {
-      // ignore if SSE not available
-    }
-
-    return () => {
-      if (es) es.close();
-    };
-
-    // Make an initial request to get the CSRF token set in cookies
-    /*
-    API.get('/')
-      .then(response => {
-        console.log('CSRF token set:', document.cookie);
-      })
-      .catch(error => {
-        console.error('Error setting CSRF token:', error);
-      });
-    */
-  }, []);
+  // Settings are now managed by SettingsProvider, but we still need to handle SW updates
+  // and render the app structure.
+  // We will wrap MainApp in SettingsProvider in the App component.
 
   useEffect(() => {
     const handleSwUpdated = () => {
@@ -157,101 +111,119 @@ function MainApp() {
         </div>
       )}
       <Router>
-        {user ? (
-          <>
-            {chatEnabled && <ChatWidget />}
-            <Sidebar>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/due-list" element={<DueList />} />
-                <Route path="/sir" element={<Sir />} />
-                <Route path="/address/:id" element={<AddressDetail />} />
-                <Route path="/contacts" element={<Contacts />} />
-                <Route path="/contacts/:id" element={<ContactDetail />} />
-                <Route path="/violations" element={<Violations />} />
-                <Route path="/inspections" element={<Inspections />} />
-                <Route path="/businesses" element={<Businesses />} />
-                <Route path="/business/:id" element={<BusinessDetail />} />
-                <Route path="/calendar" element={<ScheduleCalendar />} />
-                <Route path="/map" element={<MapPage />} />
-                <Route path="/codes" element={<TownCode />} />
-                <Route path="/code/:id" element={<CodeDetail />} />
-                <Route path="/code/:id/edit" element={<CodeEdit />} />
-                <Route path="/licenses" element={<Licenses />} />
-                <Route path="/license/:id" element={<LicenseDetail />} />
-                <Route path="/permits" element={<Permits />} />
-                <Route path="/permit/:id" element={<PermitDetail />} />
-                <Route path="/complaints" element={<Complaints />} />
-                <Route path="/complaint/:id" element={<ComplaintDetail />} />
-                <Route path="/citations" element={<Citations />} />
-                <Route path="/citation/:id" element={<CitationDetailsPage />} />
-                <Route path="/violation/:id" element={<ViolationDetail />} />
-                <Route path="/inspection/:id" element={<InspectionDetail />} />
-                <Route path="/inspections/:id/conduct" element={<Conduct />} />
-                <Route path="/inspections/:id/review" element={<Review />} />
-                <Route path="/inspections/:id/unit/:unitId" element={<UnitDetail />} />
-                <Route path="/inspections/:id/new-unit" element={<NewUnit />} />
-                <Route path="/inspections/:id/area/:areaId" element={<AreaDetail />} />
-                <Route
-                  path="/inspections/:id/unit/:unitId/area/:areaId"
-                  element={<UnitAreaDetail />}
-                />
-                <Route path="/rooms" element={<Rooms />} />
-                <Route path="/rooms/:id" element={<RoomDetail />} />
-                <Route path="/users" element={<Users />} />
-                <Route path="/users/:id" element={<UserDetail />} />
-                <Route path="/address/:addressId/unit/:unitId" element={<AddressUnitDetail />} />
-                <Route path="/helpful" element={<Helpful />} />
-                <Route path="/new-address" element={<NewAddressPage />} />
-                <Route path="/vacancy-statuses" element={<VacancyStatusList />} />
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/code-sync" element={<AdminCodeSync />} />
-                <Route path="/admin/comments/:commentId/edit" element={<AdminCommentEditor />} />
-                <Route
-                  path="/admin/contact-comments/:commentId/edit"
-                  element={<AdminContactCommentEditor />}
-                />
-                <Route
-                  path="/admin-chat"
-                  element={
-                    <AdminChat
-                      user={user}
-                      chatEnabled={chatEnabled}
-                      setChatEnabled={setChatEnabled}
-                    />
-                  }
-                />
-                <Route path="/notifications" element={<NotificationsPage />} />
-                <Route path="/resident-concern" element={<ResidentConcern />} />
-                <Route path="/login" element={<Navigate to="/" replace />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                {/* Add more routes as needed */}
-              </Routes>
-            </Sidebar>
-          </>
-        ) : (
-          <main id="main-content" role="main" className="min-h-screen focus:outline-none">
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/resident-concern" element={<ResidentConcern />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="*" element={<LandingPage />} />
-              {/* Redirect any other route to landing if not authenticated */}
-            </Routes>
-          </main>
-        )}
-        <Analytics /> {/* render here so it's always mounted while Router is active */}
+        <AppRoutes />
       </Router>
     </>
   );
 }
 
+// Separated routes to use useSettings hook
+function AppRoutes() {
+  const { user } = useAuth();
+  const { chatEnabled, imageAnalysisEnabled, setChatEnabled, setImageAnalysisEnabled } = useSettings();
+
+  return (
+    <>
+      {user ? (
+        <>
+          {chatEnabled && <ChatWidget />}
+          <Sidebar>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/due-list" element={<DueList />} />
+              <Route path="/sir" element={<Sir />} />
+              <Route path="/address/:id" element={<AddressDetail />} />
+              <Route path="/contacts" element={<Contacts />} />
+              <Route path="/contacts/:id" element={<ContactDetail />} />
+              <Route path="/violations" element={<Violations />} />
+              <Route path="/inspections" element={<Inspections />} />
+              <Route path="/businesses" element={<Businesses />} />
+              <Route path="/business/:id" element={<BusinessDetail />} />
+              <Route path="/calendar" element={<ScheduleCalendar />} />
+              <Route path="/map" element={<MapPage />} />
+              <Route path="/codes" element={<TownCode />} />
+              <Route path="/code/:id" element={<CodeDetail />} />
+              <Route path="/code/:id/edit" element={<CodeEdit />} />
+              <Route path="/licenses" element={<Licenses />} />
+              <Route path="/license/:id" element={<LicenseDetail />} />
+              <Route path="/permits" element={<Permits />} />
+              <Route path="/permit/:id" element={<PermitDetail />} />
+              <Route path="/complaints" element={<Complaints />} />
+              <Route path="/complaint/:id" element={<ComplaintDetail />} />
+              <Route path="/citations" element={<Citations />} />
+              <Route path="/citation/:id" element={<CitationDetailsPage />} />
+              <Route path="/violation/:id" element={<ViolationDetail />} />
+              <Route path="/inspection/:id" element={<InspectionDetail />} />
+              <Route path="/inspections/:id/conduct" element={<Conduct />} />
+              <Route path="/inspections/:id/review" element={<Review />} />
+              <Route path="/inspections/:id/unit/:unitId" element={<UnitDetail />} />
+              <Route path="/inspections/:id/new-unit" element={<NewUnit />} />
+              <Route path="/inspections/:id/area/:areaId" element={<AreaDetail />} />
+              <Route
+                path="/inspections/:id/unit/:unitId/area/:areaId"
+                element={<UnitAreaDetail />}
+              />
+              <Route path="/rooms" element={<Rooms />} />
+              <Route path="/rooms/:id" element={<RoomDetail />} />
+              <Route path="/users" element={<Users />} />
+              <Route path="/users/:id" element={<UserDetail />} />
+              <Route path="/address/:addressId/unit/:unitId" element={<AddressUnitDetail />} />
+              <Route path="/helpful" element={<Helpful />} />
+              <Route path="/new-address" element={<NewAddressPage />} />
+              <Route path="/vacancy-statuses" element={<VacancyStatusList />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/code-sync" element={<AdminCodeSync />} />
+              <Route path="/admin/comments/:commentId/edit" element={<AdminCommentEditor />} />
+              <Route
+                path="/admin/contact-comments/:commentId/edit"
+                element={<AdminContactCommentEditor />}
+              />
+              <Route
+                path="/admin-chat"
+                element={
+                  <AdminChat
+                    user={user}
+                    chatEnabled={chatEnabled}
+                    setChatEnabled={setChatEnabled}
+                  />
+                }
+              />
+              <Route
+                path="/admin-image-analysis"
+                element={
+                  <AdminImageAnalysis
+                    user={user}
+                    enabled={imageAnalysisEnabled}
+                    setEnabled={setImageAnalysisEnabled}
+                  />
+                }
+              />
+              <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/resident-concern" element={<ResidentConcern />} />
+              <Route path="/login" element={<Navigate to="/" replace />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              {/* Add more routes as needed */}
+            </Routes>
+          </Sidebar>
+        </>
+      ) : (
+        <main id="main-content" role="main" className="min-h-screen focus:outline-none">
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/resident-concern" element={<ResidentConcern />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="*" element={<LandingPage />} />
+            {/* Redirect any other route to landing if not authenticated */}
+          </Routes>
+        </main>
+      )}
+      <Analytics /> {/* render here so it's always mounted while Router is active */}
+    </>
+  );
+}
+
 export default App;
-
-
-
-
