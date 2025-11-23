@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import CitationDetails from "./CitationDetails";
+import AlertModal from "./Common/AlertModal";
 
 export default function CitationDetailsPage() {
   const { id } = useParams();
@@ -9,6 +10,13 @@ export default function CitationDetailsPage() {
   const [error, setError] = useState(null);
   // Add loading state for status update
   const [submitting, setSubmitting] = useState(false);
+  const [alertState, setAlertState] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+    onClose: () => setAlertState((prev) => ({ ...prev, isOpen: false })),
+  });
 
   useEffect(() => {
     fetch(`${process.env.REACT_APP_API_URL}/citations/${id}`)
@@ -41,7 +49,13 @@ export default function CitationDetailsPage() {
       const updatedCitation = await updated.json();
       setCitation(updatedCitation);
     } catch (err) {
-      alert(err.message);
+      setAlertState({
+        isOpen: true,
+        title: "Error",
+        message: err.message,
+        type: "error",
+        onClose: () => setAlertState((prev) => ({ ...prev, isOpen: false })),
+      });
     } finally {
       setSubmitting(false);
     }
@@ -50,5 +64,16 @@ export default function CitationDetailsPage() {
   if (loading) return <div className="text-center mt-10">Loading...</div>;
   if (error) return <div className="text-red-500 text-center mt-10">{error}</div>;
 
-  return <CitationDetails citation={citation} submitting={submitting} onStatusChange={handleStatusChange} />;
+  return (
+    <>
+      <CitationDetails citation={citation} submitting={submitting} onStatusChange={handleStatusChange} />
+      <AlertModal
+        isOpen={alertState.isOpen}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        onClose={alertState.onClose}
+      />
+    </>
+  );
 }

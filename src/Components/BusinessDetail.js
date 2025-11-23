@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { formatPhoneNumber, toEasternLocaleDateString } from '../utils';
 import useContactLinking from '../Hooks/useContactLinking';
 import ContactLinkModal from './Contact/ContactLinkModal';
+import AlertModal from './Common/AlertModal';
 
 const BusinessDetails = () => {
   const { id } = useParams();
@@ -25,6 +26,15 @@ const BusinessDetails = () => {
     employee_count: ''
   });
   const [units, setUnits] = useState([]);
+
+  // Alert Modal State
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: null,
+  });
 
   // Contacts state
   const [showAddContact, setShowAddContact] = useState(false);
@@ -88,6 +98,31 @@ const BusinessDetails = () => {
     setShowAddContact(false);
     resetContactLinkState();
   }, [resetContactLinkState]);
+
+  const onRemoveContactClick = (contactId) => {
+    setAlertModal({
+      isOpen: true,
+      title: 'Remove Contact',
+      message: 'Are you sure you want to remove this contact from the business?',
+      type: 'warning',
+      onConfirm: async () => {
+        const success = await handleRemoveContact(contactId);
+        setAlertModal((prev) => ({ ...prev, isOpen: false }));
+        if (!success) {
+           // Show error modal if needed, or just let it fail silently as hook might log it
+           setTimeout(() => {
+               setAlertModal({
+                   isOpen: true,
+                   title: 'Error',
+                   message: 'Failed to remove contact.',
+                   type: 'error',
+                   onConfirm: null,
+               });
+           }, 300);
+        }
+      }
+    });
+  };
 
   if (loading) {
     return (
@@ -506,7 +541,7 @@ const BusinessDetails = () => {
                         <button
                           type="button"
                           className="inline-flex items-center justify-center rounded-full bg-rose-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2"
-                          onClick={() => handleRemoveContact(contact.id, { confirmMessage: 'Remove this contact from the business?' })}
+                          onClick={() => onRemoveContactClick(contact.id)}
                         >
                           Remove
                         </button>
@@ -551,6 +586,14 @@ const BusinessDetails = () => {
           </div>
         </div>
       </div>
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        onConfirm={alertModal.onConfirm}
+        onCancel={() => setAlertModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

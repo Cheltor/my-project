@@ -8,6 +8,7 @@ import NewViolationForm from '../Inspection/NewViolationForm';
 import { useAuth } from '../../AuthContext';
 import { toEasternLocaleString } from '../../utils';
 import LoadingSpinner from '../Common/LoadingSpinner';
+import AlertModal from '../Common/AlertModal';
 
 const RELATIVE_TIME_DIVISIONS = [
   { amount: 60, unit: 'second' },
@@ -75,6 +76,13 @@ const AddressUnitDetail = () => {
   const fileInputRef = useRef(null);
   const [commentsRefreshKey, setCommentsRefreshKey] = useState(0);
   const violationsRef = useRef(null);
+  const [alertState, setAlertState] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+    onClose: () => setAlertState((prev) => ({ ...prev, isOpen: false })),
+  });
 
   useEffect(() => {
     setLoading(true);
@@ -332,12 +340,24 @@ const AddressUnitDetail = () => {
                           const units = await res.json();
                           const duplicate = units.find((u) => u.number === newUnitNumber && u.id !== unit.id);
                           if (duplicate) {
-                            alert('A unit with this number already exists for this address.');
+                            setAlertState({
+                              isOpen: true,
+                              title: "Error",
+                              message: "A unit with this number already exists for this address.",
+                              type: "error",
+                              onClose: () => setAlertState((prev) => ({ ...prev, isOpen: false })),
+                            });
                             return;
                           }
                           setShowConfirm(true);
                         } catch (err) {
-                          alert('Error checking for duplicate unit number.');
+                          setAlertState({
+                            isOpen: true,
+                            title: "Error",
+                            message: "Error checking for duplicate unit number.",
+                            type: "error",
+                            onClose: () => setAlertState((prev) => ({ ...prev, isOpen: false })),
+                          });
                         }
                       }}
                     >
@@ -602,7 +622,13 @@ const AddressUnitDetail = () => {
                     setEditing(false);
                     setShowConfirm(false);
                   } catch (err) {
-                    alert('Error updating unit number.');
+                    setAlertState({
+                      isOpen: true,
+                      title: "Error",
+                      message: "Error updating unit number.",
+                      type: "error",
+                      onClose: () => setAlertState((prev) => ({ ...prev, isOpen: false })),
+                    });
                     setShowConfirm(false);
                   }
                 }}
@@ -740,6 +766,14 @@ const AddressUnitDetail = () => {
           </form>
         </div>
       </div>
+
+      <AlertModal
+        isOpen={alertState.isOpen}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        onClose={alertState.onClose}
+      />
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { toEasternLocaleString } from '../utils';
 import FileUploadInput from './Common/FileUploadInput';
+import AlertModal from './Common/AlertModal';
 
 const EXCLUDED_KEYS = new Set([
   'id',
@@ -94,6 +95,13 @@ const AdminCommentEditor = () => {
   const [fileQueue, setFileQueue] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: null,
+  });
 
   const apiBase = process.env.REACT_APP_API_URL;
 
@@ -224,29 +232,35 @@ const AdminCommentEditor = () => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Delete this comment? This action cannot be undone.')) {
-      return;
-    }
-    setDeleting(true);
-    setError('');
-    setStatus('');
-    setUploadStatus('');
-    try {
-      const response = await fetch(`${apiBase}/comments/${commentId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete the comment.');
-      }
-      setStatus('Comment deleted.');
-      setTimeout(() => {
-        navigate('/admin?resource=comments');
-      }, 600);
-    } catch (err) {
-      setError(err.message || 'Unable to delete the comment.');
-    } finally {
-      setDeleting(false);
-    }
+    setAlertModal({
+      isOpen: true,
+      title: 'Delete Comment',
+      message: 'Delete this comment? This action cannot be undone.',
+      type: 'warning',
+      onConfirm: async () => {
+        setAlertModal((prev) => ({ ...prev, isOpen: false }));
+        setDeleting(true);
+        setError('');
+        setStatus('');
+        setUploadStatus('');
+        try {
+          const response = await fetch(`${apiBase}/comments/${commentId}`, {
+            method: 'DELETE',
+          });
+          if (!response.ok) {
+            throw new Error('Failed to delete the comment.');
+          }
+          setStatus('Comment deleted.');
+          setTimeout(() => {
+            navigate('/admin?resource=comments');
+          }, 600);
+        } catch (err) {
+          setError(err.message || 'Unable to delete the comment.');
+        } finally {
+          setDeleting(false);
+        }
+      },
+    });
   };
 
   const handleUpload = async () => {
@@ -510,6 +524,14 @@ const AdminCommentEditor = () => {
         </form>
         </>
       ) : null}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        onConfirm={alertModal.onConfirm}
+        onCancel={() => setAlertModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

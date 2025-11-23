@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { toEasternLocaleDateString, toEasternLocaleString } from '../utils';
+import AlertModal from './Common/AlertModal';
 
 export default function LicenseDetail() {
   const { id } = useParams();
@@ -21,6 +22,13 @@ export default function LicenseDetail() {
     date_issued: '',
     expiration_date: '',
     fiscal_year: '',
+  });
+  const [alertState, setAlertState] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+    onClose: () => setAlertState((prev) => ({ ...prev, isOpen: false })),
   });
 
   useEffect(() => {
@@ -177,7 +185,13 @@ export default function LicenseDetail() {
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert(err.message || 'Failed to download');
+      setAlertState({
+        isOpen: true,
+        title: "Error",
+        message: err.message || 'Failed to download',
+        type: "error",
+        onClose: () => setAlertState((prev) => ({ ...prev, isOpen: false })),
+      });
     } finally {
       setIsDownloadingLicense(false);
     }
@@ -573,6 +587,14 @@ export default function LicenseDetail() {
           </aside>
         </div>
       </div>
+
+      <AlertModal
+        isOpen={alertState.isOpen}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        onClose={alertState.onClose}
+      />
     </div>
   );
 }
