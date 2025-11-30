@@ -4,6 +4,7 @@ import AsyncSelect from "react-select/async";
 import ContactSelection from "../Contact/ContactSelection";
 import FileUploadInput from "../Common/FileUploadInput";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import AlertModal from "../Common/AlertModal";
 
 const addressSelectStyles = {
   control: (provided, state) => ({
@@ -65,6 +66,14 @@ export default function NewBuildingPermit({
   const [addressError, setAddressError] = useState("");
   const [contactError, setContactError] = useState("");
   const hasNewContactInput = (formData.new_contact_name || "").trim().length > 0;
+  const [alertState, setAlertState] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+    onConfirm: null,
+    confirmText: "OK"
+  });
 
   const STEPS = [
     { key: "attachments", label: "Attachments" },
@@ -283,7 +292,14 @@ export default function NewBuildingPermit({
       }
     } catch (error) {
       console.error("Error creating inspection:", error);
-      alert("Error creating inspection.");
+      setAlertState({
+        isOpen: true,
+        title: "Error",
+        message: "Error creating inspection.",
+        type: "error",
+        confirmText: "OK",
+        onConfirm: () => setAlertState(prev => ({ ...prev, isOpen: false }))
+      });
     } finally {
       setSubmitting(false);
     }
@@ -609,11 +625,32 @@ export default function NewBuildingPermit({
           </div>
         </form>
       </div>
+
+      <AlertModal
+        isOpen={alertState.isOpen}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        confirmText={alertState.confirmText}
+        onClose={alertState.onConfirm || (() => setAlertState(prev => ({ ...prev, isOpen: false })))}
+      />
     </div>
   );
 
   if (!renderAsModal) {
-    return card;
+    return (
+      <>
+        {card}
+        <AlertModal
+          isOpen={alertState.isOpen}
+          title={alertState.title}
+          message={alertState.message}
+          type={alertState.type}
+          confirmText={alertState.confirmText}
+          onClose={alertState.onConfirm || (() => setAlertState(prev => ({ ...prev, isOpen: false })))}
+        />
+      </>
+    );
   }
 
   const handleBackdropClick = () => {
@@ -624,6 +661,14 @@ export default function NewBuildingPermit({
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/70 px-4 py-8 sm:py-12">
       <div className="absolute inset-0" onClick={handleBackdropClick} />
       <div className="relative z-10 flex w-full justify-center">{card}</div>
+      <AlertModal
+        isOpen={alertState.isOpen}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        confirmText={alertState.confirmText}
+        onClose={alertState.onConfirm || (() => setAlertState(prev => ({ ...prev, isOpen: false })))}
+      />
     </div>
   );
 }

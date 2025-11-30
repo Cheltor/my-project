@@ -21,6 +21,7 @@ import NewBusinessLicense from './Inspection/NewBusinessLicense';
 import NewMFLicense from './Inspection/NewMFLicense';
 import NewSFLicense from './Inspection/NewSFLicense';
 import ContactLinkModal from './Contact/ContactLinkModal';
+import AlertModal from './Common/AlertModal';
 
 // Debug: log imported component types to catch any undefined imports at runtime
 try {
@@ -41,6 +42,7 @@ try {
     NewMFLicense: typeof NewMFLicense,
     NewSFLicense: typeof NewSFLicense,
     ContactLinkModal: typeof ContactLinkModal,
+    AlertModal: typeof AlertModal,
   });
 } catch (e) {
   // ignore in non-browser environments
@@ -438,6 +440,15 @@ const AddressDetails = () => {
   const [quickReviewLater, setQuickReviewLater] = useState(false);
   const quickFormRef = useRef(null);
 
+  // Alert Modal state
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: null,
+  });
+
   const scrollQuickFormIntoView = useCallback(() => {
     const node = quickFormRef.current;
     if (!node) return;
@@ -584,6 +595,60 @@ const AddressDetails = () => {
     } finally {
       setAddingSuggestedBusinessId(null);
     }
+  };
+
+  const onRemoveContactClick = (contactId) => {
+    setAlertModal({
+      isOpen: true,
+      title: 'Remove Contact',
+      message: 'Are you sure you want to remove this contact from the address?',
+      type: 'warning',
+      onConfirm: async () => {
+        const success = await handleRemoveContact(contactId);
+        setAlertModal((prev) => ({ ...prev, isOpen: false }));
+        if (!success) {
+           setAlertModal({
+               isOpen: true,
+               title: 'Error',
+               message: 'Failed to remove contact.',
+               type: 'error',
+               onConfirm: null,
+           });
+        }
+      }
+    });
+  };
+
+  const onRemoveBusinessClick = (business) => {
+      setAlertModal({
+          isOpen: true,
+          title: 'Remove Business',
+          message: 'Are you sure you want to remove this business from the address?',
+          type: 'warning',
+          onConfirm: async () => {
+                setRemoveBusinessError(null);
+                setRemovingBusinessId(business.id);
+                setAlertModal(prev => ({ ...prev, isOpen: false }));
+                try {
+                    const res = await fetch(`${process.env.REACT_APP_API_URL}/businesses/${business.id}`, {
+                    method: 'DELETE',
+                    });
+                    if (!res.ok && res.status !== 204) throw new Error('Failed to remove business');
+                    setBusinesses((prev) => prev.filter((biz) => biz.id !== business.id));
+                } catch (err) {
+                    setRemoveBusinessError('Could not remove business.');
+                    setAlertModal({
+                        isOpen: true,
+                        title: 'Error',
+                        message: 'Could not remove business.',
+                        type: 'error',
+                        onConfirm: null,
+                    });
+                } finally {
+                    setRemovingBusinessId(null);
+                }
+          }
+      });
   };
 
   // Units sorted numerically for the sticky comment select
@@ -1470,7 +1535,7 @@ const AddressDetails = () => {
                     </div>
                     <button
                       className="ml-2 px-2 py-1 bg-red-400 text-white rounded text-xs"
-                      onClick={() => handleRemoveContact(contact.id, { confirmMessage: 'Remove this contact from the address?' })}
+                      onClick={() => onRemoveContactClick(contact.id)}
                     >
                       Remove
                     </button>
@@ -1684,22 +1749,7 @@ const AddressDetails = () => {
                         </span>
                         <button
                           type="button"
-                          onClick={async () => {
-                            if (!window.confirm('Remove this business from the address?')) return;
-                            setRemoveBusinessError(null);
-                            setRemovingBusinessId(b.id);
-                            try {
-                              const res = await fetch(`${process.env.REACT_APP_API_URL}/businesses/${b.id}`, {
-                                method: 'DELETE',
-                              });
-                              if (!res.ok && res.status !== 204) throw new Error('Failed to remove business');
-                              setBusinesses((prev) => prev.filter((biz) => biz.id !== b.id));
-                            } catch (err) {
-                              setRemoveBusinessError('Could not remove business.');
-                            } finally {
-                              setRemovingBusinessId(null);
-                            }
-                          }}
+                          onClick={() => onRemoveBusinessClick(b)}
                           disabled={removingBusinessId === b.id}
                           className="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                         >
@@ -2479,6 +2529,15 @@ const AddressDetails = () => {
           </form>
         </div>
       </div>
+
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        onConfirm={alertModal.onConfirm}
+        onCancel={() => setAlertModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

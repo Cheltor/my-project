@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { toEasternLocaleDateString } from '../utils';
+import AlertModal from './Common/AlertModal';
 
 const CodeDetail = () => {
   const { user } = useAuth();
@@ -11,6 +12,13 @@ const CodeDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: null,
+  });
 
   const violationsPerPage = 10;
 
@@ -51,24 +59,31 @@ const CodeDetail = () => {
   }, [violations, currentPage]);
 
   const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to delete this code?')) {
-      try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/codes/${id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${user.token}`,
-          },
-        });
+    setAlertModal({
+      isOpen: true,
+      title: 'Delete Code',
+      message: 'Are you sure you want to delete this code?',
+      type: 'warning',
+      onConfirm: async () => {
+        setAlertModal((prev) => ({ ...prev, isOpen: false }));
+        try {
+          const response = await fetch(`${process.env.REACT_APP_API_URL}/codes/${id}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${user.token}`,
+            },
+          });
 
-        if (!response.ok) {
-          throw new Error('Failed to delete the code.');
+          if (!response.ok) {
+            throw new Error('Failed to delete the code.');
+          }
+
+          navigate('/codes');
+        } catch (err) {
+          setError(err.message || 'An error occurred while deleting the code.');
         }
-
-        navigate('/codes');
-      } catch (err) {
-        setError(err.message || 'An error occurred while deleting the code.');
-      }
-    }
+      },
+    });
   };
 
   if (loading)
@@ -245,6 +260,14 @@ const CodeDetail = () => {
           <p className="text-center text-gray-600">No details available for this code.</p>
         )}
       </div>
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        onConfirm={alertModal.onConfirm}
+        onCancel={() => setAlertModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
 import AsyncSelect from "react-select/async";
 import ContactSelection from "../Contact/ContactSelection";
-import BusinessSelection from "../Business/BusinessSelection"; // Import the new component
-import NewUnit from "../Inspection/NewUnit"; // Import NewUnit instead of NewUnitForm
+import BusinessSelection from "../Business/BusinessSelection";
+import NewUnit from "../Inspection/NewUnit";
 import FileUploadInput from "../Common/FileUploadInput";
+import AlertModal from "../Common/AlertModal";
 
 export default function NewComplaint({
   isOpen = true,
@@ -23,7 +24,6 @@ export default function NewComplaint({
   const [businessRefAnswer, setBusinessRefAnswer] = useState('');
   const [unitRefAnswer, setUnitRefAnswer] = useState('');
 
-  // Form-ish state
   const [formData, setFormData] = useState({
     address_id: null,
     address_label: '',
@@ -39,17 +39,21 @@ export default function NewComplaint({
   });
   const [photos, setPhotos] = useState([]);
   const [previews, setPreviews] = useState([]);
-
-  // Admin assignment state
   const [onsUsers, setOnsUsers] = useState([]);
   const [assigneeId, setAssigneeId] = useState("");
-
-  // UI state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [descError, setDescError] = useState("");
   const [addressError, setAddressError] = useState("");
-  // Modal open state (keep hooks at top-level to satisfy rules-of-hooks)
+  const [alertState, setAlertState] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+    onConfirm: null,
+    confirmText: "OK"
+  });
+
   const [localOpen, setLocalOpen] = useState(isOpen);
   useEffect(() => {
     setLocalOpen(isOpen);
@@ -61,8 +65,6 @@ export default function NewComplaint({
 
   const open = onClose ? isOpen : localOpen;
   
-
-  // Wizard steps
   const STEPS = [
     { key: "photos", label: "Photos" },
     { key: "address", label: "Address" },
@@ -89,7 +91,6 @@ export default function NewComplaint({
   }, []);
 
   useEffect(() => {
-    // Load ONS users for admin (role 3)
     const loadOns = async () => {
       try {
         const resp = await fetch(`${process.env.REACT_APP_API_URL}/users/ons/`);
@@ -147,10 +148,7 @@ export default function NewComplaint({
     }
   };
 
-
-  // Build preview URLs for attached photos so we can show them in Review
   useEffect(() => {
-    // revoke previous urls
     setPreviews((prev) => {
       prev.forEach(p => p.url && URL.revokeObjectURL(p.url));
       return [];
@@ -167,7 +165,6 @@ export default function NewComplaint({
   }, [photos]);
 
   const handleNext = () => {
-    // Per-step validation
     if (currentStep === 'address') {
       if (!formData.address_id) {
         setAddressError('Please select an address.');
@@ -191,7 +188,6 @@ export default function NewComplaint({
 
   const handleFinalSubmit = async () => {
     setError(null);
-    // Validate address and description again before submission
     if (!formData.address_id) {
       setAddressError('Address is required.');
       setCurrentStepIndex(STEPS.findIndex(s => s.key === 'address'));
@@ -204,7 +200,6 @@ export default function NewComplaint({
     }
 
     try {
-      // Create contact if needed
       let effectiveContactId = formData.contact_id;
       const hasNewContact = !effectiveContactId && (formData.new_contact_name || '').trim().length > 0;
       if (hasNewContact) {
@@ -239,7 +234,6 @@ export default function NewComplaint({
       createForm.append('paid', formData.paid ? 'true' : 'false');
       if (photos.length > 0) photos.forEach((p) => createForm.append('attachments', p));
 
-      // Determine inspector assignment
       let inspectorId = null;
       if (user?.role === 3) inspectorId = assigneeId ? String(assigneeId) : null;
       else if (user?.role === 1 && user?.id) inspectorId = String(user.id);
@@ -253,12 +247,29 @@ export default function NewComplaint({
       if (!resp.ok) throw new Error('Failed to create complaint');
       const created = await resp.json();
       setPhotos([]);
-      alert('Complaint created successfully!');
-      if (created?.id) navigate(`/complaint/${created.id}`);
+
+      setAlertState({
+        isOpen: true,
+        title: "Success",
+        message: "Complaint created successfully!",
+        type: "success",
+        confirmText: "View Complaint",
+        onConfirm: () => {
+          setAlertState(prev => ({ ...prev, isOpen: false }));
+          if (created?.id) navigate(`/complaint/${created.id}`);
+        }
+      });
     } catch (err) {
       console.error('Error creating complaint:', err);
       setError(err.message || 'Error creating complaint');
-      alert('Error creating complaint.');
+      setAlertState({
+        isOpen: true,
+        title: "Error",
+        message: "Error creating complaint.",
+        type: "error",
+        confirmText: "OK",
+        onConfirm: () => setAlertState(prev => ({ ...prev, isOpen: false }))
+      });
     }
   };
 
@@ -272,8 +283,6 @@ export default function NewComplaint({
   if (error) return <p className="text-red-600">Error: {error}</p>;
 
   const headingId = `new-complaint-title`;
-
-  
 
   const card = (
     <div className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-xl">
@@ -602,6 +611,15 @@ export default function NewComplaint({
           </div>
         </form>
       </div>
+
+      <AlertModal
+        isOpen={alertState.isOpen}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        confirmText={alertState.confirmText}
+        onClose={alertState.onConfirm || (() => setAlertState(prev => ({ ...prev, isOpen: false })))}
+      />
     </div>
   );
 
@@ -609,6 +627,14 @@ export default function NewComplaint({
     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
       <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
       <div className="mt-6">{card}</div>
+      <AlertModal
+        isOpen={alertState.isOpen}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        confirmText={alertState.confirmText}
+        onClose={alertState.onConfirm || (() => setAlertState(prev => ({ ...prev, isOpen: false })))}
+      />
     </div>
   );
 
@@ -622,6 +648,14 @@ export default function NewComplaint({
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/70 px-4 py-8 sm:py-12">
       <div className="absolute inset-0" onClick={handleBackdropClick} />
       <div className="relative z-10 flex w-full justify-center">{card}</div>
+      <AlertModal
+        isOpen={alertState.isOpen}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        confirmText={alertState.confirmText}
+        onClose={alertState.onConfirm || (() => setAlertState(prev => ({ ...prev, isOpen: false })))}
+      />
     </div>
   );
 }

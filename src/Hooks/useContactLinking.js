@@ -177,11 +177,8 @@ const useContactLinking = (entitySegment, entityId) => {
   );
 
   const handleRemoveContact = useCallback(
-    async (contactId, { confirmMessage } = {}) => {
+    async (contactId) => {
       if (!contactsPath || !contactId) return false;
-      if (confirmMessage && !window.confirm(confirmMessage)) {
-        return false;
-      }
 
       try {
         const response = await fetch(`${contactsPath}/${contactId}`, {
@@ -191,7 +188,7 @@ const useContactLinking = (entitySegment, entityId) => {
         setContacts((prev) => prev.filter((contact) => contact.id !== contactId));
         return true;
       } catch (error) {
-        window.alert('Could not remove contact.');
+        console.error('Error removing contact:', error);
         return false;
       }
     },

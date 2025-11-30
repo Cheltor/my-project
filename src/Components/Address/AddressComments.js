@@ -4,6 +4,7 @@ import NewAddressComment from './NewAddressComment';
 import FullScreenPhotoViewer from '../FullScreenPhotoViewer';
 import CreateViolationFromCommentModal from '../Comment/CreateViolationFromCommentModal';
 import ImageEvaluationModal from '../Comment/ImageEvaluationModal';
+import AlertModal from '../Common/AlertModal';
 import {
   toEasternLocaleString,
   getAttachmentFilename,
@@ -50,6 +51,14 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
   const [evaluationError, setEvaluationError] = useState('');
   const [violationDraftData, setViolationDraftData] = useState(null); // Data to pass to CreateViolationFromCommentModal
 
+  // Alert Modal state
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: null,
+  });
   // Clear error on close
   useEffect(() => {
     if (!showEvaluationModal) {
@@ -213,7 +222,13 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
     } catch (err) {
       console.error('Image evaluation failed:', err);
       setEvaluationError(err.message || 'Failed to evaluate image');
-      alert(`Evaluation failed: ${err.message}`);
+      setAlertModal({
+        isOpen: true,
+        title: 'Evaluation Failed',
+        message: `Evaluation failed: ${err.message}`,
+        type: 'error',
+        onConfirm: () => setAlertModal((prev) => ({ ...prev, isOpen: false })),
+      });
     } finally {
       setEvaluatingImage(null);
     }
@@ -691,6 +706,15 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
         onClose={() => setShowEvaluationModal(false)}
         evaluationResult={evaluationResult}
         onDraftViolation={handleDraftViolationFromEvaluation}
+      />
+
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        onConfirm={alertModal.onConfirm}
+        onCancel={() => setAlertModal((prev) => ({ ...prev, isOpen: false }))}
       />
     </>
   );

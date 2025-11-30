@@ -8,6 +8,7 @@ import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
 import FileUploadInput from "./Common/FileUploadInput";
 import LoadingSpinner from "./Common/LoadingSpinner";
 import AbatementPhotoModal from "./AbatementPhotoModal";
+import AlertModal from "./Common/AlertModal";
 import {
   getAttachmentDisplayLabel,
   getAttachmentFilename,
@@ -102,6 +103,13 @@ const ViolationDetail = () => {
   const [extendDays, setExtendDays] = useState('');
   const [deadlineSubmitting, setDeadlineSubmitting] = useState(false);
   const [extendError, setExtendError] = useState(null);
+  const [alertState, setAlertState] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+    onClose: () => setAlertState((prev) => ({ ...prev, isOpen: false })),
+  });
 
   // Handler for extend deadline submit
   const handleExtendDeadline = async (e) => {
@@ -339,7 +347,13 @@ const ViolationDetail = () => {
         setCommentAttachments({});
       }
     } catch (err) {
-      alert(err.message);
+      setAlertState({
+        isOpen: true,
+        title: "Error",
+        message: err.message,
+        type: "error",
+        onClose: () => setAlertState((prev) => ({ ...prev, isOpen: false })),
+      });
     } finally {
       setSubmitting(false);
     }
@@ -436,7 +450,13 @@ const ViolationDetail = () => {
         setShowComplianceModal(false);
       }
     } catch (err) {
-      alert(err.message);
+      setAlertState({
+        isOpen: true,
+        title: "Error",
+        message: err.message,
+        type: "error",
+        onClose: () => setAlertState((prev) => ({ ...prev, isOpen: false })),
+      });
     } finally {
       setIsGeneratingCompliance(false);
     }
@@ -471,7 +491,13 @@ const ViolationDetail = () => {
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert(err.message);
+      setAlertState({
+        isOpen: true,
+        title: "Error",
+        message: err.message,
+        type: "error",
+        onClose: () => setAlertState((prev) => ({ ...prev, isOpen: false })),
+      });
     } finally {
       setIsDownloadingNotice(false);
     }
@@ -606,23 +632,38 @@ const ViolationDetail = () => {
 
   // Handler for reopening a violation (set status back to 0)
   const handleReopen = async () => {
-    if (!window.confirm("Are you sure you want to reopen this violation?")) return;
-    try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/reopen`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: 0 }) // 0 = Current/Open
-      });
-      if (!response.ok) throw new Error("Failed to reopen violation");
-      // Refetch violation to update UI
-      const updated = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}`);
-      setViolation(await updated.json());
-    } catch (err) {
-      alert(err.message);
-    }
+    setAlertState({
+      isOpen: true,
+      title: "Reopen Violation",
+      message: "Are you sure you want to reopen this violation?",
+      type: "warning",
+      onConfirm: async () => {
+        setAlertState((prev) => ({ ...prev, isOpen: false }));
+        try {
+          const response = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/reopen`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ status: 0 }) // 0 = Current/Open
+          });
+          if (!response.ok) throw new Error("Failed to reopen violation");
+          // Refetch violation to update UI
+          const updated = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}`);
+          setViolation(await updated.json());
+        } catch (err) {
+          setAlertState({
+            isOpen: true,
+            title: "Error",
+            message: err.message,
+            type: "error",
+            onClose: () => setAlertState((prev) => ({ ...prev, isOpen: false })),
+          });
+        }
+      },
+      onClose: () => setAlertState((prev) => ({ ...prev, isOpen: false })),
+    });
   };
 
     const violationTitle = formatViolationType(violation.violation_type) || 'Violation';
@@ -1195,6 +1236,15 @@ const ViolationDetail = () => {
           </div>
         </section>
       )}
+
+      <AlertModal
+        isOpen={alertState.isOpen}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        onClose={alertState.onClose}
+        onConfirm={alertState.onConfirm}
+      />
     </div>
   );
 
@@ -1250,8 +1300,3 @@ function ToggleCitationForm({ violationId, onCitationAdded, codes, showCitationF
 }
 
 export default ViolationDetail;
-
-
-
-
-

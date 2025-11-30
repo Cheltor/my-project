@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { toEasternLocaleString, formatPhoneNumber } from '../utils';
 import CodeDrawerLink from './Codes/CodeDrawerLink';
+import AlertModal from './Common/AlertModal';
 
 const RESOURCE_CONFIG = [
   {
@@ -221,6 +222,13 @@ const AdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [statusMessage, setStatusMessage] = useState('');
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: null,
+  });
 
   const resource = useMemo(
     () => RESOURCE_CONFIG.find((entry) => entry.key === resourceKey) || RESOURCE_CONFIG[0],
@@ -302,27 +310,33 @@ const AdminDashboard = () => {
   const fields = useMemo(() => resolveFields(currentItems, resource), [currentItems, resource]);
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
-      return;
-    }
-    setStatusMessage('');
-    try {
-      const authHeaders = {};
-      if (token) {
-        authHeaders['Authorization'] = `Bearer ${token}`;
-      }
-      const response = await fetch(`${process.env.REACT_APP_API_URL}${resource.deleteEndpoint(id)}`, {
-        method: 'DELETE',
-        headers: authHeaders,
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete the record.');
-      }
-      setItems((prev) => prev.filter((item) => item.id !== id));
-      setStatusMessage('Record deleted successfully.');
-    } catch (err) {
-      setStatusMessage(err.message || 'Unable to delete the record.');
-    }
+    setAlertModal({
+      isOpen: true,
+      title: 'Delete Record',
+      message: 'Are you sure you want to delete this record? This action cannot be undone.',
+      type: 'warning',
+      onConfirm: async () => {
+        setAlertModal((prev) => ({ ...prev, isOpen: false }));
+        setStatusMessage('');
+        try {
+          const authHeaders = {};
+          if (token) {
+            authHeaders['Authorization'] = `Bearer ${token}`;
+          }
+          const response = await fetch(`${process.env.REACT_APP_API_URL}${resource.deleteEndpoint(id)}`, {
+            method: 'DELETE',
+            headers: authHeaders,
+          });
+          if (!response.ok) {
+            throw new Error('Failed to delete the record.');
+          }
+          setItems((prev) => prev.filter((item) => item.id !== id));
+          setStatusMessage('Record deleted successfully.');
+        } catch (err) {
+          setStatusMessage(err.message || 'Unable to delete the record.');
+        }
+      },
+    });
   };
 
   if (!user || user.role !== 3) {
@@ -508,6 +522,14 @@ const AdminDashboard = () => {
           </button>
         </div>
       )}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        onConfirm={alertModal.onConfirm}
+        onCancel={() => setAlertModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };
