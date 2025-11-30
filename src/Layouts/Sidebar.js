@@ -49,6 +49,7 @@ const navigation = [
   { name: 'Admin Dashboard', href: '/admin', icon: Cog6ToothIcon, current: false, roles: ['Admin'] },
   { name: 'Admin Code Sync', href: '/admin/code-sync', icon: Cog6ToothIcon, current: false, roles: ['Admin'] },
   { name: 'Admin Chat', href: '/admin-chat', icon: Cog6ToothIcon, current: false, roles: ['Admin'] },
+  { name: 'Admin Image Analysis', href: '/admin-image-analysis', icon: Cog6ToothIcon, current: false, roles: ['Admin'] },
 ];
 
 function classNames(...classes) {
@@ -358,33 +359,33 @@ export default function Sidebar({ children }) {
                 </div>
                 {user && (
                   <div className="text-gray-400 text-sm">
-    {user.email}
-    {/* Show the role using the roleMapping object */}
-    <span> ({roleMapping[user.role]})</span>                  </div>
+                    {user.email}
+                    {/* Show the role using the roleMapping object */}
+                    <span> ({roleMapping[user.role]})</span>                  </div>
                 )}
                 <nav className="flex flex-1 flex-col">
                   <ul className="flex flex-1 flex-col gap-y-7">
                     <li>
                       <ul className="-mx-2 space-y-1">
-                      {navigation
-                        .filter(item => item.roles ? item.roles.includes(roleMapping[user.role]) : true)  // Handle undefined roles
-                        .map((item) => (
-                          <li key={item.name}>
-                            <Link
-                              to={item.href}
-                              onClick={() => setSidebarOpen(false)} // Close sidebar on click
-                              className={classNames(
-                                item.current
-                                  ? 'bg-gray-800 text-white'
-                                  : 'text-gray-400 hover:bg-gray-800 hover:text-white',
-                                'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6'
-                              )}
-                            >
-                              <item.icon aria-hidden="true" className="h-6 w-6 shrink-0" />
-                              {item.name}
-                            </Link>
-                          </li>
-                        ))}
+                        {navigation
+                          .filter(item => item.roles ? item.roles.includes(roleMapping[user.role]) : true)  // Handle undefined roles
+                          .map((item) => (
+                            <li key={item.name}>
+                              <Link
+                                to={item.href}
+                                onClick={() => setSidebarOpen(false)} // Close sidebar on click
+                                className={classNames(
+                                  item.current
+                                    ? 'bg-gray-800 text-white'
+                                    : 'text-gray-400 hover:bg-gray-800 hover:text-white',
+                                  'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6'
+                                )}
+                              >
+                                <item.icon aria-hidden="true" className="h-6 w-6 shrink-0" />
+                                {item.name}
+                              </Link>
+                            </li>
+                          ))}
 
                       </ul>
                     </li>
@@ -413,34 +414,34 @@ export default function Sidebar({ children }) {
               </Link>
             </div>
             {user && (
-                  <div className="text-gray-400 text-sm">
-    {user.email}
-    {/* Show the role using the roleMapping object */}
-    <span> ({roleMapping[user.role]})</span>                  </div>
-                )}
+              <div className="text-gray-400 text-sm">
+                {user.email}
+                {/* Show the role using the roleMapping object */}
+                <span> ({roleMapping[user.role]})</span>                  </div>
+            )}
             <nav className="flex flex-1 flex-col">
               <ul className="flex flex-1 flex-col gap-y-7">
                 <li>
                   <ul className="-mx-2 space-y-1">
-                  {navigation
-  .filter(item => item.roles ? item.roles.includes(roleMapping[user.role]) : true)  // Handle undefined roles
-  .map((item) => (
-    <li key={item.name}>
-      <Link
-        to={item.href}
-        onClick={() => setSidebarOpen(false)} // Close sidebar on click
-        className={classNames(
-          item.current
-            ? 'bg-gray-800 text-white'
-            : 'text-gray-400 hover:bg-gray-800 hover:text-white',
-          'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6'
-        )}
-      >
-        <item.icon aria-hidden="true" className="h-6 w-6 shrink-0" />
-        {item.name}
-      </Link>
-    </li>
-  ))}
+                    {navigation
+                      .filter(item => item.roles ? item.roles.includes(roleMapping[user.role]) : true)  // Handle undefined roles
+                      .map((item) => (
+                        <li key={item.name}>
+                          <Link
+                            to={item.href}
+                            onClick={() => setSidebarOpen(false)} // Close sidebar on click
+                            className={classNames(
+                              item.current
+                                ? 'bg-gray-800 text-white'
+                                : 'text-gray-400 hover:bg-gray-800 hover:text-white',
+                              'group flex gap-x-3 rounded-md p-2 text-sm font-semibold leading-6'
+                            )}
+                          >
+                            <item.icon aria-hidden="true" className="h-6 w-6 shrink-0" />
+                            {item.name}
+                          </Link>
+                        </li>
+                      ))}
 
                   </ul>
                 </li>
@@ -492,24 +493,23 @@ export default function Sidebar({ children }) {
                   autoComplete="off" // Disable browser's autocomplete
                 />
               </form>
-              
+
 
               {/* Dropdown Search Results */}
               {showDropdown && (
                 <div className="absolute w-full bg-white shadow-md rounded-md z-50 mt-1">
                   <ul className="dropdown-list max-h-60 overflow-auto">
-          {filteredAddresses.map((address, index) => (
+                    {filteredAddresses.map((address, index) => (
                       <li
                         key={address.id}
                         onMouseDown={() => handleDropdownSelect(address)}
-                        className={`cursor-pointer p-2 hover:bg-gray-200 ${
-                          index === activeIndex ? 'bg-gray-200' : ''
-                        }`}
+                        className={`cursor-pointer p-2 hover:bg-gray-200 ${index === activeIndex ? 'bg-gray-200' : ''
+                          }`}
                       >
-            {address.property_name ? address.property_name + ' - ' : ''}
-            {address.combadd}
-            {address.aka ? ` (AKA: ${address.aka})` : ''}
-            {address.ownername ? ` - ${address.ownername}` : ''}
+                        {address.property_name ? address.property_name + ' - ' : ''}
+                        {address.combadd}
+                        {address.aka ? ` (AKA: ${address.aka})` : ''}
+                        {address.ownername ? ` - ${address.ownername}` : ''}
                       </li>
                     ))}
                   </ul>

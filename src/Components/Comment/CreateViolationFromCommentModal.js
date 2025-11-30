@@ -45,6 +45,7 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
   const [notes, setNotes] = useState(defaultNotes(comment));
   const [onsUsers, setOnsUsers] = useState([]);
   const [assigneeId, setAssigneeId] = useState('');
+  const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [error, setError] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [createdViolation, setCreatedViolation] = useState(null);
@@ -184,6 +185,17 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
       setNotes(defaultNotes(comment));
     }
 
+    // Initialize selected photos with all available photos
+    if (comment?.photos && Array.isArray(comment.photos)) {
+      const allFilenames = comment.photos.map((p) => {
+        if (typeof p === 'string') return p;
+        return getAttachmentFilename(p, 'unknown');
+      });
+      setSelectedPhotos(allFilenames);
+    } else {
+      setSelectedPhotos([]);
+    }
+
     setError('');
     setStatusMessage('');
     setCreatedViolation(null);
@@ -226,6 +238,15 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
     }
     setError('');
     setCurrentStepIndex((index) => Math.min(STEPS.length - 1, index + 1));
+  };
+
+  const handleTogglePhoto = (filename) => {
+    setSelectedPhotos((prev) => {
+      if (prev.includes(filename)) {
+        return prev.filter((f) => f !== filename);
+      }
+      return [...prev, filename];
+    });
   };
 
   const handleSubmit = async (event) => {
@@ -289,6 +310,14 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
       comment: resolvedNotes,
       unit_id: unitId ? Number(unitId) : undefined,
     };
+
+    // If not all photos are selected, send keep_filenames
+    if (comment?.photos && Array.isArray(comment.photos)) {
+      const totalPhotos = comment.photos.length;
+      if (selectedPhotos.length < totalPhotos) {
+        payload.keep_filenames = selectedPhotos;
+      }
+    }
 
     if (typeof resolvedUserId === 'number' && !Number.isNaN(resolvedUserId)) {
       payload.user_id = resolvedUserId;
@@ -362,8 +391,24 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
               )}
               {commentAttachments.length > 0 && (
                 <div className="mt-4">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Attachments
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Attachments ({selectedPhotos.length}/{commentAttachments.length} selected)
+                    </div>
+                    {selectedPhotos.length < commentAttachments.length && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const all = commentAttachments.map((p) =>
+                            typeof p === 'string' ? p : getAttachmentFilename(p, 'unknown')
+                          );
+                          setSelectedPhotos(all);
+                        }}
+                        className="text-xs text-indigo-600 hover:underline"
+                      >
+                        Select all
+                      </button>
+                    )}
                   </div>
                   <div className="mt-2 grid gap-3 sm:grid-cols-2 md:grid-cols-3">
                     {commentAttachments.map((attachment, index) => {
@@ -388,41 +433,50 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
                           ? (filename.split('.').pop() || 'FILE').toUpperCase()
                           : getAttachmentDisplayLabel(attachmentObj);
 
+                      const isSelected = selectedPhotos.includes(filename);
+
                       return (
-                        <div key={url || index} className="flex flex-col gap-2">
+                        <div
+                          key={url || index}
+                          className={`relative flex flex-col gap-2 rounded border p-2 transition ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 bg-white opacity-75'
+                            }`}
+                        >
+                          <div className="absolute right-2 top-2 z-10">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleTogglePhoto(filename)}
+                              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                          </div>
                           {imageLike ? (
-                            <a
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block overflow-hidden rounded border border-gray-200"
-                            >
+                            <div className="block overflow-hidden rounded border border-gray-200">
                               <img
                                 src={url}
                                 alt={filename}
-                                className="h-28 w-full object-cover transition hover:scale-105"
+                                className="h-28 w-full object-cover"
+                                onClick={() => handleTogglePhoto(filename)}
                               />
-                            </a>
+                            </div>
                           ) : (
+                            <div
+                              className="flex h-28 flex-col items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-600"
+                              onClick={() => handleTogglePhoto(filename)}
+                            >
+                              <span className="text-2xl font-semibold">{displayLabel}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between">
                             <a
                               href={url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex h-28 flex-col items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-600 transition hover:bg-gray-100"
+                              className="truncate text-xs text-indigo-600 hover:underline"
+                              title={filename}
                             >
-                              <span className="text-2xl font-semibold">{displayLabel}</span>
-                              <span className="mt-1 text-xs">Open</span>
+                              {filename}
                             </a>
-                          )}
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="truncate text-xs text-indigo-600 hover:underline"
-                            title={filename}
-                          >
-                            {filename}
-                          </a>
+                          </div>
                         </div>
                       );
                     })}
@@ -572,7 +626,7 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
                 )}
                 {Array.isArray(comment?.photos) && comment.photos.length > 0 && (
                   <li>
-                    <span className="font-medium">Attachments:</span> {comment.photos.length} (will be copied)
+                    <span className="font-medium">Attachments:</span> {selectedPhotos.length} selected (of {comment.photos.length})
                   </li>
                 )}
                 {isAdmin && (

@@ -12,6 +12,7 @@ import {
   getAttachmentDisplayLabel
 } from '../../utils';
 import { useAuth } from '../../AuthContext';
+import { useSettings } from '../../SettingsContext';
 
 // Utility function to format the date
 const formatDate = (dateString) => {
@@ -58,8 +59,15 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
     type: 'info',
     onConfirm: null,
   });
+  // Clear error on close
+  useEffect(() => {
+    if (!showEvaluationModal) {
+      setEvaluationError('');
+    }
+  }, [showEvaluationModal]);
 
   const { token, user } = useAuth() || {};
+  const { imageAnalysisEnabled } = useSettings();
 
   const startEditPage = () => { setPageInputVal(String(page)); setPageError(''); setEditingPage(true); };
   const applyPageInput = () => {
@@ -168,21 +176,25 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
     }
   };
 
-  const handleEvaluateImage = async (url, comment) => {
-    if (!url) return;
-    setEvaluatingImage(url);
+  const handleEvaluateImage = async (urls, comment) => {
+    const urlList = Array.isArray(urls) ? urls : [urls];
+    if (!urlList.length) return;
+
+    // Use the first URL for the loading state if multiple
+    setEvaluatingImage(urlList[0]);
     setEvaluationError('');
     setEvaluationResult(null);
 
     try {
-      // 1. Fetch the image blob
-      const imageResp = await fetch(url);
-      if (!imageResp.ok) throw new Error('Failed to fetch image data');
-      const blob = await imageResp.blob();
-
-      // 2. Send to evaluation endpoint
       const formData = new FormData();
-      formData.append('file', blob, 'image.jpg'); // Filename doesn't matter much here
+
+      // Fetch all images
+      await Promise.all(urlList.map(async (url, index) => {
+        const imageResp = await fetch(url);
+        if (!imageResp.ok) throw new Error(`Failed to fetch image data for ${url}`);
+        const blob = await imageResp.blob();
+        formData.append('files', blob, `image-${index}.jpg`);
+      }));
 
       const evalResp = await fetch(`${process.env.REACT_APP_API_URL}/assistant/evaluate-image`, {
         method: 'POST',
@@ -545,6 +557,21 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
                       >
                         Download attachments ({comment.photos.length})
                       </button>
+                      {imageAnalysisEnabled && comment.photos.filter(p => isImageAttachment(p)).length > 1 && (
+                        <button
+                          type="button"
+                          className="text-indigo-600 hover:underline text-sm font-medium ml-4"
+                          onClick={() => {
+                            const imageUrls = comment.photos
+                              .filter(p => isImageAttachment(p))
+                              .map(p => p?.url || p);
+                            handleEvaluateImage(imageUrls, comment);
+                          }}
+                          disabled={!!evaluatingImage}
+                        >
+                          {evaluatingImage ? 'Evaluating...' : 'Evaluate All'}
+                        </button>
+                      )}
                     </div>
                     <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {comment.photos.map((attachment, index) => {
@@ -575,21 +602,23 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
                                     </div>
                                   )}
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEvaluateImage(url, comment);
-                                  }}
-                                  disabled={!!evaluatingImage}
-                                  className="absolute top-1 right-1 rounded-full bg-white/90 p-1 text-indigo-600 shadow-sm hover:bg-white hover:text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                  title="Evaluate with AI"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                                    <path d="M16.5 7.5h-9v9h9v-9z" />
-                                    <path fillRule="evenodd" d="M8.25 2.25A.75.75 0 019 3v.75h2.25V3a.75.75 0 011.5 0v.75H15V3a.75.75 0 011.5 0v.75h.75a3 3 0 013 3v.75H21A.75.75 0 0121 9h-.75v2.25H21a.75.75 0 010 1.5h-.75V15H21a.75.75 0 010 1.5h-.75v.75a3 3 0 01-3 3h-.75V21a.75.75 0 01-1.5 0v-.75H12.75V21a.75.75 0 01-1.5 0v-.75H9V21a.75.75 0 01-1.5 0v-.75h-.75a3 3 0 01-3-3v-.75H3A.75.75 0 013 15h.75v-2.25H3a.75.75 0 010-1.5h.75V9H3a.75.75 0 010-1.5h.75v-.75a3 3 0 013-3h.75V3a.75.75 0 01.75-.75zM6 6.75A.75.75 0 016.75 6h10.5a.75.75 0 01.75.75v10.5a.75.75 0 01-.75.75H6.75a.75.75 0 01-.75-.75V6.75z" clipRule="evenodd" />
-                                  </svg>
-                                </button>
+                                {imageAnalysisEnabled && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEvaluateImage(url, comment);
+                                    }}
+                                    disabled={!!evaluatingImage}
+                                    className="absolute top-1 right-1 rounded-full bg-white/90 p-1 text-indigo-600 shadow-sm hover:bg-white hover:text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    title="Evaluate with AI"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                      <path d="M16.5 7.5h-9v9h9v-9z" />
+                                      <path fillRule="evenodd" d="M8.25 2.25A.75.75 0 019 3v.75h2.25V3a.75.75 0 011.5 0v.75H15V3a.75.75 0 011.5 0v.75h.75a3 3 0 013 3v.75H21A.75.75 0 0121 9h-.75v2.25H21a.75.75 0 010 1.5h-.75V15H21a.75.75 0 010 1.5h-.75v.75a3 3 0 01-3 3h-.75V21a.75.75 0 01-1.5 0v-.75H12.75V21a.75.75 0 01-1.5 0v-.75H9V21a.75.75 0 01-1.5 0v-.75h-.75a3 3 0 01-3-3v-.75H3A.75.75 0 013 15h.75v-2.25H3a.75.75 0 010-1.5h.75V9H3a.75.75 0 010-1.5h.75v-.75a3 3 0 013-3h.75V3a.75.75 0 01.75-.75zM6 6.75A.75.75 0 016.75 6h10.5a.75.75 0 01.75.75v10.5a.75.75 0 01-.75.75H6.75a.75.75 0 01-.75-.75V6.75z" clipRule="evenodd" />
+                                    </svg>
+                                  </button>
+                                )}
                               </div>
                             ) : (
                               <a
