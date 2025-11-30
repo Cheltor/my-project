@@ -96,6 +96,19 @@ const ComplaintDetail = () => {
   const [contactError, setContactError] = useState(null);
   const [contactSuccess, setContactSuccess] = useState("");
 
+  // Triage State
+  const [triageData, setTriageData] = useState({
+    violation_subtype: "",
+    severity: "",
+    is_imminent_threat: false,
+    duplicate_of_id: "",
+  });
+  const [triageSaving, setTriageSaving] = useState(false);
+  const [triageMessage, setTriageMessage] = useState("");
+  const [potentialDuplicates, setPotentialDuplicates] = useState([]);
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+  const [expandedDuplicateId, setExpandedDuplicateId] = useState(null);
+
   const buildContactOption = useCallback((contact) => {
     if (!contact || contact.id == null) return null;
     const parts = [];
@@ -320,6 +333,14 @@ const ComplaintDetail = () => {
       setAssigneeId(complaint.inspector_id ? String(complaint.inspector_id) : "");
     }
 
+    // Initialize Triage Data
+    setTriageData({
+      violation_subtype: complaint.violation_subtype || "",
+      severity: complaint.severity || "",
+      is_imminent_threat: complaint.is_imminent_threat || false,
+      duplicate_of_id: complaint.duplicate_of_id ? String(complaint.duplicate_of_id) : "",
+    });
+
     (async () => {
       try {
         if (complaint?.unit_id) {
@@ -506,6 +527,63 @@ const ComplaintDetail = () => {
     }
   };
 
+  const handleTriageChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setTriageData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleTriageSave = async () => {
+    setTriageSaving(true);
+    setTriageMessage("");
+    try {
+      const payload = {
+        violation_subtype: triageData.violation_subtype || null,
+        severity: triageData.severity || null,
+        is_imminent_threat: triageData.is_imminent_threat,
+        duplicate_of_id: triageData.duplicate_of_id ? parseInt(triageData.duplicate_of_id) : null,
+      };
+
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/triage`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!resp.ok) throw new Error("Failed to update triage info");
+      const updated = await resp.json();
+      setComplaint(updated);
+      setTriageMessage("Triage info saved");
+    } catch (e) {
+      setTriageMessage(e.message || "Failed to save triage info");
+    } finally {
+      setTriageSaving(false);
+    }
+  };
+
+  const checkDuplicates = async () => {
+    if (!complaint?.address_id) return;
+    setCheckingDuplicates(true);
+    try {
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/complaints/address/${complaint.address_id}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        // Filter out current complaint
+        const others = (Array.isArray(data) ? data : []).filter((c) => c.id !== Number(id));
+        setPotentialDuplicates(others);
+      }
+    } catch (_) {
+      /* ignore */
+    } finally {
+      setCheckingDuplicates(false);
+    }
+  };
+
   // Load inspection comments for this complaint
   useEffect(() => {
     if (!id) return;
@@ -559,7 +637,7 @@ const ComplaintDetail = () => {
         try {
           const payload = await resp.json();
           if (payload?.detail) msg = payload.detail;
-        } catch (_) {}
+        } catch (_) { }
         throw new Error(msg);
       }
       const created = await resp.json();
@@ -685,8 +763,8 @@ const ComplaintDetail = () => {
                   {showContactForm
                     ? "Hide update form"
                     : complaint.contact
-                    ? "Change contact"
-                    : "Assign contact"}
+                      ? "Change contact"
+                      : "Assign contact"}
                 </button>
               </div>
               {showContactForm && (
@@ -796,6 +874,132 @@ const ComplaintDetail = () => {
             </p>
 
             <div className="mt-6 space-y-8">
+              {/* Triage Section */}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Triage & Classification</h3>
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700">Violation Sub-type</label>
+                    <select
+                      name="violation_subtype"
+                      value={triageData.violation_subtype}
+                      onChange={handleTriageChange}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    >
+                      <option value="">Select...</option>
+                      <option value="Structural">Structural</option>
+                      <option value="Sanitation">Sanitation</option>
+                      <option value="Electrical">Electrical</option>
+                      <option value="Plumbing">Plumbing</option>
+                      <option value="HVAC">HVAC</option>
+                      <option value="Fire Safety">Fire Safety</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700">Severity</label>
+                    <select
+                      name="severity"
+                      value={triageData.severity}
+                      onChange={handleTriageChange}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    >
+                      <option value="">Select...</option>
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                      <option value="Critical">Critical</option>
+                    </select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <div className="flex items-center">
+                      <input
+                        id="is_imminent_threat"
+                        name="is_imminent_threat"
+                        type="checkbox"
+                        checked={triageData.is_imminent_threat}
+                        onChange={handleTriageChange}
+                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <label htmlFor="is_imminent_threat" className="ml-2 block text-sm text-slate-900">
+                        Imminent Threat?
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-medium text-slate-700">Duplicate Of (ID)</label>
+                      <button
+                        type="button"
+                        onClick={checkDuplicates}
+                        className="text-xs text-indigo-600 hover:text-indigo-500"
+                      >
+                        {checkingDuplicates ? "Checking..." : "Check for Duplicates"}
+                      </button>
+                    </div>
+                    <input
+                      type="number"
+                      name="duplicate_of_id"
+                      value={triageData.duplicate_of_id}
+                      onChange={handleTriageChange}
+                      placeholder="Enter ID of original complaint"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    />
+                    {potentialDuplicates.length > 0 && (
+                      <div className="mt-2 rounded-md bg-yellow-50 p-2 text-xs text-yellow-800">
+                        <p className="font-medium">Potential Duplicates at this address:</p>
+                        <ul className="mt-1 list-disc pl-4 space-y-1">
+                          {potentialDuplicates.map(d => (
+                            <li key={d.id} className="text-xs">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedDuplicateId(expandedDuplicateId === d.id ? null : d.id)}
+                                  className="font-semibold text-indigo-700 hover:underline"
+                                >
+                                  #{d.id}
+                                </button>
+                                <span className="text-yellow-900">- {d.status} ({new Date(d.created_at).toLocaleDateString()})</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setTriageData(prev => ({ ...prev, duplicate_of_id: String(d.id) }))}
+                                  className="ml-auto text-indigo-600 underline"
+                                >
+                                  Link
+                                </button>
+                              </div>
+                              {expandedDuplicateId === d.id && (
+                                <div className="mt-1 rounded border border-yellow-200 bg-white/60 p-2">
+                                  <div className="grid grid-cols-[auto,1fr] gap-x-2 gap-y-1">
+                                    <span className="font-medium text-yellow-900">Type:</span>
+                                    <span className="text-yellow-800">{d.reported_violation_type || d.violation_subtype || 'N/A'}</span>
+
+                                    <span className="font-medium text-yellow-900">Desc:</span>
+                                    <span className="text-yellow-800 line-clamp-3">{d.description || 'No description'}</span>
+                                  </div>
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={handleTriageSave}
+                    disabled={triageSaving}
+                    className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50"
+                  >
+                    {triageSaving ? "Saving..." : "Save Triage Info"}
+                  </button>
+                  {triageMessage && <span className="text-sm text-emerald-600">{triageMessage}</span>}
+                </div>
+              </div>
+
               <div>
                 <h3 className="text-sm font-semibold text-slate-900">Inspector Assignment</h3>
                 <p className="mt-1 text-sm text-slate-500">Assign or reassign the primary inspector for this complaint.</p>

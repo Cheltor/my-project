@@ -36,6 +36,8 @@ export default function NewComplaint({
     new_contact_email: "",
     new_contact_phone: "",
     paid: false,
+    channel: "Phone", // Default to Phone as manual entry implies it
+    reported_violation_type: "",
   });
   const [photos, setPhotos] = useState([]);
   const [previews, setPreviews] = useState([]);
@@ -60,7 +62,7 @@ export default function NewComplaint({
   };
 
   const open = onClose ? isOpen : localOpen;
-  
+
 
   // Wizard steps
   const STEPS = [
@@ -237,6 +239,8 @@ export default function NewComplaint({
       if (effectiveContactId) createForm.append('contact_id', String(effectiveContactId));
       if (formData.business_id) createForm.append('business_id', String(formData.business_id));
       createForm.append('paid', formData.paid ? 'true' : 'false');
+      if (formData.channel) createForm.append('channel', formData.channel);
+      if (formData.reported_violation_type) createForm.append('reported_violation_type', formData.reported_violation_type);
       if (photos.length > 0) photos.forEach((p) => createForm.append('attachments', p));
 
       // Determine inspector assignment
@@ -273,7 +277,7 @@ export default function NewComplaint({
 
   const headingId = `new-complaint-title`;
 
-  
+
 
   const card = (
     <div className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-xl">
@@ -523,6 +527,40 @@ export default function NewComplaint({
 
           {currentStep === 'details' && (
             <div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-4">
+                <div>
+                  <label htmlFor="channel" className="block text-sm font-medium text-gray-700">Entry Channel</label>
+                  <select
+                    id="channel"
+                    name="channel"
+                    value={formData.channel}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  >
+                    <option value="Phone">Phone</option>
+                    <option value="Email">Email</option>
+                    <option value="SMS">SMS</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="reported_violation_type" className="block text-sm font-medium text-gray-700">Violation Type</label>
+                  <select
+                    id="reported_violation_type"
+                    name="reported_violation_type"
+                    value={formData.reported_violation_type}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  >
+                    <option value="">Select Type...</option>
+                    <option value="Property Maintenance">Property Maintenance</option>
+                    <option value="Trash/Debris">Trash/Debris</option>
+                    <option value="Noise">Noise</option>
+                    <option value="Permit Issue">Permit Issue</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="mb-4">
                 <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description <span className="text-red-600" aria-hidden> *</span></label>
                 <textarea
@@ -549,6 +587,8 @@ export default function NewComplaint({
                 <div><span className="font-medium">Unit:</span> {formData.unit_id || 'None'}</div>
                 <div><span className="font-medium">Business:</span> {formData.business_id || 'None'}</div>
                 <div><span className="font-medium">Contact:</span> {formData.contact_id || formData.new_contact_name || 'None'}</div>
+                <div><span className="font-medium">Channel:</span> {formData.channel}</div>
+                <div><span className="font-medium">Type:</span> {formData.reported_violation_type || 'Not specified'}</div>
                 <div><span className="font-medium">Description:</span> {(formData.description || '').slice(0, 200)}</div>
                 <div>
                   <div className="font-medium">Attachments:</div>
@@ -560,7 +600,7 @@ export default function NewComplaint({
                             <button
                               type="button"
                               onClick={() => {
-                                try { if (p.url) URL.revokeObjectURL(p.url); } catch (e) {}
+                                try { if (p.url) URL.revokeObjectURL(p.url); } catch (e) { }
                                 setPhotos((prev) => prev.filter((_, i) => i !== idx));
                               }}
                               aria-label={`Remove ${p.name}`}
