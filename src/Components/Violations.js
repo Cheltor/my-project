@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { Link } from 'react-router-dom';
-import { toEasternLocaleDateString, toEasternLocaleString } from '../utils';
+import { toEasternLocaleDateString, toEasternLocaleString, filterActiveOnsUsers } from '../utils';
 
 export default function Violations() {
   const { user } = useAuth();
@@ -60,7 +60,7 @@ export default function Violations() {
         }
         const data = await response.json();
         if (isActive) {
-          setOnsUsers(data);
+          setOnsUsers(filterActiveOnsUsers(data));
         }
       } catch {
         if (isActive) {

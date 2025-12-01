@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { getRoleName, roles, formatPhoneNumber, toEasternLocaleDateString } from './../utils'; // Import the utility function and roles
+import { getRoleName, roles, formatPhoneNumber, toEasternLocaleDateString, isUserActive } from './../utils'; // Import the utility function and roles
 
 const UserDetail = () => {
   const { id } = useParams(); // Extract the user ID from the URL
@@ -19,7 +19,9 @@ const UserDetail = () => {
         return response.json();
       })
       .then((data) => {
-        setUser(data); // Set the fetched user details
+        // Default to active when the API doesn't send an explicit value
+        const normalized = data && typeof data.active === 'undefined' ? { ...data, active: true } : data;
+        setUser(normalized); // Set the fetched user details
         setLoading(false);
       })
       .catch((error) => {
@@ -31,6 +33,10 @@ const UserDetail = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setUser({ ...user, [name]: value });
+  };
+
+  const handleActiveToggle = (e) => {
+    setUser({ ...user, active: e.target.checked });
   };
 
   const handleSave = () => {
@@ -132,6 +138,29 @@ const UserDetail = () => {
                 </select>
               ) : (
                 <span className="ml-2">{getRoleName(user.role)}</span>
+              )}
+            </div>
+            <div className="text-sm text-gray-600 flex items-center">
+              <strong>Status:</strong>
+              {isEditing ? (
+                <label className="ml-2 inline-flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    name="active"
+                    checked={isUserActive(user)}
+                    onChange={handleActiveToggle}
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  Active (can receive assignments)
+                </label>
+              ) : isUserActive(user) ? (
+                <span className="ml-2 inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                  Active
+                </span>
+              ) : (
+                <span className="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
+                  Inactive
+                </span>
               )}
             </div>
           </div>

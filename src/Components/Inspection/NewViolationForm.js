@@ -5,6 +5,7 @@ import CodeSelect from "../CodeSelect";
 import CodeDrawerLink from "../Codes/CodeDrawerLink";
 import { useAuth } from "../../AuthContext";
 import FileUploadInput from "../Common/FileUploadInput";
+import { filterActiveOnsUsers } from "../../utils";
 
 export default function NewViolationForm({
   onCreated,
@@ -163,7 +164,7 @@ export default function NewViolationForm({
         const resp = await fetch(`${process.env.REACT_APP_API_URL}/users/ons/`);
         if (!resp.ok) return;
         const data = await resp.json();
-        setOnsUsers(Array.isArray(data) ? data : []);
+        setOnsUsers(filterActiveOnsUsers(data));
       } catch {
         // best-effort; ignore errors
       }

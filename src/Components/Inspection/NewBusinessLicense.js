@@ -5,6 +5,7 @@ import BusinessSelection from "../Business/BusinessSelection";
 import NewBusinessForm from "../Business/NewBusinessForm";
 import FileUploadInput from "../Common/FileUploadInput";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import { filterActiveOnsUsers } from "../../utils";
 
 export default function NewBusinessLicense({
   defaultAddressId,
@@ -83,7 +84,7 @@ export default function NewBusinessLicense({
         const resp = await fetch(`${process.env.REACT_APP_API_URL}/users/ons/`);
         if (!resp.ok) return;
         const data = await resp.json();
-        setOnsUsers(Array.isArray(data) ? data : []);
+        setOnsUsers(filterActiveOnsUsers(data));
       } catch {
         setOnsUsers([]);
       }

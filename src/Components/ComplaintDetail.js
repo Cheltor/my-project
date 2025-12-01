@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../AuthContext";
-import { formatPhoneNumber, toEasternLocaleString } from "../utils";
+import { formatPhoneNumber, toEasternLocaleString, filterActiveOnsUsers } from "../utils";
 import FileUploadInput from "./Common/FileUploadInput";
 import MentionsTextarea from "./MentionsTextarea";
 import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
@@ -357,7 +357,7 @@ const ComplaintDetail = () => {
         const resp = await fetch(`${process.env.REACT_APP_API_URL}/users/ons/`);
         if (!resp.ok) throw new Error("Failed to load users");
         const data = await resp.json();
-        setAssignableUsers(Array.isArray(data) ? data : []);
+        setAssignableUsers(filterActiveOnsUsers(data));
       } catch (err) {
         setAssignableUsers([]);
       }

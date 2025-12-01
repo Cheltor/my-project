@@ -29,6 +29,14 @@ export const getRoleName = (role) => {
   return roles[role] || 'Unknown';
 };
 
+// Treat users as active unless explicitly marked inactive (active === false)
+export const isUserActive = (user) => Boolean(user && user.active !== false);
+
+export const filterActiveOnsUsers = (users) => {
+  if (!Array.isArray(users)) return [];
+  return users.filter((u) => isUserActive(u));
+};
+
 // Shared helpers to consistently render timestamps in Eastern Time
 export const EASTERN_TIME_ZONE = 'America/New_York';
 

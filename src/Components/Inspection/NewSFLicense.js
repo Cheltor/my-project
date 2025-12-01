@@ -4,6 +4,7 @@ import AsyncSelect from "react-select/async";
 import ContactSelection from "../Contact/ContactSelection";
 import FileUploadInput from "../Common/FileUploadInput";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import { filterActiveOnsUsers } from "../../utils";
 
 const addressSelectStyles = {
   control: (provided, state) => ({
@@ -128,7 +129,7 @@ export default function NewSFLicense({
         const resp = await fetch(`${process.env.REACT_APP_API_URL}/users/ons/`);
         if (!resp.ok) return;
         const data = await resp.json();
-        setOnsUsers(Array.isArray(data) ? data : []);
+        setOnsUsers(filterActiveOnsUsers(data));
       } catch {
         setOnsUsers([]);
       }

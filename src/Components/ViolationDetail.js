@@ -13,7 +13,8 @@ import {
   getAttachmentFilename,
   isImageAttachment,
   toEasternLocaleDateString,
-  toEasternLocaleString
+  toEasternLocaleString,
+  filterActiveOnsUsers
 } from "../utils";
 
 // Status mapping for display
@@ -269,7 +270,7 @@ const ViolationDetail = () => {
         const resp = await fetch(`${process.env.REACT_APP_API_URL}/users/ons/`);
         if (!resp.ok) throw new Error('Failed to load users');
         const data = await resp.json();
-        setAssignableUsers(Array.isArray(data) ? data : []);
+        setAssignableUsers(filterActiveOnsUsers(data));
       } catch (err) {
         setAssignableUsers([]);
       }

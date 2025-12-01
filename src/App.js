@@ -62,6 +62,7 @@ import ResidentConcern from './Components/ResidentConcern';
 import ForgotPassword from './Components/ForgotPassword';
 import ResetPassword from './Components/ResetPassword';
 import LandingPage from './Components/LandingPage';
+import StaffWorkloadDashboard from './Components/StaffWorkloadDashboard';
 
 function App() {
   return (
@@ -174,6 +175,7 @@ function AppRoutes() {
               <Route path="/vacancy-statuses" element={<VacancyStatusList />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/code-sync" element={<AdminCodeSync />} />
+              <Route path="/admin/workload" element={<StaffWorkloadDashboard />} />
               <Route path="/admin/comments/:commentId/edit" element={<AdminCommentEditor />} />
               <Route
                 path="/admin/contact-comments/:commentId/edit"

@@ -19,6 +19,7 @@ import {
   ArrowLeftIcon,
   BellIcon,
   MapIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
 import { Link, useNavigate, useLocation } from 'react-router-dom'; // Import Link, useNavigate, and useLocation
@@ -47,6 +48,7 @@ const navigation = [
   { name: 'New Address', href: '/new-address', icon: BuildingOffice2Icon, current: false, roles: ['Admin'] },
   { name: 'Vacancy Statuses', href: '/vacancy-statuses', icon: BuildingOffice2Icon, current: false },
   { name: 'Admin Dashboard', href: '/admin', icon: Cog6ToothIcon, current: false, roles: ['Admin'] },
+  { name: 'Workload Balancing', href: '/admin/workload', icon: ChartBarIcon, current: false, roles: ['Admin'] },
   { name: 'Admin Code Sync', href: '/admin/code-sync', icon: Cog6ToothIcon, current: false, roles: ['Admin'] },
   { name: 'Admin Chat', href: '/admin-chat', icon: Cog6ToothIcon, current: false, roles: ['Admin'] },
   { name: 'Admin Image Analysis', href: '/admin-image-analysis', icon: Cog6ToothIcon, current: false, roles: ['Admin'] },

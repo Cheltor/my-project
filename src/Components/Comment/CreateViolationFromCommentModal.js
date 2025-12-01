@@ -8,6 +8,7 @@ import {
   getAttachmentDisplayLabel,
   getAttachmentFilename,
   isImageAttachment,
+  filterActiveOnsUsers,
 } from '../../utils';
 
 const DEADLINE_OPTIONS = [
@@ -116,8 +117,13 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
         if (!resp.ok) return;
         const data = await resp.json();
         if (cancelled) return;
-        let normalized = Array.isArray(data) ? data : [];
-        if (user?.id && !normalized.some((onsUser) => Number(onsUser.id) === Number(user.id))) {
+        let normalized = filterActiveOnsUsers(data);
+        const currentIsActive = user?.active !== false;
+        if (
+          currentIsActive &&
+          user?.id &&
+          !normalized.some((onsUser) => Number(onsUser.id) === Number(user.id))
+        ) {
           normalized = [
             ...normalized,
             {

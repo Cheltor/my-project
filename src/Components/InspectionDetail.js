@@ -7,7 +7,8 @@ import {
   getAttachmentFilename,
   isImageAttachment,
   toEasternLocaleString,
-  formatPhoneNumber
+  formatPhoneNumber,
+  filterActiveOnsUsers
 } from '../utils';
 import FileUploadInput from './Common/FileUploadInput';
 
@@ -328,7 +329,7 @@ export default function InspectionDetail() {
         const resp = await fetch(`${process.env.REACT_APP_API_URL}/users/ons/`);
         if (!resp.ok) throw new Error('Failed to load users');
         const data = await resp.json();
-        setAssignableUsers(Array.isArray(data) ? data : []);
+        setAssignableUsers(filterActiveOnsUsers(data));
       } catch (err) {
         setAssignableUsers([]);
       }

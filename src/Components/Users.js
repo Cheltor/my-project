@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom'; // Import Link for navigation
-import { getRoleName, formatPhoneNumber, toEasternLocaleDateString } from './../utils'; // Import utility functions
+import { getRoleName, formatPhoneNumber, toEasternLocaleDateString, isUserActive } from './../utils'; // Import utility functions
 
 const Users = () => {
   const [users, setUsers] = useState([]); // State to store all users
@@ -11,6 +11,8 @@ const Users = () => {
 
   const [searchTerm, setSearchTerm] = useState(''); // State for text-based filtering
   const [selectedRole, setSelectedRole] = useState(''); // State for role filter
+  // Default to showing active inspectors first; "all" still available
+  const [selectedStatus, setSelectedStatus] = useState('active'); // State for active/inactive filter
 
   useEffect(() => {
     // Fetch users from the API or use static data for testing
@@ -41,8 +43,11 @@ const Users = () => {
       (user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesRole = selectedRole ? user.role === parseInt(selectedRole) : true;
+    const active = isUserActive(user);
+    const matchesStatus =
+      selectedStatus === 'all' ? true : selectedStatus === 'active' ? active : !active;
 
-    return matchesSearchTerm && matchesRole;
+    return matchesSearchTerm && matchesRole && matchesStatus;
   });
 
   // Get the current set of users to display
@@ -91,6 +96,15 @@ const Users = () => {
             </option>
           ))}
         </select>
+        <select
+          value={selectedStatus}
+          onChange={(e) => setSelectedStatus(e.target.value)}
+          className="w-full sm:w-1/2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+        >
+          <option value="active">Active only</option>
+          <option value="inactive">Inactive only</option>
+          <option value="all">All statuses</option>
+        </select>
       </div>
 
       {/* Responsive Table Container */}
@@ -123,6 +137,12 @@ const Users = () => {
                     className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter"
                   >
                     Role
+                  </th>
+                  <th
+                    scope="col"
+                    className="sticky top-0 z-10 border-b border-gray-300 bg-white bg-opacity-75 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 backdrop-blur backdrop-filter"
+                  >
+                    Status
                   </th>
                   <th
                     scope="col"
@@ -176,6 +196,22 @@ const Users = () => {
                       )}
                     >
                       {getRoleName(user.role)}
+                    </td>
+                    <td
+                      className={classNames(
+                        idx !== currentUsers.length - 1 ? 'border-b border-gray-200' : '',
+                        'whitespace-nowrap px-3 py-4 text-sm'
+                      )}
+                    >
+                      {isUserActive(user) ? (
+                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
+                          Inactive
+                        </span>
+                      )}
                     </td>
                     <td
                       className={classNames(

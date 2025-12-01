@@ -6,6 +6,7 @@ import ContactSelection from "../Contact/ContactSelection";
 import BusinessSelection from "../Business/BusinessSelection"; // Import the new component
 import NewUnit from "../Inspection/NewUnit"; // Import NewUnit instead of NewUnitForm
 import FileUploadInput from "../Common/FileUploadInput";
+import { filterActiveOnsUsers } from "../../utils";
 
 export default function NewComplaint({
   isOpen = true,
@@ -95,7 +96,7 @@ export default function NewComplaint({
         const resp = await fetch(`${process.env.REACT_APP_API_URL}/users/ons/`);
         if (!resp.ok) return;
         const data = await resp.json();
-        setOnsUsers(Array.isArray(data) ? data : []);
+        setOnsUsers(filterActiveOnsUsers(data));
       } catch {
         setOnsUsers([]);
       }
