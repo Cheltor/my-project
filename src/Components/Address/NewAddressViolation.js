@@ -14,12 +14,12 @@ const DEADLINE_OPTIONS = [
   '30 days',
 ];
 
-const VIOLATION_TYPE_OPTIONS = [
-  { value: 'doorhanger', label: 'Doorhanger' },
-  { value: 'Formal Notice', label: 'Formal Notice' },
-];
-
 const NewAddressViolation = ({ addressId, onViolationAdded }) => {
+  const VIOLATION_TYPE_OPTIONS = [
+    { value: 'doorhanger', label: 'Doorhanger' },
+    { value: 'Formal Notice', label: 'Formal Notice' },
+  ];
+
   const { user } = useAuth();
   const [violationType, setViolationType] = useState(VIOLATION_TYPE_OPTIONS[0].value);
   const [deadline, setDeadline] = useState(DEADLINE_OPTIONS[0]);
@@ -29,19 +29,49 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
   const [success, setSuccess] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [files, setFiles] = useState([]);
+  const [photoCodeMap, setPhotoCodeMap] = useState({}); // key -> [codeIds]
+  const [photoError, setPhotoError] = useState('');
   const [units, setUnits] = useState([]);
   const [selectedUnitId, setSelectedUnitId] = useState('');
 
+  const fileKey = (f) => `${f.name}::${f.size}::${f.lastModified}`;
+  const handleFilesChange = (nextFiles) => {
+    const list = Array.isArray(nextFiles) ? nextFiles : Array.from(nextFiles || []);
+    setFiles(list);
+    setPhotoError(list.length === 0 ? 'Please upload at least one photo for this violation.' : '');
+    setPhotoCodeMap((prev) => {
+      const next = {};
+      list.forEach((f) => {
+        const key = fileKey(f);
+        next[key] = prev[key] || [];
+      });
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const allowedIds = new Set((selectedCodes || []).map((c) => c.code.id));
+    setPhotoCodeMap((prev) => {
+      const next = {};
+      Object.entries(prev || {}).forEach(([k, ids]) => {
+        next[k] = (ids || []).filter((cid) => allowedIds.has(cid));
+      });
+      return next;
+    });
+  }, [selectedCodes]);
+
   // Helper to reset attachment state to avoid no-undef and keep logic centralized
   const resetAttachmentState = () => {
-    setFiles([]);
+    handleFilesChange([]);
+    setPhotoError('');
   };
 
   const handleToggleForm = () => {
     setShowForm((prev) => {
       const next = !prev;
       if (!next) {
-        setFiles([]);
+        handleFilesChange([]);
+        setPhotoError('');
       }
       return next;
     });
@@ -63,7 +93,7 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
       return;
     }
 
-    // Basic client validation: require addressId and at least one code
+    // Basic client validation: require addressId, at least one code, and at least one photo
     if (!addressId) {
       setError('Address is required.');
       setSubmitting(false);
@@ -71,6 +101,11 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
     }
     if (!Array.isArray(selectedCodes) || selectedCodes.length === 0) {
       setError('Please select at least one violation code.');
+      setSubmitting(false);
+      return;
+    }
+    if (!files || files.length === 0) {
+      setPhotoError('Please upload at least one photo for this violation.');
       setSubmitting(false);
       return;
     }
@@ -101,23 +136,30 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
       const newViolation = await response.json();
 
       if (files.length > 0 && newViolation?.id) {
-        const fd = new FormData();
-        files.forEach((file) => fd.append('files', file));
-        try {
-          const uploadResp = await fetch(`${process.env.REACT_APP_API_URL}/violation/${newViolation.id}/photos`, {
-            method: 'POST',
-            body: fd,
-          });
-          if (!uploadResp.ok) {
-            try {
-              const data = await uploadResp.json();
-              console.error('Attachment upload failed:', data);
-            } catch (uploadErr) {
-              console.error('Attachment upload failed');
-            }
+        for (const file of files) {
+          const fd = new FormData();
+          fd.append('files', file);
+          const key = fileKey(file);
+          const codesForPhoto = photoCodeMap[key] || [];
+          if (codesForPhoto.length > 0) {
+            fd.append('code_ids', JSON.stringify(codesForPhoto));
           }
-        } catch (uploadError) {
-          console.error('Attachment upload failed', uploadError);
+          try {
+            const uploadResp = await fetch(`${process.env.REACT_APP_API_URL}/violation/${newViolation.id}/photos`, {
+              method: 'POST',
+              body: fd,
+            });
+            if (!uploadResp.ok) {
+              try {
+                const data = await uploadResp.json();
+                console.error('Attachment upload failed:', data);
+              } catch (uploadErr) {
+                console.error('Attachment upload failed');
+              }
+            }
+          } catch (uploadError) {
+            console.error('Attachment upload failed', uploadError);
+          }
         }
       }
       setSuccess(true);
@@ -243,10 +285,45 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
               label="Attachments"
               name="attachments"
               files={files}
-              onChange={setFiles}
+              onChange={handleFilesChange}
               accept="image/*,application/pdf"
               disabled={submitting}
             />
+            {photoError && <div className="text-red-500 text-sm mt-1">{photoError}</div>}
+            {files.length > 0 && (
+              <div className="mt-3 space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">Attach photos to code (optional)</p>
+                {files.map((f, idx) => {
+                  const key = fileKey(f);
+                  const assigned = photoCodeMap[key] || [];
+                  return (
+                    <div key={key} className="rounded border border-gray-200 bg-gray-50 px-3 py-2">
+                      <div className="flex items-center justify-between text-sm font-medium text-gray-800">
+                        <span>{f.name}</span>
+                        <span className="text-xs text-gray-500">{Math.round((f.size / 1024) * 10) / 10} KB</span>
+                      </div>
+                      <select
+                        multiple
+                        value={assigned.map((c) => String(c))}
+                        onChange={(e) => {
+                          const next = Array.from(e.target.selectedOptions).map((opt) => parseInt(opt.value, 10)).filter((n) => !Number.isNaN(n));
+                          setPhotoCodeMap((prev) => ({ ...prev, [key]: next }));
+                        }}
+                        className="mt-2 w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                        disabled={submitting || selectedCodes.length === 0}
+                      >
+                        {(selectedCodes || []).map((opt) => (
+                          <option key={opt.code.id} value={opt.code.id}>
+                            {opt.code.chapter}{opt.code.section ? `.${opt.code.section}` : ''}: {opt.code.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-[11px] text-gray-500">Leave unselected to keep this photo off the notice.</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
           <div className="flex gap-3">
             <button

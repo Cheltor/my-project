@@ -8,6 +8,7 @@ import FullScreenPhotoViewer from "./FullScreenPhotoViewer";
 import FileUploadInput from "./Common/FileUploadInput";
 import LoadingSpinner from "./Common/LoadingSpinner";
 import AbatementPhotoModal from "./AbatementPhotoModal";
+import CodeSelect from "./CodeSelect";
 import {
   getAttachmentDisplayLabel,
   getAttachmentFilename,
@@ -142,7 +143,17 @@ const ViolationDetail = () => {
   const [violation, setViolation] = useState(null);
   const [citations, setCitations] = useState([]);
   const [attachments, setAttachments] = useState([]);
+  const [photoCodeSaving, setPhotoCodeSaving] = useState({});
+  const [photoCodeError, setPhotoCodeError] = useState('');
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState(null);
+  const [addingCode, setAddingCode] = useState({});
+  const [addCodeModal, setAddCodeModal] = useState(null);
+  const [showAttachments, setShowAttachments] = useState(false);
+  const [removingCodeId, setRemovingCodeId] = useState(null);
+  const [newFiles, setNewFiles] = useState([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [showAddPhotos, setShowAddPhotos] = useState(false);
   const firstImageAttachment = useMemo(
     () => attachments.find((attachment) => isImageAttachment(attachment)),
     [attachments]
@@ -247,7 +258,17 @@ const ViolationDetail = () => {
         const r = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/photos`);
         if (!r.ok) return setAttachments([]);
         const data = await r.json();
-        setAttachments(Array.isArray(data) ? data : []);
+        const normalized = Array.isArray(data)
+          ? data.map((att) => ({
+              ...att,
+              code_ids: Array.isArray(att?.code_ids)
+                ? att.code_ids
+                    .map((cid) => parseInt(cid, 10))
+                    .filter((cid) => !Number.isNaN(cid))
+                : [],
+            }))
+          : [];
+        setAttachments(normalized);
       } catch {
         setAttachments([]);
       }
@@ -392,6 +413,26 @@ const ViolationDetail = () => {
       const list = Array.isArray(violation?.violation_comments) ? violation.violation_comments : [];
       return [...list].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     }, [violation?.violation_comments]);
+    const photosByCode = useMemo(() => {
+      const map = {};
+      (attachments || []).forEach((att) => {
+        const codes = Array.isArray(att?.code_ids) ? att.code_ids : [];
+        codes.forEach((cid) => {
+          if (!map[cid]) map[cid] = [];
+          map[cid].push(att);
+        });
+      });
+      return map;
+    }, [attachments]);
+    const codesMissingPhotos = useMemo(() => {
+      const missing = [];
+      (violation?.codes || []).forEach((code) => {
+        const imgs = photosByCode[code.id] || [];
+        const hasImg = imgs.some((att) => isImageAttachment(att));
+        if (!hasImg) missing.push(code);
+      });
+      return missing;
+    }, [violation?.codes, photosByCode]);
 
     if (loading) {
       return <p>Loading violation...</p>;
@@ -492,6 +533,211 @@ const ViolationDetail = () => {
         document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 0);
       });
     } catch {}
+  };
+
+  const handleAttachmentCodesChange = async (attachmentId, nextCodeIds) => {
+    const safeId = attachmentId;
+    setPhotoCodeError('');
+    setPhotoCodeSaving((prev) => ({ ...prev, [safeId]: true }));
+    try {
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/photos/${safeId}/codes`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ code_ids: nextCodeIds }),
+      });
+      if (!resp.ok) {
+        let msg = 'Failed to update code assignment';
+        try {
+          const errData = await resp.json();
+          if (errData?.detail) msg = errData.detail;
+        } catch {}
+        throw new Error(msg);
+      }
+      const payload = await resp.json();
+      setAttachments((prev) =>
+        prev.map((att) =>
+          att.id === safeId || att.attachment_id === safeId
+            ? { ...att, code_ids: payload.code_ids || [] }
+            : att
+        )
+      );
+    } catch (err) {
+      setPhotoCodeError(err.message);
+    } finally {
+      setPhotoCodeSaving((prev) => {
+        const next = { ...prev };
+        delete next[safeId];
+        return next;
+      });
+    }
+  };
+
+  const handleAddCodeToViolation = async (codeOption, attachmentId) => {
+    const codeId = codeOption?.code?.id ?? (typeof codeOption?.value === 'number' ? codeOption.value : typeof codeOption?.value === 'string' ? parseInt(codeOption.value, 10) : null);
+    if (!codeId || Number.isNaN(codeId)) return;
+    setAddingCode((prev) => ({ ...prev, [attachmentId]: true }));
+    try {
+      const existing = Array.isArray(violation?.codes) ? violation.codes.map((c) => c.id) : [];
+      const nextCodes = Array.from(new Set([...existing, codeId]));
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/codes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ codes: nextCodes }),
+      });
+      if (!resp.ok) {
+        let msg = 'Failed to add code to violation';
+        try {
+          const err = await resp.json();
+          if (err?.detail) msg = err.detail;
+        } catch {}
+        throw new Error(msg);
+      }
+      const updated = await resp.json();
+      setViolation(updated);
+      // Assign new code to this photo as well
+      const target = attachments.find((att) => (att.id || att.attachment_id) === attachmentId);
+      const current = Array.isArray(target?.code_ids) ? target.code_ids : [];
+      if (!current.includes(codeId)) {
+        await handleAttachmentCodesChange(attachmentId, [...current, codeId]);
+      }
+    } catch (err) {
+      setPhotoCodeError(err.message);
+    } finally {
+      setAddingCode((prev) => {
+        const next = { ...prev };
+        delete next[attachmentId];
+        return next;
+      });
+    }
+  };
+
+  const handleRemoveViolationCode = async (codeId) => {
+    if (!violation?.codes) return;
+    setRemovingCodeId(codeId);
+    try {
+      const remaining = violation.codes.filter((c) => Number(c.id) !== Number(codeId)).map((c) => c.id);
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/codes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ codes: remaining }),
+      });
+      if (!resp.ok) {
+        let msg = 'Failed to remove code';
+        try {
+          const err = await resp.json();
+          if (err?.detail) msg = err.detail;
+        } catch {}
+        throw new Error(msg);
+      }
+      const updated = await resp.json();
+      setViolation(updated);
+      // Also strip the removed code from attachment code_ids locally
+      setAttachments((prev) =>
+        prev.map((att) => {
+          const codes = Array.isArray(att?.code_ids) ? att.code_ids : [];
+          const nextCodes = codes.filter((cid) => Number(cid) !== Number(codeId));
+          return { ...att, code_ids: nextCodes };
+        })
+      );
+    } catch (err) {
+      setPhotoCodeError(err.message);
+    } finally {
+      setRemovingCodeId(null);
+    }
+  };
+
+  const loadNewCodeOptions = async (inputValue = '') => {
+    const response = await fetch(
+      `${process.env.REACT_APP_API_URL}/codes/?search=${encodeURIComponent(inputValue)}`
+    );
+    const data = await response.json();
+    const lowerInput = inputValue.toLowerCase();
+    const truncate = (str, max = 50) =>
+      str && str.length > max ? str.substring(0, max) + '...' : str;
+    const existingIds = new Set((violation?.codes || []).map((c) => Number(c.id)));
+    return data
+      .filter((code) =>
+        [
+          code.chapter?.toString() ?? "",
+          code.section?.toString() ?? "",
+          code.name?.toLowerCase() ?? "",
+          code.description?.toLowerCase() ?? ""
+        ].some((field) => field.includes(lowerInput))
+      )
+      .filter((code) => !existingIds.has(Number(code.id)))
+      .map((code) => ({
+        label: `Ch. ${code.chapter} Sec. ${code.section} - ${code.name} - ${truncate(code.description, 50)}`,
+        value: code.id,
+        code: code
+      }));
+  };
+
+  const handleDeleteAttachment = async (attachmentId) => {
+    try {
+      // Optimistic hide
+      setAttachments((prev) => prev.filter((att) => (att.id || att.attachment_id) !== attachmentId));
+      await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/photos/${attachmentId}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+    } catch {
+      // If delete fails, refetch attachments
+      try {
+        const r = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/photos`);
+        if (r.ok) {
+          const data = await r.json();
+          setAttachments(Array.isArray(data) ? data : []);
+        }
+      } catch {}
+    }
+  };
+
+  const handleUploadNewPhotos = async () => {
+    if (!newFiles || newFiles.length === 0) return;
+    setUploadError('');
+    setUploadingPhotos(true);
+    try {
+      const fd = new FormData();
+      newFiles.forEach((file) => fd.append('files', file));
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/photos`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      });
+      if (!resp.ok) {
+        let msg = 'Failed to upload photos';
+        try {
+          const err = await resp.json();
+          if (err?.detail) msg = err.detail;
+        } catch {}
+        throw new Error(msg);
+      }
+      // Refresh attachments
+      const r = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/photos`);
+      if (r.ok) {
+        const data = await r.json();
+        const normalized = Array.isArray(data)
+          ? data.map((att) => ({
+              ...att,
+              code_ids: Array.isArray(att?.code_ids)
+                ? att.code_ids
+                    .map((cid) => parseInt(cid, 10))
+                    .filter((cid) => !Number.isNaN(cid))
+                : [],
+            }))
+          : [];
+        setAttachments(normalized);
+      }
+      setNewFiles([]);
+      setShowAttachments(true);
+    } catch (err) {
+      setUploadError(err.message);
+    } finally {
+      setUploadingPhotos(false);
+    }
   };
 
   const handleAssigneeUpdate = async () => {
@@ -639,6 +885,42 @@ const ViolationDetail = () => {
 
   return (
     <div className="space-y-10">
+      {addCodeModal !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 py-6" onClick={() => setAddCodeModal(null)}>
+          <div
+            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Add a code to this photo</h3>
+                <p className="text-sm text-gray-600">Search for a code to attach to this violation and assign it to the selected photo.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAddCodeModal(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mt-4">
+              <CodeSelect
+                onChange={(val) => {
+                  if (val) {
+                    handleAddCodeToViolation(val, addCodeModal);
+                    setAddCodeModal(null);
+                  }
+                }}
+                value={null}
+                isMulti={false}
+                showDescription
+                loadOptions={loadNewCodeOptions}
+              />
+            </div>
+          </div>
+        </div>
+      )}
       <AbatementPhotoModal
         isOpen={showAbatementModal}
         onClose={() => setShowAbatementModal(false)}
@@ -892,15 +1174,27 @@ const ViolationDetail = () => {
                 <h3 className="text-sm font-semibold text-gray-900">Codes</h3>
                 <span className="text-xs uppercase tracking-wide text-gray-400">{violation.codes.length} {violation.codes.length === 1 ? 'entry' : 'entries'}</span>
               </div>
-              <ul className="mt-4 space-y-3 text-sm text-gray-700">
+              {codesMissingPhotos.length > 0 && (
+                <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  <p className="font-semibold">Warning: each code needs at least one image.</p>
+                  <p className="mt-1">No images assigned for: {codesMissingPhotos.map((c) => `${c.chapter}${c.section ? `.${c.section}` : ''}`).join(', ')}</p>
+                </div>
+              )}
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {violation.codes.map((code) => {
                   const description = code.description
                     ? code.description.length > 160
-                      ? `${code.description.slice(0, 160)}…`
+                      ? `${code.description.slice(0, 160)}...`
                       : code.description
                     : '';
+                  const missingImages = !((photosByCode[code.id] || []).some((att) => isImageAttachment(att)));
                   return (
-                    <li key={code.id} className="rounded-2xl border border-gray-200 bg-gray-50/80 px-4 py-3 shadow-sm">
+                    <div
+                      key={code.id}
+                      className={`rounded-2xl px-4 py-3 shadow-sm border ${
+                        missingImages ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50/80'
+                      }`}
+                    >
                       <div className="flex flex-col gap-2">
                         <CodeDrawerLink
                           codeId={code.id}
@@ -909,16 +1203,27 @@ const ViolationDetail = () => {
                         >
                           {code.chapter}{code.section ? `.${code.section}` : ''}: {code.name}
                         </CodeDrawerLink>
-                        {description && <p className="text-sm text-gray-600">{description}</p>}
+                        {description && <p className={`text-sm ${missingImages ? 'text-amber-800' : 'text-gray-600'}`}>{description}</p>}
+                        {missingImages && <p className="text-xs font-semibold text-amber-700">No images assigned to this code.</p>}
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveViolationCode(code.id)}
+                            disabled={removingCodeId === code.id}
+                            className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-200 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {removingCodeId === code.id ? 'Removing…' : 'Remove code'}
+                          </button>
+                        </div>
                       </div>
-                    </li>
+                    </div>
                   );
                 })}
-              </ul>
+              </div>
             </div>
           )}
 
-          {hasAttachments && (
+              {hasAttachments && (
             <div className="rounded-2xl border border-gray-100 bg-white/60 p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -928,15 +1233,17 @@ const ViolationDetail = () => {
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      if (firstImageAttachment) {
-                        setSelectedPhotoUrl(firstImageAttachment.url || firstImageAttachment);
-                      }
-                    }}
-                    disabled={!firstImageAttachment}
-                    className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-inset ring-indigo-200 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={() => setShowAttachments((prev) => !prev)}
+                    className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-inset ring-indigo-200 transition hover:bg-indigo-50"
                   >
-                    View Gallery
+                    {showAttachments ? 'Hide attachments' : 'Show attachments'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPhotos((prev) => !prev)}
+                    className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-inset ring-indigo-200 transition hover:bg-indigo-50"
+                  >
+                    {showAddPhotos ? 'Hide add photos' : 'Add photos'}
                   </button>
                   <button
                     type="button"
@@ -947,19 +1254,49 @@ const ViolationDetail = () => {
                   </button>
                 </div>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                {attachments.map((attachment, index) => {
-                  const url = attachment?.url || attachment;
-                  const filename = getAttachmentFilename(attachment, `Violation attachment ${index + 1}`);
-                  const isImage = isImageAttachment(attachment);
-                  const extensionLabel = getAttachmentDisplayLabel(attachment);
-                  return (
-                    <div key={index} className="group rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+              {showAddPhotos && (
+                <div className="mt-3 space-y-2 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">Add photos</p>
+                  <FileUploadInput
+                    label=""
+                    name="new-attachments"
+                    files={newFiles}
+                    onChange={(files) => setNewFiles(Array.isArray(files) ? files : Array.from(files || []))}
+                    accept="image/*,application/pdf"
+                    disabled={uploadingPhotos}
+                    addFilesLabel={newFiles.length > 0 ? 'Add more' : 'Choose files'}
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleUploadNewPhotos}
+                      disabled={uploadingPhotos || newFiles.length === 0}
+                      className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {uploadingPhotos ? 'Uploading…' : 'Upload'}
+                    </button>
+                    {uploadError && <p className="text-xs text-rose-600">{uploadError}</p>}
+                  </div>
+                </div>
+              )}
+              {photoCodeError && <p className="mt-2 text-xs text-rose-600">{photoCodeError}</p>}
+              {showAttachments && (
+                <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                  {attachments.map((attachment, index) => {
+                    const url = attachment?.url || attachment;
+                    const filename = getAttachmentFilename(attachment, `Violation attachment ${index + 1}`);
+                    const isImage = isImageAttachment(attachment);
+                    const extensionLabel = getAttachmentDisplayLabel(attachment);
+                    const attachmentId = attachment?.id ?? attachment?.attachment_id ?? index;
+                    const assignedCodes = Array.isArray(attachment?.code_ids) ? attachment.code_ids : [];
+                    const isSavingCodes = !!photoCodeSaving[attachmentId];
+                    return (
+                      <div key={attachmentId} className="group rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
                       {isImage ? (
                         <button
                           type="button"
                           onClick={() => setSelectedPhotoUrl(url)}
-                          className="relative block aspect-square w-full overflow-hidden rounded-lg"
+                          className="relative block aspect-[4/3] w-full overflow-hidden rounded-lg"
                         >
                           <img
                             src={url}
@@ -982,10 +1319,95 @@ const ViolationDetail = () => {
                       <p className="mt-2 line-clamp-2 text-xs font-medium text-gray-600" title={filename}>
                         {filename}
                       </p>
+                      <div className="mt-2 space-y-2">
+                        {assignedCodes.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {assignedCodes.map((cid) => {
+                              const meta = (violation.codes || []).find((c) => Number(c.id) === Number(cid));
+                              const label = meta ? `${meta.chapter}${meta.section ? `.${meta.section}` : ''}` : `Code ${cid}`;
+                              return (
+                                <span
+                                  key={`${attachmentId}-code-${cid}`}
+                                  className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-200"
+                                >
+                                  {label}
+                                  {meta?.name ? (
+                                    <>
+                                      <span className="mx-1 text-[10px] text-indigo-300">•</span>
+                                      <span className="text-[11px] font-medium text-indigo-800">{meta.name}</span>
+                                    </>
+                                  ) : null}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-500">Not assigned to a code (excluded from notice).</p>
+                        )}
+                        <div className="space-y-2 rounded-lg border border-indigo-100 bg-indigo-50/60 p-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[11px] font-semibold text-indigo-700">Assign to code(s)</label>
+                            <div className="flex items-center gap-2">
+                              {isSavingCodes && <span className="text-[11px] text-indigo-600">Saving…</span>}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteAttachment(attachmentId)}
+                                disabled={isSavingCodes}
+                                className="text-[11px] font-semibold text-rose-600 hover:text-rose-700"
+                              >
+                                Remove photo
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {(violation.codes || []).map((code) => {
+                              const active = assignedCodes.includes(code.id);
+                              const label = `${code.chapter}${code.section ? `.${code.section}` : ''}`;
+                              return (
+                                <button
+                                  key={`${attachmentId}-toggle-${code.id}`}
+                                  type="button"
+                                  onClick={() => {
+                                    const next = active
+                                      ? assignedCodes.filter((c) => Number(c) !== Number(code.id))
+                                      : Array.from(new Set([...assignedCodes, code.id]));
+                                    handleAttachmentCodesChange(attachmentId, next);
+                                  }}
+                                  disabled={isSavingCodes}
+                                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold transition ${
+                                    active
+                                      ? 'bg-indigo-600 text-white shadow-sm'
+                                      : 'bg-white text-indigo-700 ring-1 ring-inset ring-indigo-200 hover:bg-indigo-100'
+                                  } ${isSavingCodes ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                >
+                                  <span>{label}</span>
+                                  {code.name && <span className="text-[10px] font-normal text-indigo-100">•</span>}
+                                  {code.name && <span className={active ? 'text-white' : 'text-indigo-600'}>{code.name}</span>}
+                                  <span className="text-[10px] text-indigo-100">{active ? '•' : ''}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <p className="text-[11px] text-indigo-700">Click to toggle codes. Unassigned photos stay off the notice.</p>
+                          <div className="rounded-lg border border-indigo-100 bg-white/70 p-2">
+                            <button
+                              type="button"
+                              onClick={() => setAddCodeModal(attachmentId)}
+                              className="w-full rounded-lg bg-indigo-600 px-3 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:bg-indigo-500"
+                            >
+                              Add a code to this photo
+                            </button>
+                            {addingCode[attachmentId] && (
+                              <p className="mt-1 text-[11px] text-indigo-600">Adding code…</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
-              </div>
+                </div>
+              )}
             </div>
           )}
 

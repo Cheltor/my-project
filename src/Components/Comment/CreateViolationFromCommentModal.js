@@ -47,6 +47,10 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
   const [onsUsers, setOnsUsers] = useState([]);
   const [assigneeId, setAssigneeId] = useState('');
   const [selectedPhotos, setSelectedPhotos] = useState([]);
+  const [photoCodeMap, setPhotoCodeMap] = useState({}); // filename -> [codeIds]
+  const [photoError, setPhotoError] = useState('');
+  const [photoTagIndex, setPhotoTagIndex] = useState(0);
+  const [zoomPhotoUrl, setZoomPhotoUrl] = useState('');
   const [error, setError] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [createdViolation, setCreatedViolation] = useState(null);
@@ -65,8 +69,8 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
     [comment?.photos]
   );
   const selectedCodeSummaries = useMemo(() => {
-    if (!Array.isArray(selectedCodes)) return [];
-    return selectedCodes.map((opt, index) => {
+    const options = Array.isArray(selectedCodes) ? selectedCodes : [];
+    return options.map((opt, index) => {
       const codeId =
         typeof opt?.code?.id === 'number'
           ? opt.code.id
@@ -78,7 +82,7 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
         opt?.label ||
         opt?.code?.description ||
         (codeId ? `Code #${codeId}` : `Code ${index + 1}`);
-      return { id: codeId, name };
+      return { id: codeId, name, option: opt };
     });
   }, [selectedCodes]);
   const selectedAssigneeLabel = useMemo(() => {
@@ -156,6 +160,7 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
     if (!comment) return;
     setDeadline(DEADLINE_OPTIONS[0]);
     setViolationType(VIOLATION_TYPE_OPTIONS[0].value);
+    setPhotoError('');
 
     // Pre-fill from initialData (AI evaluation) if available
     if (initialData) {
@@ -198,8 +203,16 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
         return getAttachmentFilename(p, 'unknown');
       });
       setSelectedPhotos(allFilenames);
+      setPhotoCodeMap((prev) => {
+        const next = {};
+        allFilenames.forEach((name) => { next[name] = prev[name] || []; });
+        return next;
+      });
+      setPhotoTagIndex(0);
     } else {
       setSelectedPhotos([]);
+      setPhotoCodeMap({});
+      setPhotoTagIndex(0);
     }
 
     setError('');
@@ -208,6 +221,7 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
     setSubmitting(false);
     setCurrentStepIndex(0);
     setCodesError('');
+    setPhotoError('');
     const defaultAssigneeId = user?.id
       ? String(user.id)
       : comment?.user_id
@@ -215,6 +229,100 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
         : '';
     setAssigneeId(defaultAssigneeId);
   }, [comment, isAdmin, user?.id, user?.name, user?.email, initialData]);
+
+  const photoCodeOptionsUnion = useMemo(() => {
+    const map = new Map();
+    Object.values(photoCodeMap || {}).forEach((opts) => {
+      (opts || []).forEach((opt) => {
+        const id =
+          opt?.code?.id ??
+          (typeof opt?.value === 'number' ? opt.value : typeof opt?.value === 'string' ? Number(opt.value) : null);
+        if (typeof id === 'number' && !Number.isNaN(id) && !map.has(id)) {
+          map.set(id, opt);
+        }
+      });
+    });
+    return Array.from(map.values());
+  }, [photoCodeMap]);
+
+  useEffect(() => {
+    setSelectedCodes(photoCodeOptionsUnion);
+  }, [photoCodeOptionsUnion]);
+
+  const photoUnionIds = useMemo(() => {
+    return (photoCodeOptionsUnion || [])
+      .map((opt) => opt?.code?.id ?? (typeof opt?.value === 'number' ? opt.value : typeof opt?.value === 'string' ? Number(opt.value) : null))
+      .filter((id) => typeof id === 'number' && !Number.isNaN(id));
+  }, [photoCodeOptionsUnion]);
+
+  const handlePhotoCodeChange = (filename, nextOpts) => {
+    setPhotoCodeMap((prev) => ({ ...(prev || {}), [filename]: nextOpts || [] }));
+  };
+
+  const currentPhotoName = selectedPhotos[photoTagIndex] || null;
+  const currentPhotoMeta = useMemo(() => {
+    if (!currentPhotoName) return null;
+    let match = null;
+    commentAttachments.forEach((attachment, index) => {
+      const fallbackName = `Attachment ${index + 1}`;
+      const attachmentObj = attachment && typeof attachment === 'object' ? attachment : {};
+      const url = attachmentObj.url || (typeof attachment === 'string' ? attachment : '') || '';
+      const filename =
+        typeof attachment === 'string'
+          ? fallbackName
+          : getAttachmentFilename(attachmentObj, fallbackName);
+      if (filename === currentPhotoName) {
+        const imageLike =
+          typeof attachment === 'string'
+            ? /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(attachment)
+            : isImageAttachment(attachmentObj);
+        match = {
+          url,
+          filename,
+          isImage: imageLike,
+          displayLabel:
+            typeof attachment === 'string'
+              ? (filename.split('.').pop() || 'FILE').toUpperCase()
+              : getAttachmentDisplayLabel(attachmentObj),
+        };
+      }
+    });
+    return match;
+  }, [commentAttachments, currentPhotoName]);
+
+  useEffect(() => {
+    setPhotoTagIndex((idx) => {
+      if (selectedPhotos.length === 0) return 0;
+      return Math.min(idx, selectedPhotos.length - 1);
+    });
+    if (selectedPhotos.length > 0) {
+      setPhotoError('');
+    }
+  }, [selectedPhotos]);
+
+  const goPrevPhoto = () => {
+    setPhotoTagIndex((idx) => Math.max(0, idx - 1));
+  };
+  const goNextPhoto = () => {
+    setPhotoTagIndex((idx) => Math.min(selectedPhotos.length - 1, idx + 1));
+  };
+
+  const allSelectedCodeIds = useMemo(() => {
+    const ids = new Set();
+    Object.values(photoCodeMap || {}).forEach((opts) => {
+      (opts || []).forEach((opt) => {
+        const id =
+          opt?.code?.id ??
+          (typeof opt?.value === 'number'
+            ? opt.value
+            : typeof opt?.value === 'string'
+              ? Number(opt.value)
+              : null);
+        if (typeof id === 'number' && !Number.isNaN(id)) ids.add(id);
+      });
+    });
+    return Array.from(ids);
+  }, [photoCodeMap]);
 
   const attachmentsMessage = useMemo(() => {
     if (!comment || !Array.isArray(comment.photos) || comment.photos.length === 0) {
@@ -236,12 +344,17 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
   const handleNext = () => {
     if (submitting) return;
     if (currentStep.key === 'codes') {
-      if (!Array.isArray(selectedCodes) || selectedCodes.length === 0) {
-        setCodesError('Select at least one violation code before continuing.');
+      if (!photoUnionIds || photoUnionIds.length === 0) {
+        setCodesError('Select at least one code for the photos.');
         return;
       }
       setCodesError('');
     }
+    if (commentAttachments.length > 0 && selectedPhotos.length === 0) {
+      setPhotoError('Select at least one photo to include with the violation.');
+      return;
+    }
+    setPhotoError('');
     setError('');
     setCurrentStepIndex((index) => Math.min(STEPS.length - 1, index + 1));
   };
@@ -249,11 +362,27 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
   const handleTogglePhoto = (filename) => {
     setSelectedPhotos((prev) => {
       if (prev.includes(filename)) {
-        return prev.filter((f) => f !== filename);
+        const next = prev.filter((f) => f !== filename);
+        setPhotoCodeMap((map) => {
+          const copy = { ...(map || {}) };
+          delete copy[filename];
+          return copy;
+        });
+        return next;
       }
+      setPhotoCodeMap((map) => ({
+        ...(map || {}),
+        [filename]: (map || {})[filename] || [],
+      }));
       return [...prev, filename];
     });
   };
+
+  useEffect(() => {
+    if (selectedPhotos.length > 0) {
+      setPhotoError('');
+    }
+  }, [selectedPhotos.length]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -274,26 +403,21 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
       setDeadline(safeDeadline);
     }
 
-    if (!Array.isArray(selectedCodes) || selectedCodes.length === 0) {
+    if (!photoUnionIds || photoUnionIds.length === 0) {
+      setCodesError('Select at least one code for the photos.');
       setError('Select at least one violation code.');
       setSubmitting(false);
+      setCurrentStepIndex(1);
+      return;
+    }
+    if (commentAttachments.length > 0 && selectedPhotos.length === 0) {
+      setPhotoError('Select at least one attachment to include.');
+      setSubmitting(false);
+      setCurrentStepIndex(0);
       return;
     }
 
-    const codes = selectedCodes
-      .map((opt) => {
-        if (opt?.code?.id) return opt.code.id;
-        if (typeof opt?.value === 'number') return opt.value;
-        if (typeof opt?.value === 'string') return Number(opt.value);
-        return null;
-      })
-      .filter((value) => typeof value === 'number' && !Number.isNaN(value));
-
-    if (codes.length === 0) {
-      setError('Select at least one violation code.');
-      setSubmitting(false);
-      return;
-    }
+    const codes = photoUnionIds;
 
     const resolvedNotes = notes && notes.trim().length > 0
       ? notes.trim()
@@ -351,6 +475,42 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
       }
 
       const data = await response.json();
+      // After creation, tag photos to codes based on filename (best-effort)
+      if (data?.id && selectedPhotos.length > 0 && Object.values(photoCodeMap || {}).some((arr) => (arr || []).length > 0)) {
+        try {
+          const photosResp = await fetch(`${process.env.REACT_APP_API_URL}/violation/${data.id}/photos`);
+          if (photosResp.ok) {
+            const photos = await photosResp.json();
+            const byName = {};
+            (photos || []).forEach((p) => {
+              if (p?.filename) byName[p.filename] = p;
+            });
+            const allowedIds = new Set(
+              (selectedCodes || []).map((opt) => opt?.code?.id ?? (typeof opt?.value === 'number' ? opt.value : typeof opt?.value === 'string' ? Number(opt.value) : null)).filter((id) => typeof id === 'number' && !Number.isNaN(id))
+            );
+            for (const [filename, codeOpts] of Object.entries(photoCodeMap || {})) {
+              const filtered = (codeOpts || [])
+                .map((opt) => opt?.code?.id ?? (typeof opt?.value === 'number' ? opt.value : typeof opt?.value === 'string' ? Number(opt.value) : null))
+                .filter((cid) => typeof cid === 'number' && !Number.isNaN(cid) && (allowedIds.size === 0 || allowedIds.has(cid)));
+              if (!filtered.length) continue;
+              const match = byName[filename];
+              if (!match) continue;
+              try {
+                await fetch(`${process.env.REACT_APP_API_URL}/violation/${data.id}/photos/${match.id || match.attachment_id}/codes`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ code_ids: filtered }),
+                });
+              } catch {
+                // ignore per-photo failures; they can retag in detail view
+              }
+            }
+          }
+        } catch {
+          // ignore mapping failures
+        }
+      }
+
       setCreatedViolation(data);
       setStatusMessage('Violation created from comment.');
       if (onCreated) onCreated(data);
@@ -487,6 +647,9 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
                       );
                     })}
                   </div>
+                  {photoError && (
+                    <p className="mt-2 text-xs text-red-600">{photoError}</p>
+                  )}
                 </div>
               )}
             </div>
@@ -499,24 +662,90 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
         return (
           <div className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Violation codes <span className="text-red-600">*</span>
-              </label>
-              <CodeSelect
-                onChange={(value) => setSelectedCodes(value || [])}
-                value={selectedCodes}
-                isMulti={true}
-                isDisabled={submitting}
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                Select one or more codes to include in the violation notice.
-              </p>
-              {codeDescriptions.length > 0 && (
-                <ul className="mt-2 list-disc pl-5 text-xs text-gray-600">
-                  {codeDescriptions.map((description, index) => (
-                    <li key={description + index}>{description}</li>
-                  ))}
-                </ul>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Tag photos with violation codes</p>
+                  <p className="text-xs text-gray-500">Assign codes per photo. Leave blank to omit the photo from the notice.</p>
+                </div>
+              </div>
+              {selectedPhotos.length > 0 && (
+                <div className="mt-4 space-y-3">
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-3">
+                    {currentPhotoMeta ? (
+                      <div className="space-y-3">
+                        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+                          {currentPhotoMeta.isImage && currentPhotoMeta.url ? (
+                            <button
+                              type="button"
+                              onClick={() => setZoomPhotoUrl(currentPhotoMeta.url)}
+                              className="group block w-full focus:outline-none"
+                            >
+                              <img
+                                src={currentPhotoMeta.url}
+                                alt={currentPhotoMeta.filename}
+                                className="max-h-64 w-full object-contain bg-gray-900/5 transition group-hover:scale-[1.02]"
+                              />
+                              <p className="mt-1 text-[11px] text-indigo-600 underline opacity-80 group-hover:opacity-100">Click to zoom</p>
+                            </button>
+                          ) : (
+                            <div className="flex h-40 items-center justify-center bg-gray-100 text-gray-500">
+                              <span className="text-sm font-semibold">{currentPhotoMeta.displayLabel || 'FILE'}</span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-gray-500">Select which codes this photo should support. Leave empty to exclude it from the notice.</p>
+                        <CodeSelect
+                          onChange={(value) => handlePhotoCodeChange(currentPhotoMeta.filename, value || [])}
+                          value={photoCodeMap[currentPhotoMeta.filename] || []}
+                          isMulti={true}
+                          isDisabled={submitting}
+                          showDescription
+                        />
+                        {Array.isArray(allSelectedCodeIds) && allSelectedCodeIds.length > 0 && (
+                          <div className="mt-2 space-y-1 text-xs">
+                            <p className="font-semibold text-gray-700">All selected codes (across photos):</p>
+                            <div className="flex flex-wrap gap-2">
+                              {allSelectedCodeIds.map((cid) => (
+                                <CodeDrawerLink
+                                  key={cid}
+                                  codeId={cid}
+                                  className="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-200"
+                                >
+                                  View code {cid}
+                                </CodeDrawerLink>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between text-xs text-gray-600">
+                          <span className="font-semibold uppercase tracking-wide text-gray-500">
+                            Tag photo {photoTagIndex + 1} of {selectedPhotos.length}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={goPrevPhoto}
+                              disabled={photoTagIndex === 0}
+                              className="rounded-full border border-gray-300 px-3 py-1 text-[11px] font-semibold text-gray-700 disabled:opacity-50"
+                            >
+                              Prev
+                            </button>
+                            <button
+                              type="button"
+                              onClick={goNextPhoto}
+                              disabled={photoTagIndex >= selectedPhotos.length - 1}
+                              className="rounded-full border border-gray-300 px-3 py-1 text-[11px] font-semibold text-gray-700 disabled:opacity-50"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500">Select a photo above to tag codes.</p>
+                    )}
+                  </div>
+                </div>
               )}
               {codesError && (
                 <div className="mt-2 text-xs text-red-600">
@@ -640,6 +869,17 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
                     <span className="font-medium">Assign to:</span> {selectedAssigneeLabel}
                   </li>
                 )}
+                <li>
+                  <span className="font-medium">Inspector notes:</span>
+                  <textarea
+                    className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+                    rows={3}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Add or edit inspector notes"
+                    disabled={submitting}
+                  />
+                </li>
               </ul>
             </div>
           </div>
@@ -651,6 +891,23 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/70 px-4 py-8 sm:py-12">
+      {zoomPhotoUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4" onClick={() => setZoomPhotoUrl('')}>
+          <img
+            src={zoomPhotoUrl}
+            alt="Zoomed attachment"
+            className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            type="button"
+            onClick={() => setZoomPhotoUrl('')}
+            className="absolute right-4 top-4 rounded-full bg-white/90 px-3 py-1 text-sm font-semibold text-gray-700 shadow"
+          >
+            Close
+          </button>
+        </div>
+      )}
       <div
         className="absolute inset-0"
         aria-hidden="true"
@@ -736,7 +993,13 @@ export default function CreateViolationFromCommentModal({ comment, unitId, onClo
                   type="button"
                   onClick={handleNext}
                   className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-                  disabled={submitting || (currentStep.key === 'codes' && (!Array.isArray(selectedCodes) || selectedCodes.length === 0))}
+                  disabled={
+                    submitting ||
+                    (currentStep.key === 'codes' && (
+                      (!Array.isArray(selectedCodes) || selectedCodes.length === 0) ||
+                      (selectedPhotos.length > 0 && photoTagIndex < selectedPhotos.length - 1)
+                    ))
+                  }
                 >
                   Next
                 </button>

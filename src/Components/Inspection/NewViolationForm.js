@@ -35,6 +35,8 @@ export default function NewViolationForm({
   const [units, setUnits] = useState([]);
   const [selectedUnitId, setSelectedUnitId] = useState('');
   const [files, setFiles] = useState([]);
+  const [photoCodeMap, setPhotoCodeMap] = useState({}); // key -> [codeIds]
+  const [photoError, setPhotoError] = useState('');
   const [previews, setPreviews] = useState([]);
   const STEPS = [
     { key: "photos", label: "Photos" },
@@ -43,6 +45,32 @@ export default function NewViolationForm({
     { key: "deadline", label: "Deadline" },
   ];
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const fileKey = (f) => `${f.name}::${f.size}::${f.lastModified}`;
+
+  const handleFilesChange = (nextFiles) => {
+    const list = Array.isArray(nextFiles) ? nextFiles : Array.from(nextFiles || []);
+    setFiles(list);
+    setPhotoError(list.length === 0 ? 'Please upload at least one photo for this violation.' : '');
+    setPhotoCodeMap((prev) => {
+      const next = {};
+      list.forEach((f) => {
+        const key = fileKey(f);
+        next[key] = prev[key] || [];
+      });
+      return next;
+    });
+  };
+
+  React.useEffect(() => {
+    const allowedIds = new Set(((selectedCodesValue ?? selectedCodes) || []).map((c) => c.code.id));
+    setPhotoCodeMap((prev) => {
+      const next = {};
+      Object.entries(prev || {}).forEach(([k, ids]) => {
+        next[k] = (ids || []).filter((cid) => allowedIds.has(cid));
+      });
+      return next;
+    });
+  }, [selectedCodesValue, selectedCodes]);
 
   // If parent provides File objects directly, merge them into files state
   React.useEffect(() => {
@@ -59,6 +87,7 @@ export default function NewViolationForm({
         );
         if (!duplicate) merged.push(f);
       }
+      handleFilesChange(merged);
       return merged;
     });
   }, [initialFiles]);
@@ -81,7 +110,6 @@ export default function NewViolationForm({
           const file = new File([blob], filename, { type: blob.type || 'application/octet-stream', lastModified: Date.now() });
           if (cancelled) return;
           setFiles((prev) => {
-            // avoid duplicates
             const merged = [...prev];
             const duplicate = merged.find(
               (existing) =>
@@ -90,6 +118,7 @@ export default function NewViolationForm({
                 existing.type === file.type
             );
             if (!duplicate) merged.push(file);
+            handleFilesChange(merged);
             return merged;
           });
         } catch (e) {
@@ -104,7 +133,6 @@ export default function NewViolationForm({
 
   // Build preview URLs for attached files so we can show them in Review
   React.useEffect(() => {
-    // revoke previous urls
     setPreviews((prev) => {
       prev.forEach(p => p.url && URL.revokeObjectURL(p.url));
       return [];
@@ -200,6 +228,13 @@ export default function NewViolationForm({
   const isLastStep = currentStepIndex === STEPS.length - 1;
 
   const handleNext = () => {
+    if (currentStep === "photos") {
+      if (!files || files.length === 0) {
+        setPhotoError('Please upload at least one photo for this violation.');
+        return;
+      }
+      setPhotoError('');
+    }
     if (currentStep === "address") {
       if (!form.address_id) {
         setAddressError('Please select an address.');
@@ -268,9 +303,14 @@ export default function NewViolationForm({
     setLoading(true);
     setError(null);
     setSuccess(false);
+    setPhotoError('');
 
     // Client-side validation
     let invalid = false;
+    if (!files || files.length === 0) {
+      setPhotoError('Please upload at least one photo for this violation.');
+      invalid = true;
+    }
     if (!form.address_id) {
       setAddressError('Please select an address.');
       invalid = true;
@@ -302,7 +342,7 @@ export default function NewViolationForm({
     try {
       // Submit one violation with all selected codes
       // If admin selected an assignee, use that; else default to current user
-  const assignedUserId = user?.role === 3 && assigneeId
+      const assignedUserId = user?.role === 3 && assigneeId
         ? parseInt(assigneeId, 10)
         : user?.id;
       const violationData = {
@@ -333,19 +373,26 @@ export default function NewViolationForm({
 
       // If there are files selected, upload them to /violation/{id}/photos
       if (files.length > 0 && created?.id) {
-        const fd = new FormData();
-        for (const f of files) fd.append('files', f);
-        const upResp = await fetch(`${process.env.REACT_APP_API_URL}/violation/${created.id}/photos`, {
-          method: 'POST',
-          body: fd,
-        });
-        if (!upResp.ok) {
-          // Don't fail the whole UI; report but continue
-          try {
-            const data = await upResp.json();
-            console.error('Attachment upload failed:', data);
-          } catch (e) {
-            console.error('Attachment upload failed');
+        for (const f of files) {
+          const fd = new FormData();
+          fd.append('files', f);
+          const key = fileKey(f);
+          const codesForPhoto = photoCodeMap[key] || [];
+          if (codesForPhoto.length > 0) {
+            fd.append('code_ids', JSON.stringify(codesForPhoto));
+          }
+          const upResp = await fetch(`${process.env.REACT_APP_API_URL}/violation/${created.id}/photos`, {
+            method: 'POST',
+            body: fd,
+          });
+          if (!upResp.ok) {
+            // Don't fail the whole UI; report but continue
+            try {
+              const data = await upResp.json();
+              console.error('Attachment upload failed:', data);
+            } catch (e) {
+              console.error('Attachment upload failed');
+            }
           }
         }
       }
@@ -353,10 +400,10 @@ export default function NewViolationForm({
       setSuccess(true);
       setForm({ codes: [], address_id: "" });
       setSelectedCodes([]);
-  setSelectedUnitId('');
+      setSelectedUnitId('');
       if (onSelectedCodesChange) onSelectedCodesChange([]);
       // Clear files state so the picker is reset for the next violation
-      setFiles([]);
+      handleFilesChange([]);
       if (onCreated) onCreated(created);
       // Navigate to the created violation's detail page
       if (created?.id) {
@@ -382,6 +429,7 @@ export default function NewViolationForm({
   const effectiveSelectedCodes = selectedCodesValue ?? selectedCodes;
   const canSubmit = !!form.address_id && Array.isArray(effectiveSelectedCodes) && effectiveSelectedCodes.length > 0 && !loading;
   const canAdvanceFromStep = (() => {
+    if (currentStep === "photos") return files.length > 0;
     if (currentStep === "address") return !!form.address_id;
     if (currentStep === "codes") return Array.isArray(effectiveSelectedCodes) && effectiveSelectedCodes.length > 0;
     return true;
@@ -440,13 +488,58 @@ export default function NewViolationForm({
                 label="Attachments"
                 name="attachments"
                 files={files}
-                onChange={setFiles}
+                onChange={handleFilesChange}
                 accept="image/*,application/pdf"
                 disabled={loading}
               />
               <div className="mt-1 text-xs text-gray-500">
-                Add photos now or continue to the next step.
+                Add photos now or continue to the next step. At least one photo is required.
               </div>
+              {photoError && <div className="mt-1 text-xs text-red-600">{photoError}</div>}
+              {files.length > 0 && (
+                <div className="mt-4 space-y-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Attach photos to code(s)</p>
+                  {files.map((f, idx) => {
+                    const key = fileKey(f);
+                    const assigned = photoCodeMap[key] || [];
+                    const options = ((selectedCodesValue ?? selectedCodes) || []).map((opt) => ({
+                      value: opt.code.id,
+                      label: `${opt.code.chapter}${opt.code.section ? `.${opt.code.section}` : ''}: ${opt.code.name}`,
+                    }));
+                    return (
+                      <div key={key} className="rounded border border-gray-200 bg-gray-50 px-3 py-2">
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm font-medium text-gray-800">{f.name}</div>
+                          <div className="text-xs text-gray-500">{Math.round((f.size / 1024) * 10) / 10} KB</div>
+                        </div>
+                        <div className="mt-2">
+                          {options.length > 0 ? (
+                            <select
+                              multiple
+                              value={assigned.map((c) => String(c))}
+                              onChange={(e) => {
+                                const next = Array.from(e.target.selectedOptions).map((opt) => parseInt(opt.value, 10)).filter((n) => !Number.isNaN(n));
+                                setPhotoCodeMap((prev) => ({ ...prev, [key]: next }));
+                              }}
+                              className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                              disabled={loading}
+                            >
+                              {options.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <p className="text-xs text-gray-500">Select codes first to tag photos. Photos without codes will remain unassigned (and won’t appear on the notice).</p>
+                          )}
+                          {assigned.length === 0 && options.length > 0 && (
+                            <p className="mt-1 text-[11px] text-gray-500">Leave empty to keep this photo off the notice.</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
