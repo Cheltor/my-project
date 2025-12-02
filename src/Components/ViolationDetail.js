@@ -191,6 +191,25 @@ const ViolationDetail = () => {
   const [abatingViolation, setAbatingViolation] = useState(false);
   const [isDownloadingNotice, setIsDownloadingNotice] = useState(false);
   const [showAbatementModal, setShowAbatementModal] = useState(false);
+  const [noticeTemplates, setNoticeTemplates] = useState([]);
+  const [complianceTemplates, setComplianceTemplates] = useState([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templatesError, setTemplatesError] = useState('');
+  const [selectedNoticeTemplateId, setSelectedNoticeTemplateId] = useState('');
+  const [selectedComplianceTemplateId, setSelectedComplianceTemplateId] = useState('');
+
+  const getMostRecentTemplateId = (templates) => {
+    if (!Array.isArray(templates) || templates.length === 0) return null;
+    const sorted = [...templates].sort((a, b) => {
+      const aDate = new Date(a?.created_at || 0);
+      const bDate = new Date(b?.created_at || 0);
+      const aTs = Number.isNaN(aDate.getTime()) ? 0 : aDate.getTime();
+      const bTs = Number.isNaN(bDate.getTime()) ? 0 : bDate.getTime();
+      if (aTs !== bTs) return bTs - aTs; // newest first
+      return (b?.id || 0) - (a?.id || 0); // fallback to newest id
+    });
+    return sorted[0]?.id ?? null;
+  };
 
   useEffect(() => {
     const prefetchCommentAttachments = async (comments) => {
@@ -298,6 +317,57 @@ const ViolationDetail = () => {
     };
     loadAssignable();
   }, [user?.role]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const loadCategory = async (category, setter) => {
+      const resp = await fetch(`${process.env.REACT_APP_API_URL}/templates/?category=${encodeURIComponent(category)}`, {
+        headers,
+        signal: controller.signal,
+      });
+      if (!resp.ok) throw new Error('Failed to load templates');
+      const data = await resp.json();
+      if (!controller.signal.aborted) {
+        setter(Array.isArray(data) ? data : []);
+      }
+    };
+
+    const loadTemplates = async () => {
+      setTemplatesError('');
+      setTemplatesLoading(true);
+      try {
+        await Promise.all([
+          loadCategory('violation', setNoticeTemplates),
+          loadCategory('compliance', setComplianceTemplates),
+        ]);
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setTemplatesError(err.message || 'Unable to load templates');
+          setNoticeTemplates([]);
+          setComplianceTemplates([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setTemplatesLoading(false);
+        }
+      }
+    };
+
+    loadTemplates();
+    return () => controller.abort();
+  }, [token]);
+
+  useEffect(() => {
+    if (!selectedNoticeTemplateId) {
+      const newestNoticeId = getMostRecentTemplateId(noticeTemplates);
+      if (newestNoticeId) setSelectedNoticeTemplateId(String(newestNoticeId));
+    }
+    if (!selectedComplianceTemplateId) {
+      const newestComplianceId = getMostRecentTemplateId(complianceTemplates);
+      if (newestComplianceId) setSelectedComplianceTemplateId(String(newestComplianceId));
+    }
+  }, [noticeTemplates, complianceTemplates, selectedNoticeTemplateId, selectedComplianceTemplateId]);
 
   // Add comment submit handler
   const handleCommentSubmit = async (e) => {
@@ -449,14 +519,16 @@ const ViolationDetail = () => {
   const handleDownloadComplianceLetter = async (closeModal = false) => {
     try {
       setIsGeneratingCompliance(true);
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/violation/${id}/compliance-letter`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const params = new URLSearchParams();
+      if (selectedComplianceTemplateId) {
+        params.set('template_id', selectedComplianceTemplateId);
+      }
+      const requestUrl = `${process.env.REACT_APP_API_URL}/violation/${id}/compliance-letter${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(requestUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (!response.ok) throw new Error("Failed to download compliance letter");
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -487,14 +559,16 @@ const ViolationDetail = () => {
   const handleDownloadViolationNotice = async () => {
     try {
       setIsDownloadingNotice(true);
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/violation/${id}/notice`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const params = new URLSearchParams();
+      if (selectedNoticeTemplateId) {
+        params.set('template_id', selectedNoticeTemplateId);
+      }
+      const requestUrl = `${process.env.REACT_APP_API_URL}/violation/${id}/notice${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(requestUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (!response.ok) throw new Error("Failed to download notice");
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -1413,27 +1487,70 @@ const ViolationDetail = () => {
 
           {showDocumentActions && (
             <div className="rounded-2xl border border-gray-100 bg-white/60 p-5">
-              <h3 className="text-sm font-semibold text-gray-900">Notices & Letters</h3>
-              <div className="mt-4 flex flex-wrap gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">Notices & Letters</h3>
+                  <p className="text-xs text-gray-500">Pick a template or stick with the system default.</p>
+                </div>
+                {templatesLoading && <span className="text-[11px] font-semibold text-indigo-600">Loading templates…</span>}
+              </div>
+              {templatesError && <p className="mt-2 text-xs text-rose-600">{templatesError}</p>}
+              <div className="mt-4 space-y-3">
                 {violation.status === 0 && isFormalNotice && (
-                  <button
-                    type="button"
-                    onClick={handleDownloadViolationNotice}
-                    disabled={isDownloadingNotice}
-                    className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isDownloadingNotice ? 'Preparing…' : 'Download Violation Notice'}
-                  </button>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-gray-700 ring-1 ring-inset ring-gray-200">
+                      <span>Template</span>
+                      <select
+                        value={selectedNoticeTemplateId}
+                        onChange={(e) => setSelectedNoticeTemplateId(e.target.value)}
+                        disabled={templatesLoading}
+                        className="rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-semibold text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      >
+                        <option value="">System Default</option>
+                        {noticeTemplates.map((tpl) => (
+                          <option key={tpl.id} value={tpl.id}>
+                            {tpl.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDownloadViolationNotice}
+                      disabled={isDownloadingNotice}
+                      className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isDownloadingNotice ? 'Preparing…' : 'Download Violation Notice'}
+                    </button>
+                  </div>
                 )}
                 {violation.status === 1 && (
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadComplianceLetter()}
-                    disabled={isGeneratingCompliance}
-                    className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isGeneratingCompliance ? 'Generating…' : 'Download Compliance Letter'}
-                  </button>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-gray-700 ring-1 ring-inset ring-gray-200">
+                      <span>Template</span>
+                      <select
+                        value={selectedComplianceTemplateId}
+                        onChange={(e) => setSelectedComplianceTemplateId(e.target.value)}
+                        disabled={templatesLoading}
+                        className="rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-semibold text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      >
+                        <option value="">System Default</option>
+                        {complianceTemplates.map((tpl) => (
+                          <option key={tpl.id} value={tpl.id}>
+                            {tpl.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadComplianceLetter()}
+                      disabled={isGeneratingCompliance}
+                      className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isGeneratingCompliance ? 'Generating…' : 'Download Compliance Letter'}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

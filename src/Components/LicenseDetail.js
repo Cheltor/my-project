@@ -153,12 +153,56 @@ export default function LicenseDetail() {
 
   const { token } = useAuth();
   const [isDownloadingLicense, setIsDownloadingLicense] = useState(false);
+  const [licenseTemplates, setLicenseTemplates] = useState([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [templatesError, setTemplatesError] = useState('');
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadTemplates = async () => {
+      setTemplatesError('');
+      setTemplatesLoading(true);
+      try {
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const resp = await fetch(`${process.env.REACT_APP_API_URL}/templates/?category=license`, {
+          headers,
+          signal: controller.signal,
+        });
+        if (!resp.ok) throw new Error('Failed to load templates');
+        const data = await resp.json();
+        if (!controller.signal.aborted) {
+          setLicenseTemplates(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setTemplatesError(err.message || 'Unable to load templates');
+          setLicenseTemplates([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setTemplatesLoading(false);
+        }
+      }
+    };
+
+    loadTemplates();
+    return () => controller.abort();
+  }, [token]);
 
   const handleDownloadLicense = async () => {
     try {
       setIsDownloadingLicense(true);
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const resp = await fetch(`${process.env.REACT_APP_API_URL}/license/${id}/download`, { headers });
+      const params = new URLSearchParams();
+      if (selectedTemplateId) {
+        params.set('template_id', selectedTemplateId);
+      }
+      const resp = await fetch(
+        `${process.env.REACT_APP_API_URL}/license/${id}/download${params.toString() ? `?${params.toString()}` : ''}`,
+        { headers }
+      );
       if (!resp.ok) throw new Error('Failed to download license');
       const blob = await resp.blob();
       const url = window.URL.createObjectURL(blob);
@@ -287,7 +331,7 @@ export default function LicenseDetail() {
               Detailed view of the license record, including billing and renewal information.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:gap-3">
             {isEditing ? (
               <>
                 <button
@@ -308,16 +352,38 @@ export default function LicenseDetail() {
                 </button>
               </>
             ) : (
-              <button
-                type="button"
-                onClick={handleDownloadLicense}
-                disabled={isDownloadingLicense}
-                className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isDownloadingLicense ? 'Preparing…' : 'Download License'}
-              </button>
+              <>
+                <div className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-[11px] font-semibold text-slate-700 ring-1 ring-inset ring-slate-200">
+                  <span>Template</span>
+                  <select
+                    value={selectedTemplateId}
+                    onChange={(e) => setSelectedTemplateId(e.target.value)}
+                    disabled={templatesLoading}
+                    className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                  >
+                    <option value="">System Default</option>
+                    {licenseTemplates.map((tpl) => (
+                      <option key={tpl.id} value={tpl.id}>
+                        {tpl.name}
+                      </option>
+                    ))}
+                  </select>
+                  {templatesLoading && <span className="text-[10px] text-indigo-600">Loading…</span>}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDownloadLicense}
+                  disabled={isDownloadingLicense}
+                  className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isDownloadingLicense ? 'Preparing…' : 'Download License'}
+                </button>
+              </>
             )}
           </div>
+          {!isEditing && templatesError && (
+            <p className="text-xs font-semibold text-rose-600">{templatesError}</p>
+          )}
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[2fr_1fr]">
