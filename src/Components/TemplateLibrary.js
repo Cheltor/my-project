@@ -10,6 +10,17 @@ const TEMPLATE_CATEGORIES = [
   { value: "license", label: "Licenses" },
 ];
 
+const LICENSE_TYPE_OPTIONS = [
+  { value: "1", label: "Business License" },
+  { value: "2", label: "Single Family License" },
+  { value: "3", label: "Multifamily License" },
+];
+
+const formatLicenseType = (value) => {
+  const match = LICENSE_TYPE_OPTIONS.find((opt) => String(opt.value) === String(value));
+  return match ? match.label : value ? `Type ${value}` : "Unspecified";
+};
+
 const sanitizeFilename = (value, fallback) => {
   const safe = String(value || "")
     .replace(/[^a-zA-Z0-9]+/g, "_")
@@ -28,6 +39,7 @@ const TemplateLibrary = () => {
   const [uploadName, setUploadName] = useState("");
   const [uploadFiles, setUploadFiles] = useState([]);
   const [uploadCategory, setUploadCategory] = useState(TEMPLATE_CATEGORIES[0].value);
+  const [uploadLicenseType, setUploadLicenseType] = useState("1");
   const [uploading, setUploading] = useState(false);
 
   const authHeaders = useMemo(() => (token ? { Authorization: `Bearer ${token}` } : {}), [token]);
@@ -115,6 +127,9 @@ const TemplateLibrary = () => {
       fd.append("file", file);
       fd.append("name", uploadName.trim());
       fd.append("category", uploadCategory);
+      if (uploadCategory === "license") {
+        fd.append("license_type", uploadLicenseType);
+      }
       const resp = await fetch(`${process.env.REACT_APP_API_URL}/templates/`, {
         method: "POST",
         headers: authHeaders,
@@ -192,6 +207,7 @@ const TemplateLibrary = () => {
   };
 
   const activeTemplates = templatesByCategory[activeCategory] || [];
+  const isLicenseCategory = activeCategory === "license";
   const activeLabel =
     TEMPLATE_CATEGORIES.find((cat) => cat.value === activeCategory)?.label || "Templates";
 
@@ -257,11 +273,10 @@ const TemplateLibrary = () => {
                         key={cat.value}
                         type="button"
                         onClick={() => setActiveCategory(cat.value)}
-                        className={`rounded-full px-3 py-1 transition ${
-                          isActive
-                            ? "bg-indigo-600 text-white shadow-sm"
-                            : "text-slate-700 hover:bg-white hover:text-indigo-700"
-                        }`}
+                        className={`rounded-full px-3 py-1 transition ${isActive
+                          ? "bg-indigo-600 text-white shadow-sm"
+                          : "text-slate-700 hover:bg-white hover:text-indigo-700"
+                          }`}
                       >
                         {cat.label}
                       </button>
@@ -296,6 +311,11 @@ const TemplateLibrary = () => {
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Name
                     </th>
+                    {isLicenseCategory && (
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        License Type
+                      </th>
+                    )}
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                       File
                     </th>
@@ -311,6 +331,11 @@ const TemplateLibrary = () => {
                   {activeTemplates.map((tpl) => (
                     <tr key={tpl.id}>
                       <td className="px-6 py-3 text-sm font-semibold text-slate-900">{tpl.name}</td>
+                      {isLicenseCategory && (
+                        <td className="px-6 py-3 text-sm text-slate-700">
+                          {formatLicenseType(tpl.license_type)}
+                        </td>
+                      )}
                       <td className="px-6 py-3 text-sm text-slate-700">{tpl.filename || "docx"}</td>
                       <td className="px-6 py-3 text-sm text-slate-700">
                         {tpl.created_at ? toEasternLocaleString(tpl.created_at, "en-US", {
@@ -367,55 +392,81 @@ const TemplateLibrary = () => {
                 disabled={uploading}
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-sm font-semibold text-slate-800" htmlFor="template-category">
-                Category
-              </label>
-              <select
-                id="template-category"
-                value={uploadCategory}
-                onChange={(e) => setUploadCategory(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                disabled={uploading}
-              >
-                {TEMPLATE_CATEGORIES.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </option>
-                ))}
-              </select>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-sm font-semibold text-slate-800" htmlFor="template-category">
+                  Category
+                </label>
+                <select
+                  id="template-category"
+                  value={uploadCategory}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setUploadCategory(value);
+                    if (value !== "license") setUploadLicenseType("1");
+                  }}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                  disabled={uploading}
+                >
+                  {TEMPLATE_CATEGORIES.map((cat) => (
+                    <option key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {uploadCategory === "license" && (
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold text-slate-800" htmlFor="license-type">
+                    License type
+                  </label>
+                  <select
+                    id="license-type"
+                    value={uploadLicenseType}
+                    onChange={(e) => setUploadLicenseType(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                    disabled={uploading}
+                  >
+                    {LICENSE_TYPE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-500">
+                    Templates are suggested by license type when downloading a license document.
+                  </p>
+                </div>
+              )}
             </div>
+
             <FileUploadInput
-              label="Template file (.docx)"
+              label="Template file"
+              description="Upload a Word (.docx) file. Max 10 MB."
               files={uploadFiles}
-              onChange={(files) => setUploadFiles(Array.isArray(files) ? files.slice(0, 1) : [])}
+              onChange={setUploadFiles}
               accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              disabled={uploading}
               multiple={false}
+              disabled={uploading}
               addFilesLabel="Choose file"
               emptyStateLabel="No file selected"
             />
+
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="submit"
                 disabled={uploading}
-                className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:bg-indigo-300"
               >
-                {uploading ? "Uploading..." : "Upload Template"}
+                {uploading ? "Uploading..." : "Upload template"}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setUploadFiles([]);
-                  setUploadName("");
-                  setUploadCategory(TEMPLATE_CATEGORIES[0].value);
-                }}
-                disabled={uploading}
-                className="text-sm font-semibold text-slate-600 underline underline-offset-4 hover:text-slate-900"
-              >
-                Reset
-              </button>
+              <p className="text-xs text-slate-500">
+                Each license template should be uploaded with the correct license type so it shows up in the matching dropdown.
+              </p>
             </div>
+
           </form>
         </section>
       </div>

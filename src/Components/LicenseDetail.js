@@ -45,6 +45,11 @@ export default function LicenseDetail() {
     3: 'Multifamily License',
   };
 
+  const formatLicenseTypeLabel = (value) => {
+    if (value === null || value === undefined || value === '') return 'Unspecified';
+    return LICENSE_TYPE_LABELS[value] || `Type ${value}`;
+  };
+
   const toDateInput = (value) => {
     if (!value) return '';
     const d = new Date(value);
@@ -151,14 +156,31 @@ export default function LicenseDetail() {
     return preferred || null;
   }, [business, license?.business_id]);
 
+  const licenseTypeLabel = formatLicenseTypeLabel(license?.license_type);
+
   const { token } = useAuth();
   const [isDownloadingLicense, setIsDownloadingLicense] = useState(false);
   const [licenseTemplates, setLicenseTemplates] = useState([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [templatesError, setTemplatesError] = useState('');
   const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templateScope, setTemplateScope] = useState('filtered'); // filtered | all
+
+  const getMostRecentTemplateId = (templates) => {
+    if (!Array.isArray(templates) || templates.length === 0) return null;
+    const sorted = [...templates].sort((a, b) => {
+      const aDate = new Date(a?.created_at || 0);
+      const bDate = new Date(b?.created_at || 0);
+      const aTs = Number.isNaN(aDate.getTime()) ? 0 : aDate.getTime();
+      const bTs = Number.isNaN(bDate.getTime()) ? 0 : bDate.getTime();
+      if (aTs !== bTs) return bTs - aTs;
+      return (b?.id || 0) - (a?.id || 0);
+    });
+    return sorted[0]?.id ?? null;
+  };
 
   useEffect(() => {
+    if (!license) return;
     const controller = new AbortController();
 
     const loadTemplates = async () => {
@@ -166,14 +188,43 @@ export default function LicenseDetail() {
       setTemplatesLoading(true);
       try {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const resp = await fetch(`${process.env.REACT_APP_API_URL}/templates/?category=license`, {
-          headers,
-          signal: controller.signal,
-        });
-        if (!resp.ok) throw new Error('Failed to load templates');
-        const data = await resp.json();
+        const params = new URLSearchParams({ category: 'license' });
+        const lType = license?.license_type;
+        if (lType !== null && lType !== undefined) {
+          params.set('license_type', lType);
+        }
+
+        const fetchTemplates = async (searchParams, scopeLabel) => {
+          const resp = await fetch(
+            `${process.env.REACT_APP_API_URL}/templates/?${searchParams.toString()}`,
+            { headers, signal: controller.signal }
+          );
+          if (!resp.ok) throw new Error('Failed to load templates');
+          const data = await resp.json();
+          return { data: Array.isArray(data) ? data : [], scopeLabel };
+        };
+
+        let { data, scopeLabel } = await fetchTemplates(params, 'filtered');
+
+        if ((data || []).length === 0 && lType !== null && lType !== undefined) {
+          // No template for this type yet; fall back to any license template.
+          const fallback = await fetchTemplates(new URLSearchParams({ category: 'license' }), 'all');
+          data = fallback.data;
+          scopeLabel = fallback.scopeLabel;
+        }
+
         if (!controller.signal.aborted) {
-          setLicenseTemplates(Array.isArray(data) ? data : []);
+          setTemplateScope(scopeLabel);
+          setLicenseTemplates(data);
+          const selectedStillExists = data.some(
+            (tpl) => String(tpl.id) === String(selectedTemplateId || '')
+          );
+          const newest = getMostRecentTemplateId(data);
+          // Auto-pick the newest template if the user hasn't chosen one yet,
+          // or if their previous choice no longer applies to the filtered list.
+          if (!selectedTemplateId || !selectedStillExists) {
+            setSelectedTemplateId(newest ? String(newest) : '');
+          }
         }
       } catch (err) {
         if (!controller.signal.aborted) {
@@ -189,7 +240,7 @@ export default function LicenseDetail() {
 
     loadTemplates();
     return () => controller.abort();
-  }, [token]);
+  }, [license, token]);
 
   const handleDownloadLicense = async () => {
     try {
@@ -365,11 +416,19 @@ export default function LicenseDetail() {
                     {licenseTemplates.map((tpl) => (
                       <option key={tpl.id} value={tpl.id}>
                         {tpl.name}
+                        {tpl.license_type ? ` (${formatLicenseTypeLabel(tpl.license_type)})` : ''}
                       </option>
                     ))}
                   </select>
                   {templatesLoading && <span className="text-[10px] text-indigo-600">Loading…</span>}
                 </div>
+                {license?.license_type !== null && license?.license_type !== undefined && (
+                  <p className="text-[11px] text-slate-500">
+                    {templateScope === 'filtered'
+                      ? `Templates filtered to ${licenseTypeLabel}.`
+                      : 'No template uploaded for this license type yet; showing all license templates.'}
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={handleDownloadLicense}
