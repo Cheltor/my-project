@@ -2,37 +2,73 @@ import React, { useState } from 'react';
 import MentionsTextarea from '../MentionsTextarea';
 import FileUploadInput from '../Common/FileUploadInput';
 import LoadingSpinner from '../Common/LoadingSpinner';
-import { useAuth } from '../../AuthContext'; // Import the useAuth hook from the AuthContext
+import { useAuth } from '../../AuthContext';
+import { useOffline } from '../../OfflineContext';
 
 const NewAddressComment = ({ addressId, onCommentAdded }) => {
-  const [newComment, setNewComment] = useState(''); // State for new comment input
+  const [newComment, setNewComment] = useState('');
   const [mentionIds, setMentionIds] = useState([]);
   const [contactMentionIds, setContactMentionIds] = useState([]);
-  const [submitting, setSubmitting] = useState(false); // State for form submission
+  const [submitting, setSubmitting] = useState(false);
   const [files, setFiles] = useState([]);
-  const { user } = useAuth(); // Get user data from context
+  const { user } = useAuth();
+  const { isOnline, queueAction } = useOffline();
+  const [offlineNotice, setOfflineNotice] = useState('');
 
-  // Function to handle form submission
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (!newComment.trim()) {
-      return; // Prevent submission of empty comments
-    }
+    if (!newComment.trim()) return;
 
     if (!user) {
       console.error('User is not authenticated.');
       return;
     }
-  
-    const userId = user.id; // Get the user ID from the user context
 
-    // Log the comment and address ID before submission
-    console.log("Submitting comment:", newComment);
-    console.log("Address ID:", addressId);
-    console.log("User ID:", userId); // Hardcoded user ID for testing
-  
+    const userId = user.id;
+
+    if (!isOnline) {
+      // Offline submission
+      if (files.length > 0) {
+        alert('File attachments are not supported in offline mode. Please remove attachments or try again when online.');
+        return;
+      }
+
+      const action = {
+        type: 'ADD_COMMENT',
+        payload: {
+          addressId,
+          content: newComment,
+          user_id: userId,
+          mentioned_user_ids: mentionIds.join(','),
+          mentioned_contact_ids: contactMentionIds.join(','),
+        }
+      };
+
+      queueAction(action);
+
+      // Optimistic update
+      const tempComment = {
+        id: `temp-${Date.now()}`,
+        content: newComment,
+        user_id: userId,
+        user: user,
+        created_at: new Date().toISOString(),
+        mentions: [], // Mentions won't be resolved offline easily without more logic, skipping for now
+        contact_mentions: [],
+        isOffline: true, // Flag for UI
+      };
+
+      onCommentAdded(tempComment);
+      setNewComment('');
+      setMentionIds([]);
+      setContactMentionIds([]);
+      setOfflineNotice('Comment saved offline. It will sync when you are back online.');
+      setTimeout(() => setOfflineNotice(''), 5000);
+      return;
+    }
+
     setSubmitting(true);
-  
+
     const formData = new FormData();
     formData.append('content', newComment);
     if (mentionIds && mentionIds.length > 0) {
@@ -50,9 +86,7 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
       body: formData,
     })
       .then(async (response) => {
-        console.log('Response status:', response.status);
         if (!response.ok) {
-          // Try to parse error details, fall back to text
           let detail = 'Request failed';
           try {
             const data = await response.json();
@@ -60,14 +94,13 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
           } catch (_) {
             try {
               detail = await response.text();
-            } catch (_) {}
+            } catch (_) { }
           }
           throw new Error(`${response.status} ${response.statusText} - ${detail}`);
         }
         return response.json();
       })
       .then((created) => {
-        console.log('Received response:', created);
         if (!created || typeof created.id === 'undefined') {
           console.warn('Server did not return a valid comment with id; skipping add to list.');
         } else {
@@ -79,7 +112,6 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
         setContactMentionIds([]);
         setSubmitting(false);
         try {
-          // If the created comment has mentions, trigger a notification refresh
           if (created && Array.isArray(created.mentions) && created.mentions.length > 0) {
             window.dispatchEvent(new Event('notifications:refresh'));
           }
@@ -90,7 +122,6 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
         setSubmitting(false);
       });
   };
-  
 
   return (
     <form onSubmit={handleSubmit} className="mt-4">
@@ -99,8 +130,8 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
         onChange={setNewComment}
         onMentionsChange={setMentionIds}
         onContactMentionsChange={setContactMentionIds}
-        placeholder="Write a comment... Use @Name for users or %Name for contacts..."
-        className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-200"
+        placeholder={isOnline ? "Write a comment... Use @Name for users or %Name for contacts..." : "You are offline. Comments will be saved and synced later..."}
+        className={`w-full p-2 border rounded-lg focus:outline-none focus:ring focus:ring-indigo-200 ${!isOnline ? 'border-amber-300 bg-amber-50' : 'border-gray-300'}`}
         rows={4}
         disabled={submitting}
       />
@@ -111,14 +142,15 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
           files={files}
           onChange={setFiles}
           accept="image/*,application/pdf"
-          disabled={submitting}
+          disabled={submitting || !isOnline}
           label="Attachments"
           addFilesLabel={files.length > 0 ? 'Add files' : 'Choose files'}
-          emptyStateLabel="No files selected"
+          emptyStateLabel={!isOnline ? "Attachments unavailable offline" : "No files selected"}
         />
+        <div className="flex items-center justify-between">
           <button
             type="submit"
-            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-500 focus:outline-none focus:ring focus:ring-indigo-400"
+            className={`px-4 py-2 text-white rounded focus:outline-none focus:ring focus:ring-indigo-400 ${!isOnline ? 'bg-amber-600 hover:bg-amber-500' : 'bg-indigo-600 hover:bg-indigo-500'}`}
             disabled={submitting}
           >
             {submitting ? (
@@ -127,9 +159,11 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
                 Submitting...
               </span>
             ) : (
-              'Add Comment'
+              isOnline ? 'Add Comment' : 'Save Offline'
             )}
           </button>
+          {offlineNotice && <span className="text-sm text-amber-700 font-medium">{offlineNotice}</span>}
+        </div>
       </div>
     </form>
   );

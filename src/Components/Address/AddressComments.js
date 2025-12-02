@@ -347,6 +347,15 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
     };
   }, [addressId, page, pageSize, refreshKey, fetchCommentsPage]);
 
+  // Listen for sync events
+  useEffect(() => {
+    const handleSync = () => {
+      setRefreshKey((k) => k + 1);
+    };
+    window.addEventListener('civiccode:comment-synced', handleSync);
+    return () => window.removeEventListener('civiccode:comment-synced', handleSync);
+  }, []);
+
   useEffect(() => {
     setPage(initialPage);
   }, [addressId, initialPage]);
@@ -457,8 +466,13 @@ const AddressComments = ({ addressId, pageSize = 10, initialPage = 1 }) => {
         <ul className="space-y-4 mt-2">
           {comments.length > 0 ? (
             comments.map((comment) => (
-              <li key={comment.id} className="relative rounded-lg bg-gray-100 p-4 shadow">
+              <li key={comment.id} className={`relative rounded-lg p-4 shadow ${comment.isOffline ? 'bg-amber-50 border border-amber-200' : 'bg-gray-100'}`}>
                 <div className="absolute right-3 top-3 flex flex-col items-end gap-2">
+                  {comment.isOffline && (
+                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                      Pending Sync
+                    </span>
+                  )}
                   {comment.review_later && user?.id && Number(comment.user_id) === Number(user.id) && (
                     <div className="flex flex-wrap items-center justify-end gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 shadow-sm">
                       <span>Flagged for review</span>

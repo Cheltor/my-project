@@ -2,7 +2,7 @@
 import { clientsClaim } from 'workbox-core';
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
-import { StaleWhileRevalidate } from 'workbox-strategies';
+import { StaleWhileRevalidate, NetworkFirst } from 'workbox-strategies';
 
 clientsClaim();
 self.skipWaiting();
@@ -22,6 +22,19 @@ registerRoute(
   ({ url }) => url.origin === self.location.origin && url.pathname.startsWith('/static/'),
   new StaleWhileRevalidate({
     cacheName: 'static-resources',
+  })
+);
+
+// Cache API requests
+registerRoute(
+  ({ url }) => {
+    const apiUrl = process.env.REACT_APP_API_URL;
+    if (!apiUrl) return false;
+    return url.href.startsWith(apiUrl);
+  },
+  new NetworkFirst({
+    cacheName: 'api-cache',
+    networkTimeoutSeconds: 10,
   })
 );
 

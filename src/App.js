@@ -4,8 +4,10 @@ import React, { useEffect } from 'react';
 // useVisibilityAwareInterval and apiFetch are now used in SettingsContext
 import { AuthProvider, useAuth } from './AuthContext';
 import { SettingsProvider, useSettings } from './SettingsContext';
+import { OfflineProvider } from './OfflineContext';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react'; // added import
+import OfflineIndicator from './Components/OfflineIndicator';
 import './App.css';
 import Sidebar from './Layouts/Sidebar';  // Adjust path based on your project structure
 import Home from './Components/Home';
@@ -68,7 +70,9 @@ function App() {
   return (
     <AuthProvider>
       <SettingsProvider>
-        <MainApp />
+        <OfflineProvider>
+          <MainApp />
+        </OfflineProvider>
       </SettingsProvider>
     </AuthProvider>
   );
@@ -106,6 +110,7 @@ function MainApp() {
 
   return (
     <>
+      <OfflineIndicator />
       {showUpdateNotice && (
         <div className="sw-update-notice" role="status" aria-live="assertive">
           Refreshing to apply updates...
