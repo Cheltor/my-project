@@ -48,6 +48,7 @@ const navigation = [
   { name: 'New Address', href: '/new-address', icon: BuildingOffice2Icon, current: false, roles: ['Admin'] },
   { name: 'Vacancy Statuses', href: '/vacancy-statuses', icon: BuildingOffice2Icon, current: false },
   { name: 'Admin Dashboard', href: '/admin', icon: Cog6ToothIcon, current: false, roles: ['Admin'] },
+  { name: 'Reporting', href: '/reporting', icon: ChartBarIcon, current: false, roles: ['Admin', 'OAS'] },
   { name: 'Templates', href: '/templates', icon: DocumentDuplicateIcon, current: false, roles: ['Admin'] },
   { name: 'Workload Balancing', href: '/admin/workload', icon: ChartBarIcon, current: false, roles: ['Admin'] },
   { name: 'Admin Code Sync', href: '/admin/code-sync', icon: Cog6ToothIcon, current: false, roles: ['Admin'] },

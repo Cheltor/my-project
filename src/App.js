@@ -65,6 +65,7 @@ import ForgotPassword from './Components/ForgotPassword';
 import ResetPassword from './Components/ResetPassword';
 import LandingPage from './Components/LandingPage';
 import StaffWorkloadDashboard from './Components/StaffWorkloadDashboard';
+import ReportingDashboard from './Components/ReportingDashboard';
 import TemplateLibrary from './Components/TemplateLibrary';
 
 function App() {
@@ -180,6 +181,7 @@ function AppRoutes() {
               <Route path="/new-address" element={<NewAddressPage />} />
               <Route path="/vacancy-statuses" element={<VacancyStatusList />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/reporting" element={<ReportingDashboard />} />
               <Route path="/admin/code-sync" element={<AdminCodeSync />} />
               <Route path="/admin/workload" element={<StaffWorkloadDashboard />} />
               <Route path="/templates" element={<TemplateLibrary />} />
