@@ -15,7 +15,8 @@ import {
   isImageAttachment,
   toEasternLocaleDateString,
   toEasternLocaleString,
-  filterActiveOnsUsers
+  filterActiveOnsUsers,
+  appendGeoMetadata
 } from "../utils";
 
 // Status mapping for display
@@ -381,6 +382,7 @@ const ViolationDetail = () => {
         fd.append('content', newComment);
         fd.append('user_id', user.id);
         for (const f of commentFiles) fd.append('files', f);
+        await appendGeoMetadata(fd);
         response = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/comments/upload`, {
           method: 'POST',
           body: fd,
@@ -776,6 +778,7 @@ const ViolationDetail = () => {
     try {
       const fd = new FormData();
       newFiles.forEach((file) => fd.append('files', file));
+      await appendGeoMetadata(fd);
       const resp = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/photos`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -866,6 +869,7 @@ const ViolationDetail = () => {
       for (const f of files) {
         formData.append('files', f);
       }
+      await appendGeoMetadata(formData);
 
       const commentResponse = await fetch(`${process.env.REACT_APP_API_URL}/violation/${id}/comments/upload`, {
         method: 'POST',

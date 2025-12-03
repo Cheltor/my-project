@@ -8,7 +8,8 @@ import {
   isImageAttachment,
   toEasternLocaleString,
   formatPhoneNumber,
-  filterActiveOnsUsers
+  filterActiveOnsUsers,
+  appendGeoMetadata
 } from '../utils';
 import FileUploadInput from './Common/FileUploadInput';
 
@@ -155,6 +156,7 @@ export default function InspectionDetail() {
     try {
       const fd = new FormData();
       uploadFiles.forEach((file) => fd.append('files', file));
+      await appendGeoMetadata(fd);
       const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
       const resp = await fetch(`${process.env.REACT_APP_API_URL}/inspections/${id}/photos`, {
         method: 'POST',

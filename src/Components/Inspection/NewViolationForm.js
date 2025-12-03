@@ -5,7 +5,7 @@ import CodeSelect from "../CodeSelect";
 import CodeDrawerLink from "../Codes/CodeDrawerLink";
 import { useAuth } from "../../AuthContext";
 import FileUploadInput from "../Common/FileUploadInput";
-import { filterActiveOnsUsers } from "../../utils";
+import { appendGeoMetadata, filterActiveOnsUsers } from "../../utils";
 
 export default function NewViolationForm({
   onCreated,
@@ -381,6 +381,7 @@ export default function NewViolationForm({
           if (codesForPhoto.length > 0) {
             fd.append('code_ids', JSON.stringify(codesForPhoto));
           }
+          await appendGeoMetadata(fd);
           const upResp = await fetch(`${process.env.REACT_APP_API_URL}/violation/${created.id}/photos`, {
             method: 'POST',
             body: fd,

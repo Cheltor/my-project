@@ -102,6 +102,59 @@ export const toEasternLocaleDateString = (value, locales, options) => {
   });
 };
 
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+export const describeDueStatus = (value, { hideWhenMissing = false } = {}) => {
+  const date = normalizeDateInput(value);
+  if (!date) {
+    if (hideWhenMissing) return null;
+    return { label: 'Not scheduled', tone: 'text-gray-500', status: 'unscheduled' };
+  }
+
+  const now = new Date();
+  const diffMs = date.getTime() - now.getTime();
+  const diffDays = Math.round(diffMs / DAY_IN_MS);
+
+  if (diffMs < 0) {
+    const daysPast = Math.abs(diffDays);
+    return {
+      label: daysPast ? `Past due ${daysPast}d` : 'Past due',
+      tone: 'text-rose-600',
+      status: 'overdue',
+    };
+  }
+
+  if (diffDays === 0) {
+    return {
+      label: 'Due today',
+      tone: 'text-amber-600',
+      status: 'today',
+    };
+  }
+
+  if (diffDays <= 2) {
+    return {
+      label: `Due in ${diffDays}d`,
+      tone: 'text-amber-600',
+      status: 'soon',
+    };
+  }
+
+  if (diffDays <= 7) {
+    return {
+      label: `Upcoming ${toEasternLocaleDateString(date)}`,
+      tone: 'text-indigo-600',
+      status: 'upcoming',
+    };
+  }
+
+  return {
+    label: `Due ${toEasternLocaleDateString(date)}`,
+    tone: 'text-gray-500',
+    status: 'scheduled',
+  };
+};
+
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'heic', 'heif', 'tif', 'tiff', 'svg']);
 
 const extractFilename = (value) => {
@@ -186,4 +239,41 @@ export const getAttachmentDisplayLabel = (attachment) => {
   }
 
   return 'FILE';
+};
+
+export const appendGeoMetadata = async (formData, { fieldName = 'capture_metadata', timeoutMs = 6000 } = {}) => {
+  if (!formData || typeof formData.append !== 'function') return null;
+  if (typeof navigator === 'undefined' || !navigator.geolocation) return null;
+
+  const startedAt = Date.now();
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        try {
+          const { coords, timestamp } = position || {};
+          const payload = {
+            lat: coords?.latitude,
+            lng: coords?.longitude,
+            accuracy: coords?.accuracy,
+            altitude: coords?.altitude,
+            altitude_accuracy: coords?.altitudeAccuracy,
+            heading: coords?.heading,
+            speed: coords?.speed,
+            captured_at: timestamp ? new Date(timestamp).toISOString() : new Date().toISOString(),
+            requested_at: new Date(startedAt).toISOString(),
+            source: 'browser_geolocation',
+          };
+          const filtered = Object.fromEntries(
+            Object.entries(payload).filter(([, v]) => v !== null && v !== undefined),
+          );
+          formData.append(fieldName, JSON.stringify(filtered));
+          resolve(filtered);
+        } catch (err) {
+          resolve(null);
+        }
+      },
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 },
+    );
+  });
 };

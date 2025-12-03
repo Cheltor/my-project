@@ -3,7 +3,7 @@ import LoadingSpinner from './Common/LoadingSpinner';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
-import { formatPhoneNumber, toEasternLocaleDateString, toEasternLocaleString } from '../utils';
+import { appendGeoMetadata, formatPhoneNumber, toEasternLocaleDateString, toEasternLocaleString } from '../utils';
 import useContactLinking from '../Hooks/useContactLinking';
 import AddressPhotos from './Address/AddressPhotos'; // Update the import statement
 import Citations from './Address/AddressCitations';
@@ -2352,6 +2352,7 @@ const AddressDetails = () => {
                 if (selectedUnitId) formData.append('unit_id', String(selectedUnitId));
                 formData.append('review_later', quickReviewLater ? 'true' : 'false');
                 for (const f of quickFiles) formData.append('files', f);
+                await appendGeoMetadata(formData);
                 const res = await fetch(`${process.env.REACT_APP_API_URL}/comments/${id}/address`, {
                   method: 'POST',
                   body: formData,

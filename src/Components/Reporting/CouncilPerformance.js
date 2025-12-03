@@ -31,7 +31,7 @@ export default function CouncilPerformance({ defaultRange = 12 }) {
 
       // Use apiFetch wrapper if available or standard fetch
       const res = await apiFetch(`/sir/stats?${params.toString()}`);
-      if (!res.ok) throw new Error('Failed to load Council Performance stats');
+      if (!res.ok) throw new Error('Failed to load SIR stats');
       const data = await res.json();
       setStats(data);
     } catch (e) {

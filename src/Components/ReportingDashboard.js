@@ -52,7 +52,7 @@ export default function ReportingDashboard() {
   const tabs = [
     { id: 'aging', label: 'Case Aging' },
     { id: 'compliance', label: 'Rental Compliance' },
-    { id: 'performance', label: 'Council Performance' },
+    { id: 'performance', label: 'SIR' },
   ];
 
   return (

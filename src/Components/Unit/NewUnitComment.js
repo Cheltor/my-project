@@ -3,6 +3,7 @@ import { useAuth } from '../../AuthContext';
 import MentionsTextarea from '../MentionsTextarea';
 import FileUploadInput from '../Common/FileUploadInput';
 import LoadingSpinner from '../Common/LoadingSpinner';
+import { appendGeoMetadata } from '../../utils';
 
 const NewUnitComment = ({ unitId, addressId, onCommentAdded }) => {
   const [newComment, setNewComment] = useState('');
@@ -12,7 +13,7 @@ const NewUnitComment = ({ unitId, addressId, onCommentAdded }) => {
   const [contactMentionIds, setContactMentionIds] = useState([]);
   const { user } = useAuth();
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (!newComment.trim()) return;
     if (!user) {
@@ -27,33 +28,35 @@ const NewUnitComment = ({ unitId, addressId, onCommentAdded }) => {
       ? `${process.env.REACT_APP_API_URL}/comments/unit/${unitId}/`
       : `${process.env.REACT_APP_API_URL}/comments/`;
 
-    const requestInit = hasFiles
-      ? (() => {
-          const formData = new FormData();
-          formData.append('content', newComment);
-          formData.append('user_id', userId);
-          formData.append('address_id', addressId);
-          if (mentionIds && mentionIds.length > 0) {
-            formData.append('mentioned_user_ids', mentionIds.join(','));
-          }
-          if (contactMentionIds && contactMentionIds.length > 0) {
-            formData.append('mentioned_contact_ids', contactMentionIds.join(','));
-          }
-          for (const f of files) formData.append('files', f);
-          return { method: 'POST', body: formData };
-        })()
-      : {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            content: newComment,
-            user_id: userId,
-            address_id: addressId,
-            unit_id: unitId,
-            mentioned_user_ids: mentionIds && mentionIds.length > 0 ? mentionIds : undefined,
-            mentioned_contact_ids: contactMentionIds && contactMentionIds.length > 0 ? contactMentionIds : undefined,
-          }),
-        };
+    let requestInit;
+    if (hasFiles) {
+      const formData = new FormData();
+      formData.append('content', newComment);
+      formData.append('user_id', userId);
+      formData.append('address_id', addressId);
+      if (mentionIds && mentionIds.length > 0) {
+        formData.append('mentioned_user_ids', mentionIds.join(','));
+      }
+      if (contactMentionIds && contactMentionIds.length > 0) {
+        formData.append('mentioned_contact_ids', contactMentionIds.join(','));
+      }
+      for (const f of files) formData.append('files', f);
+      await appendGeoMetadata(formData);
+      requestInit = { method: 'POST', body: formData };
+    } else {
+      requestInit = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: newComment,
+          user_id: userId,
+          address_id: addressId,
+          unit_id: unitId,
+          mentioned_user_ids: mentionIds && mentionIds.length > 0 ? mentionIds : undefined,
+          mentioned_contact_ids: contactMentionIds && contactMentionIds.length > 0 ? contactMentionIds : undefined,
+        }),
+      };
+    }
 
     fetch(endpoint, requestInit)
       .then(async (response) => {

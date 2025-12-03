@@ -4,6 +4,7 @@ import { useAuth } from '../../AuthContext';
 import CodeSelect from '../CodeSelect';
 import FileUploadInput from '../Common/FileUploadInput';
 import LoadingSpinner from '../Common/LoadingSpinner';
+import { appendGeoMetadata } from '../../utils';
 
 const DEADLINE_OPTIONS = [
   'Immediate',
@@ -144,6 +145,7 @@ const NewAddressViolation = ({ addressId, onViolationAdded }) => {
           if (codesForPhoto.length > 0) {
             fd.append('code_ids', JSON.stringify(codesForPhoto));
           }
+          await appendGeoMetadata(fd);
           try {
             const uploadResp = await fetch(`${process.env.REACT_APP_API_URL}/violation/${newViolation.id}/photos`, {
               method: 'POST',

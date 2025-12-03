@@ -4,6 +4,7 @@ import FileUploadInput from '../Common/FileUploadInput';
 import LoadingSpinner from '../Common/LoadingSpinner';
 import { useAuth } from '../../AuthContext';
 import { useOffline } from '../../OfflineContext';
+import { appendGeoMetadata } from '../../utils';
 
 const NewAddressComment = ({ addressId, onCommentAdded }) => {
   const [newComment, setNewComment] = useState('');
@@ -15,7 +16,7 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
   const { isOnline, queueAction } = useOffline();
   const [offlineNotice, setOfflineNotice] = useState('');
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (!newComment.trim()) return;
 
@@ -80,6 +81,7 @@ const NewAddressComment = ({ addressId, onCommentAdded }) => {
     }
     // address_id is in the path
     for (const f of files) formData.append('files', f);
+    await appendGeoMetadata(formData);
 
     fetch(`${process.env.REACT_APP_API_URL}/comments/${addressId}/address/`, {
       method: 'POST',

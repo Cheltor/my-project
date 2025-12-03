@@ -3,6 +3,7 @@ import MentionsTextarea from '../MentionsTextarea';
 import FileUploadInput from '../Common/FileUploadInput';
 import LoadingSpinner from '../Common/LoadingSpinner';
 import { useAuth } from '../../AuthContext'; // Import the useAuth hook from the AuthContext
+import { appendGeoMetadata } from '../../utils';
 
 const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }) => {
   const [newComment, setNewComment] = useState(''); // State for new comment input
@@ -20,7 +21,7 @@ const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }
   }, [commentId, initialText]);
 
   // Function to handle form submission
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     const trimmed = (newComment || '').trim();
     if (!trimmed) {
@@ -74,6 +75,7 @@ const NewContactComment = ({ contactId, onCommentAdded, commentId, initialText }
     for (const f of files) {
       formData.append('files', f);
     }
+    await appendGeoMetadata(formData);
 
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
 

@@ -215,12 +215,21 @@ const combineLicenseRows = (notPaid = [], notSent = []) => {
     .slice(0, PAGE_LIMIT);
 };
 
-const OasOverview = () => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+const OasOverview = ({ prefetchedData = null, hideViolations = false }) => {
+  const [data, setData] = useState(prefetchedData);
+  const [loading, setLoading] = useState(!prefetchedData);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (prefetchedData) {
+      setData(prefetchedData);
+      setLoading(false);
+      setError(null);
+    }
+  }, [prefetchedData]);
+
+  useEffect(() => {
+    if (prefetchedData) return undefined;
     let cancelled = false;
 
     const load = async () => {
@@ -246,7 +255,7 @@ const OasOverview = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [prefetchedData]);
 
   const sections = useMemo(() => {
     if (!data) return [];
@@ -259,7 +268,7 @@ const OasOverview = () => {
 
     const licenseRows = combineLicenseRows(data.licenses_not_paid || [], data.licenses_not_sent || []);
 
-    return [
+    const sectionsList = [
       {
         key: 'complaints',
         title: 'Pending Complaints',
@@ -395,7 +404,9 @@ const OasOverview = () => {
         ],
       },
     ];
-  }, [data]);
+
+    return hideViolations ? sectionsList.filter((section) => section.key !== 'violations') : sectionsList;
+  }, [data, hideViolations]);
 
   if (loading) {
     return <div className="rounded-lg bg-white p-6 text-sm text-gray-500 shadow">Loading OAS overview...</div>;
