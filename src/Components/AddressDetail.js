@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { appendGeoMetadata, formatPhoneNumber, toEasternLocaleDateString, toEasternLocaleString } from '../utils';
+import { buildRegistrationDraft, computeExpiresOn, deriveVacancyStatusFromRegistration } from './Address/vacantRegistrationUtils';
 import useContactLinking from '../Hooks/useContactLinking';
 import AddressPhotos from './Address/AddressPhotos'; // Update the import statement
 import Citations from './Address/AddressCitations';
@@ -181,6 +182,36 @@ const formatRecentDescriptor = (input) => {
     minute: '2-digit',
   });
 };
+
+const formatDateShort = (value) => {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const REG_STATUS_OPTIONS = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'active', label: 'Active' },
+  { value: 'waived', label: 'Waived' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'expired', label: 'Expired' },
+];
+
+const COMPLIANCE_OPTIONS = [
+  { value: '', label: 'Not set' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'compliant', label: 'Compliant' },
+  { value: 'non-compliant', label: 'Non-compliant' },
+];
+
+const VACANCY_OPTIONS = [
+  { value: '', label: 'Select status' },
+  { value: 'occupied', label: 'Occupied' },
+  { value: 'potentially vacant', label: 'Potentially Vacant' },
+  { value: 'vacant', label: 'Vacant' },
+  { value: 'registered', label: 'Registered' },
+];
 
 const getLatestTimestamp = (list, fields) => {
   if (!Array.isArray(list) || list.length === 0) return null;
@@ -513,6 +544,14 @@ const AddressDetails = () => {
   const [inspectionsRefreshKey, setInspectionsRefreshKey] = useState(0);
   const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
   const [isSyncingOwner, setIsSyncingOwner] = useState(false);
+  const [showRegEditor, setShowRegEditor] = useState(false);
+  const [regDraft, setRegDraft] = useState(null);
+  const [regSaving, setRegSaving] = useState(false);
+  const [regError, setRegError] = useState(null);
+  const [regSuccess, setRegSuccess] = useState(null);
+  const [showVacancyPicker, setShowVacancyPicker] = useState(false);
+  const [updatingVacancy, setUpdatingVacancy] = useState(false);
+  const [vacancyError, setVacancyError] = useState(null);
 
   const handleInspectionCreated = (created) => {
     // Close form, ensure Inspections tab is active, refresh list and update count optimistically
@@ -1134,6 +1173,104 @@ const AddressDetails = () => {
     }
   };
 
+  const handleQuickVacancyChange = async (nextStatus) => {
+    if (!address || !nextStatus || updatingVacancy) return;
+    setUpdatingVacancy(true);
+    setVacancyError(null);
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/addresses/${address.id}/vacancy-status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vacancy_status: nextStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.detail || 'Failed to update vacancy status');
+      }
+      setAddress((prev) => ({ ...(prev || {}), vacancy_status: data.vacancy_status }));
+      setShowVacancyPicker(false);
+      setToast({ show: true, message: `Vacancy status updated to ${nextStatus}`, variant: 'success' });
+      window.setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 2500);
+    } catch (err) {
+      setVacancyError(err.message);
+      setToast({ show: true, message: err.message || 'Failed to update vacancy status', variant: 'error' });
+      window.setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3500);
+    } finally {
+      setUpdatingVacancy(false);
+    }
+  };
+
+  const openRegistrationEditor = () => {
+    const draft = buildRegistrationDraft(address?.current_vacant_registration);
+    const registeredOn = draft.registered_on || new Date().toISOString().slice(0, 10);
+    const expiresOn = draft.expires_on || computeExpiresOn(registeredOn);
+    setRegDraft({ ...draft, registered_on: registeredOn, expires_on: expiresOn });
+    setShowRegEditor(true);
+    setRegError(null);
+    setRegSuccess(null);
+  };
+
+  const handleRegChange = (field, value) => {
+    setRegDraft((prev) => ({ ...(prev || {}), [field]: value }));
+  };
+
+  const handleSaveRegistration = async () => {
+    if (!address || !regDraft) return;
+    setRegSaving(true);
+    setRegError(null);
+    setRegSuccess(null);
+    try {
+      const payload = { ...regDraft };
+      payload.fee_amount = Number(payload.fee_amount) || 0;
+      if (payload.registration_year) {
+        payload.registration_year = Number(payload.registration_year) || new Date().getFullYear();
+      } else if (payload.registered_on) {
+        const regDate = new Date(payload.registered_on);
+        if (!Number.isNaN(regDate.getTime())) {
+          payload.registration_year = regDate.getFullYear();
+        }
+      } else {
+        payload.registration_year = new Date().getFullYear();
+      }
+      if (!payload.expires_on && payload.registered_on) {
+        payload.expires_on = computeExpiresOn(payload.registered_on);
+      }
+      if ((payload.maintenance_status || payload.security_status) && !payload.compliance_checked_at) {
+        payload.compliance_checked_at = new Date().toISOString();
+      }
+
+      const hasExisting = Boolean(address.current_vacant_registration?.id);
+      const { id: _dropId, ...body } = payload;
+      const url = hasExisting
+        ? `${process.env.REACT_APP_API_URL}/addresses/${address.id}/vacant-registrations/${address.current_vacant_registration.id}`
+        : `${process.env.REACT_APP_API_URL}/addresses/${address.id}/vacant-registrations`;
+      const method = hasExisting ? 'PATCH' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.detail || 'Failed to save registration');
+      }
+      setAddress((prev) => {
+        const nextVacancyStatus = deriveVacancyStatusFromRegistration(data, prev?.vacancy_status);
+        return { ...prev, current_vacant_registration: data, vacancy_status: nextVacancyStatus };
+      });
+      setRegDraft(buildRegistrationDraft(data));
+      setShowRegEditor(false);
+      setRegSuccess('Saved registration details.');
+      window.setTimeout(() => setRegSuccess(null), 3000);
+    } catch (err) {
+      setRegError(err.message);
+    } finally {
+      setRegSaving(false);
+    }
+  };
+
   const tabCounts = useMemo(() => ({
     contacts: counts?.contacts || 0,
     businesses: Array.isArray(businesses) ? businesses.length : 0,
@@ -1183,6 +1320,9 @@ const AddressDetails = () => {
   if (!address) return <div className="text-center mt-10">No address details available.</div>;
 
   console.log('Address units:', units);  // Debug log
+
+  const currentRegistration = address.current_vacant_registration;
+  const showRegistrationCard = address.vacancy_status && address.vacancy_status !== 'occupied';
 
   const formatCountLabel = (count, label) => {
     if (!label) return String(count);
@@ -2055,7 +2195,41 @@ const AddressDetails = () => {
               )}
               <div>
                 <div className="text-xs text-gray-500">Vacancy Status</div>
-                <div className="text-gray-800">{address.vacancy_status ? titlize(address.vacancy_status) : 'N/A'}</div>
+                {showVacancyPicker ? (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={address.vacancy_status || ''}
+                      onChange={(e) => handleQuickVacancyChange(e.target.value)}
+                      className="mt-1 block rounded-md border-gray-300 text-sm"
+                      disabled={updatingVacancy}
+                    >
+                      {VACANCY_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setShowVacancyPicker(false)}
+                      className="px-2 py-1 text-xs rounded-md border border-gray-300 text-gray-700"
+                    >
+                      Close
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowVacancyPicker(true)}
+                    className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm border ${
+                      address.vacancy_status && address.vacancy_status !== 'occupied'
+                        ? 'bg-orange-50 text-orange-800 border-orange-200 hover:border-orange-300 hover:bg-orange-100'
+                        : 'bg-white text-gray-800 border-gray-200 hover:border-gray-300'
+                    }`}
+                    title="Click to update vacancy status quickly"
+                  >
+                    <span>{address.vacancy_status ? titlize(address.vacancy_status) : 'Set status'}</span>
+                  </button>
+                )}
+                {vacancyError && <div className="text-xs text-red-600 mt-1">{vacancyError}</div>}
               </div>
             </div>
           )}
@@ -2065,6 +2239,241 @@ const AddressDetails = () => {
           )}
         </div>
       </div>
+      {/* Vacant property registration */}
+      {showRegistrationCard && (
+      <div className="mt-4 rounded-md border border-gray-200 bg-white shadow-sm p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800">Vacant property registration</h2>
+            <p className="text-xs text-gray-600">
+              Track annual registration status, fees, fire damage, and maintenance/security compliance.
+            </p>
+            {regError && <div className="mt-2 text-sm text-red-600">Error: {regError}</div>}
+            {regSuccess && <div className="mt-2 text-sm text-green-700">{regSuccess}</div>}
+          </div>
+          <div className="flex items-center gap-2">
+            {currentRegistration?.fire_damage && (
+              <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+                Fire-damaged
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (showRegEditor) {
+                  setShowRegEditor(false);
+                  setRegDraft(null);
+                  setRegError(null);
+                  return;
+                }
+                openRegistrationEditor();
+              }}
+              className="px-3 py-1 rounded-md bg-emerald-600 text-white text-sm hover:bg-emerald-700"
+            >
+              {showRegEditor ? 'Close' : currentRegistration ? 'Update registration' : 'Start registration'}
+            </button>
+          </div>
+        </div>
+
+        {!showRegEditor && (
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+            <div className="rounded border border-gray-100 p-3">
+              <div className="text-xs text-gray-500">Status</div>
+              <div className="font-semibold text-gray-800">
+                {currentRegistration ? `${currentRegistration.registration_year || ''} • ${titlize(currentRegistration.status)}` : 'Not registered'}
+              </div>
+            </div>
+            <div className="rounded border border-gray-100 p-3">
+              <div className="text-xs text-gray-500">Dates</div>
+              <div className="text-gray-800">
+                {currentRegistration?.registered_on ? `Registered ${formatDateShort(currentRegistration.registered_on)}` : '—'}
+                {currentRegistration?.expires_on ? ` • Expires ${formatDateShort(currentRegistration.expires_on)}` : ''}
+              </div>
+            </div>
+            <div className="rounded border border-gray-100 p-3">
+              <div className="text-xs text-gray-500">Fees</div>
+              <div className="text-gray-800">
+                ${Number(currentRegistration?.fee_amount || 0).toFixed(2)} — {currentRegistration?.fee_paid ? 'Paid' : 'Unpaid'}
+              </div>
+            </div>
+            <div className="rounded border border-gray-100 p-3">
+              <div className="text-xs text-gray-500">Maintenance</div>
+              <div className="text-gray-800">{titlize(currentRegistration?.maintenance_status) || 'Not set'}</div>
+              {currentRegistration?.maintenance_notes && (
+                <div className="text-xs text-gray-600 mt-1 line-clamp-2">{currentRegistration.maintenance_notes}</div>
+              )}
+            </div>
+            <div className="rounded border border-gray-100 p-3">
+              <div className="text-xs text-gray-500">Security</div>
+              <div className="text-gray-800">{titlize(currentRegistration?.security_status) || 'Not set'}</div>
+              {currentRegistration?.security_notes && (
+                <div className="text-xs text-gray-600 mt-1 line-clamp-2">{currentRegistration.security_notes}</div>
+              )}
+            </div>
+            <div className="rounded border border-gray-100 p-3">
+              <div className="text-xs text-gray-500">Compliance check</div>
+              <div className="text-gray-800">
+                {currentRegistration?.compliance_checked_at ? formatDateShort(currentRegistration.compliance_checked_at) : 'Not recorded'}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showRegEditor && regDraft && (
+          <div className="mt-3 border border-gray-200 rounded-md p-3 space-y-3 bg-gray-50">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <label className="text-sm text-gray-700 space-y-1">
+                <span className="text-xs font-semibold text-gray-600">Registration status</span>
+                <select
+                  value={regDraft.status || ''}
+                  onChange={(e) => handleRegChange('status', e.target.value)}
+                  className="w-full border rounded p-2 text-sm"
+                >
+                  {REG_STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm text-gray-700 space-y-1">
+                <span className="text-xs font-semibold text-gray-600">Registration year</span>
+                <input
+                  type="number"
+                  className="w-full border rounded p-2 text-sm"
+                  value={regDraft.registration_year || ''}
+                  onChange={(e) => handleRegChange('registration_year', Number(e.target.value) || '')}
+                />
+              </label>
+              <label className="text-sm text-gray-700 space-y-1">
+                <span className="text-xs font-semibold text-gray-600">Registered on</span>
+                <input
+                  type="date"
+                  className="w-full border rounded p-2 text-sm"
+                  value={regDraft.registered_on ? regDraft.registered_on.slice(0, 10) : ''}
+                  onChange={(e) => {
+                    const nextDate = e.target.value;
+                    handleRegChange('registered_on', nextDate);
+                    if (!regDraft.expires_on && nextDate) {
+                      handleRegChange('expires_on', computeExpiresOn(nextDate));
+                    }
+                  }}
+                />
+              </label>
+              <label className="text-sm text-gray-700 space-y-1">
+                <span className="text-xs font-semibold text-gray-600">Expires on</span>
+                <input
+                  type="date"
+                  className="w-full border rounded p-2 text-sm"
+                  value={regDraft.expires_on ? regDraft.expires_on.slice(0, 10) : ''}
+                  onChange={(e) => handleRegChange('expires_on', e.target.value)}
+                />
+              </label>
+              <label className="text-sm text-gray-700 space-y-1">
+                <span className="text-xs font-semibold text-gray-600">Fee amount</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-full border rounded p-2 text-sm"
+                  value={regDraft.fee_amount}
+                  onChange={(e) => handleRegChange('fee_amount', e.target.value)}
+                />
+              </label>
+              <div className="flex items-center gap-4">
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(regDraft.fee_paid)}
+                    onChange={(e) => handleRegChange('fee_paid', e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  <span>Fee paid</span>
+                </label>
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(regDraft.fire_damage)}
+                    onChange={(e) => handleRegChange('fire_damage', e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  <span>Fire-damaged</span>
+                </label>
+              </div>
+              <label className="text-sm text-gray-700 space-y-1">
+                <span className="text-xs font-semibold text-gray-600">Maintenance status</span>
+                <select
+                  value={regDraft.maintenance_status || ''}
+                  onChange={(e) => handleRegChange('maintenance_status', e.target.value)}
+                  className="w-full border rounded p-2 text-sm"
+                >
+                  {COMPLIANCE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm text-gray-700 space-y-1">
+                <span className="text-xs font-semibold text-gray-600">Security status</span>
+                <select
+                  value={regDraft.security_status || ''}
+                  onChange={(e) => handleRegChange('security_status', e.target.value)}
+                  className="w-full border rounded p-2 text-sm"
+                >
+                  {COMPLIANCE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm text-gray-700 space-y-1 md:col-span-2">
+                <span className="text-xs font-semibold text-gray-600">Maintenance notes</span>
+                <textarea
+                  rows="2"
+                  className="w-full border rounded p-2 text-sm"
+                  value={regDraft.maintenance_notes || ''}
+                  onChange={(e) => handleRegChange('maintenance_notes', e.target.value)}
+                />
+              </label>
+              <label className="text-sm text-gray-700 space-y-1 md:col-span-2">
+                <span className="text-xs font-semibold text-gray-600">Security notes</span>
+                <textarea
+                  rows="2"
+                  className="w-full border rounded p-2 text-sm"
+                  value={regDraft.security_notes || ''}
+                  onChange={(e) => handleRegChange('security_notes', e.target.value)}
+                />
+              </label>
+              <label className="text-sm text-gray-700 space-y-1 md:col-span-2">
+                <span className="text-xs font-semibold text-gray-600">Registration notes</span>
+                <textarea
+                  rows="2"
+                  className="w-full border rounded p-2 text-sm"
+                  value={regDraft.notes || ''}
+                  onChange={(e) => handleRegChange('notes', e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSaveRegistration}
+                disabled={regSaving}
+                className="px-4 py-2 rounded-md bg-emerald-600 text-white text-sm hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {regSaving ? 'Saving...' : 'Save registration'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRegEditor(false);
+                  setRegDraft(null);
+                }}
+                className="text-sm text-gray-700 hover:text-gray-900"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+      )}
 
   {/* External links and grouped navigation */}
   <div className="mt-2 space-y-6">
