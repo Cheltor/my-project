@@ -6,6 +6,77 @@ const isLocalhost = Boolean(
     )
 );
 
+const supportsServiceWorkers = () => typeof window !== 'undefined' && 'serviceWorker' in navigator;
+const supportsNotifications = () => typeof window !== 'undefined' && 'Notification' in window;
+const supportsPush = () => supportsServiceWorkers() && typeof window !== 'undefined' && 'PushManager' in window;
+
+const urlBase64ToUint8Array = (base64String) => {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; i += 1) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+};
+
+const getReadyRegistration = async () => {
+  if (!supportsServiceWorkers()) {
+    throw new Error('Service workers are not supported by this browser.');
+  }
+  return navigator.serviceWorker.ready;
+};
+
+const getExistingPushSubscription = async () => {
+  if (!supportsPush()) {
+    return null;
+  }
+  try {
+    const registration = await getReadyRegistration();
+    return registration.pushManager.getSubscription();
+  } catch (error) {
+    console.warn('Unable to inspect existing push subscriptions.', error);
+    return null;
+  }
+};
+
+const subscribeToPush = async (vapidPublicKey) => {
+  if (!supportsPush()) {
+    throw new Error('Push notifications are not supported by this browser.');
+  }
+  if (!vapidPublicKey) {
+    throw new Error('Missing VAPID public key for push subscription.');
+  }
+
+  const registration = await getReadyRegistration();
+  const existing = await registration.pushManager.getSubscription();
+  if (existing) {
+    return existing;
+  }
+
+  const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
+  return registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: convertedKey,
+  });
+};
+
+const unsubscribeFromPush = async () => {
+  const subscription = await getExistingPushSubscription();
+  if (!subscription) {
+    return false;
+  }
+  try {
+    await subscription.unsubscribe();
+    return true;
+  } catch (error) {
+    console.warn('Failed to unsubscribe from push notifications.', error);
+    return false;
+  }
+};
+
 const registerValidSW = (swUrl, config) => {
   navigator.serviceWorker
     .register(swUrl)
@@ -35,13 +106,29 @@ const registerValidSW = (swUrl, config) => {
       navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
 
       navigator.serviceWorker.addEventListener('message', (event) => {
-        if (
-          event.data &&
-          event.data.type === 'SERVICE_WORKER_ACTIVATED' &&
-          config?.onActivate &&
-          hadExistingController
-        ) {
+        if (!event.data || !event.data.type) {
+          return;
+        }
+
+        if (event.data.type === 'SERVICE_WORKER_ACTIVATED' && config?.onActivate && hadExistingController) {
           config.onActivate(event);
+          return;
+        }
+
+        if (event.data.type === 'PUSH_NOTIFICATION') {
+          try {
+            window.dispatchEvent(new CustomEvent('notifications:refresh'));
+            window.dispatchEvent(new CustomEvent('notifications:push', { detail: event.data.payload || null }));
+          } catch (err) {
+            console.warn('Failed to broadcast push notification event.', err);
+          }
+          if (config?.onPushMessage) {
+            try {
+              config.onPushMessage(event.data);
+            } catch (err) {
+              console.error('onPushMessage handler threw an error.', err);
+            }
+          }
         }
       });
 
@@ -134,3 +221,17 @@ export const unregister = () => {
       });
   }
 };
+
+export const isPushSupported = () => supportsPush();
+export const isNotificationSupported = () => supportsNotifications();
+export const getNotificationPermissionState = () => {
+  if (!supportsNotifications()) {
+    return 'unsupported';
+  }
+  return Notification.permission;
+};
+
+export const waitForServiceWorkerReady = () => getReadyRegistration();
+export const getPushSubscription = () => getExistingPushSubscription();
+export const ensurePushSubscription = (vapidPublicKey) => subscribeToPush(vapidPublicKey);
+export const disablePushSubscription = () => unsubscribeFromPush();
