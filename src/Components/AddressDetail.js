@@ -213,6 +213,13 @@ const VACANCY_OPTIONS = [
   { value: 'registered', label: 'Registered' },
 ];
 
+const formatHistoryDate = (value) => {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
 const getLatestTimestamp = (list, fields) => {
   if (!Array.isArray(list) || list.length === 0) return null;
   let latest = -Infinity;
@@ -1315,14 +1322,26 @@ const AddressDetails = () => {
     setModalTab(null);
   };
 
+  const currentRegistration = address?.current_vacant_registration;
+  const showRegistrationCard = address?.vacancy_status && address.vacancy_status !== 'occupied';
+  const registrationHistory = useMemo(() => {
+    const list = Array.isArray(address?.vacant_registrations) ? [...address.vacant_registrations] : [];
+    list.sort((a, b) => {
+      const aYear = Number(a?.registration_year) || 0;
+      const bYear = Number(b?.registration_year) || 0;
+      if (aYear !== bYear) return bYear - aYear;
+      const aCreated = new Date(a?.created_at || 0).getTime();
+      const bCreated = new Date(b?.created_at || 0).getTime();
+      return bCreated - aCreated;
+    });
+    return list;
+  }, [address?.vacant_registrations]);
+
   if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
   if (error) return <div className="text-red-500 text-center mt-10">Error: {error}</div>;
   if (!address) return <div className="text-center mt-10">No address details available.</div>;
 
   console.log('Address units:', units);  // Debug log
-
-  const currentRegistration = address.current_vacant_registration;
-  const showRegistrationCard = address.vacancy_status && address.vacancy_status !== 'occupied';
 
   const formatCountLabel = (count, label) => {
     if (!label) return String(count);
@@ -1603,7 +1622,7 @@ const AddressDetails = () => {
                           className="ml-2 inline-flex items-center px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors text-xs font-medium"
                           title={`Call ${formatPhoneNumber(contact.phone)}`}
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm0 10a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2zm10-10a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zm0 10a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm0 10a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2zm10-10a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zm0 10a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
                           {formatPhoneNumber(contact.phone)}
                         </a>
                       )}
@@ -2052,7 +2071,8 @@ const AddressDetails = () => {
               >
                 Edit
               </button>
-            )}
+            )
+            }
           </div>
 
           {isEditing ? (
@@ -2681,6 +2701,64 @@ const AddressDetails = () => {
                     );
                   })}
                 </div>
+                {group.id === 'property' && registrationHistory.length > 0 && (
+                  <div className="mt-3 rounded-md border border-gray-200 bg-white p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-800">Vacant registration history</h4>
+                        <p className="text-xs text-gray-500">Most recent years shown below.</p>
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {registrationHistory.length} record{registrationHistory.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {registrationHistory.slice(0, 6).map((reg) => {
+                        const isCurrent = currentRegistration && reg.id === currentRegistration.id;
+                        const registered = formatHistoryDate(reg.registered_on);
+                        const expires = formatHistoryDate(reg.expires_on);
+                        return (
+                          <div
+                            key={reg.id}
+                            className={`rounded border px-3 py-2 text-sm ${
+                              isCurrent ? 'border-emerald-200 bg-emerald-50/70' : 'border-gray-200 bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-semibold text-gray-900">
+                                {reg.registration_year || '—'} • {titlize(reg.status) || 'Unknown'}
+                              </span>
+                              {reg.fire_damage && (
+                                <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+                                  Fire-damaged
+                                </span>
+                              )}
+                              {isCurrent && (
+                                <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                                  Current
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-700 mt-1 flex flex-wrap gap-3">
+                              <span>
+                                Fee ${Number(reg.fee_amount || 0).toFixed(2)} ({reg.fee_paid ? 'Paid' : 'Unpaid'})
+                              </span>
+                              <span>
+                                {registered ? `Registered ${registered}` : 'No reg date'}
+                                {expires ? ` • Expires ${expires}` : ''}
+                              </span>
+                              {(reg.maintenance_status || reg.security_status) && (
+                                <span>
+                                  Maint: {titlize(reg.maintenance_status) || 'n/a'} • Sec: {titlize(reg.security_status) || 'n/a'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
