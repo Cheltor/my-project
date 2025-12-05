@@ -120,6 +120,15 @@ const RESOURCE_CONFIG = [
     viewRoute: (id) => `/admin/contact-comments/${id}/edit`,
     fields: ['id', 'comment', 'contact_id', 'user_id', 'created_at'],
   },
+  {
+    key: 'announcements',
+    label: 'Announcements',
+    listEndpoint: '/announcements/',
+    deleteEndpoint: (id) => `/announcements/${id}`,
+    // No edit route for now, or could make one. We have a 'New' page.
+    viewRoute: (id) => `/announcements`,
+    fields: ['id', 'title', 'version', 'created_at'],
+  },
 ];
 
 const PAGE_SIZE = 20;
@@ -345,7 +354,15 @@ const AdminDashboard = () => {
             Review, edit, and delete objects across the platform. Use the resource selector to load different data sets.
           </p>
         </div>
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none space-x-2">
+          {resourceKey === 'announcements' && (
+            <Link
+              to="/admin/announcements/new"
+              className="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+            >
+              New Announcement
+            </Link>
+          )}
           <button
             type="button"
             onClick={fetchItems}

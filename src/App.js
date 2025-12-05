@@ -67,6 +67,9 @@ import LandingPage from './Components/LandingPage';
 import StaffWorkloadDashboard from './Components/StaffWorkloadDashboard';
 import ReportingDashboard from './Components/ReportingDashboard';
 import TemplateLibrary from './Components/TemplateLibrary';
+import AnnouncementModal from './Components/AnnouncementModal'; // Import AnnouncementModal
+import AnnouncementHistory from './Components/AnnouncementHistory';
+import NewAnnouncement from './Components/NewAnnouncement';
 
 function App() {
   return (
@@ -135,6 +138,7 @@ function AppRoutes() {
       {user ? (
         <>
           {chatEnabled && <ChatWidget />}
+          <AnnouncementModal />
           <Sidebar>
             <Routes>
               <Route path="/" element={<Home />} />
@@ -185,6 +189,8 @@ function AppRoutes() {
               <Route path="/admin/code-sync" element={<AdminCodeSync />} />
               <Route path="/admin/workload" element={<StaffWorkloadDashboard />} />
               <Route path="/templates" element={<TemplateLibrary />} />
+              <Route path="/announcements" element={<AnnouncementHistory />} />
+              <Route path="/admin/announcements/new" element={<NewAnnouncement />} />
               <Route path="/admin/comments/:commentId/edit" element={<AdminCommentEditor />} />
               <Route
                 path="/admin/contact-comments/:commentId/edit"

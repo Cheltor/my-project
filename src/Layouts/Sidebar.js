@@ -20,6 +20,7 @@ import {
   BellIcon,
   MapIcon,
   ChartBarIcon,
+  MegaphoneIcon,
 } from '@heroicons/react/24/outline';
 import { MagnifyingGlassIcon } from '@heroicons/react/20/solid';
 import { Link, useNavigate, useLocation } from 'react-router-dom'; // Import Link, useNavigate, and useLocation
@@ -54,6 +55,7 @@ const navigation = [
   { name: 'Admin Code Sync', href: '/admin/code-sync', icon: Cog6ToothIcon, current: false, roles: ['Admin'] },
   { name: 'Admin Chat', href: '/admin-chat', icon: Cog6ToothIcon, current: false, roles: ['Admin'] },
   { name: 'Admin Image Analysis', href: '/admin-image-analysis', icon: Cog6ToothIcon, current: false, roles: ['Admin'] },
+  { name: 'Update History', href: '/announcements', icon: MegaphoneIcon, current: false },
 ];
 
 function classNames(...classes) {

@@ -1,0 +1,168 @@
+INSTRUCTIONS FOR BACKEND IMPLEMENTATION (FastAPI)
+
+Since I cannot access your backend code directly, please add the following code to your FastAPI application to support the new "Announcements" feature.
+
+----------------------------------------------------------------
+1. DATABASE MODELS (SQLAlchemy)
+Add these classes to your models file (e.g., `models.py`).
+----------------------------------------------------------------
+
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
+from sqlalchemy.orm import relationship
+from datetime import datetime
+# Import your Base from database setup
+# from .database import Base
+
+class Announcement(Base):
+    __tablename__ = "announcements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    content = Column(Text, nullable=False)
+    version = Column(String, nullable=True) # e.g., "v1.2.0"
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationship to track reads
+    reads = relationship("UserAnnouncementRead", back_populates="announcement", cascade="all, delete")
+
+class UserAnnouncementRead(Base):
+    __tablename__ = "user_announcement_reads"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    announcement_id = Column(Integer, ForeignKey("announcements.id"), primary_key=True)
+    read_at = Column(DateTime, default=datetime.utcnow)
+
+    announcement = relationship("Announcement", back_populates="reads")
+    # user = relationship("User", back_populates="read_announcements") # Optional, add to User model if needed
+
+
+----------------------------------------------------------------
+2. PYDANTIC SCHEMAS
+Add these to your schemas file (e.g., `schemas.py`).
+----------------------------------------------------------------
+
+from pydantic import BaseModel
+from typing import Optional, List
+from datetime import datetime
+
+class AnnouncementBase(BaseModel):
+    title: str
+    content: str
+    version: Optional[str] = None
+
+class AnnouncementCreate(AnnouncementBase):
+    pass
+
+class Announcement(AnnouncementBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class AnnouncementReadStatus(BaseModel):
+    success: bool
+
+
+----------------------------------------------------------------
+3. API ENDPOINTS (Router)
+Add these endpoints to your router (e.g., `routers/announcements.py` or `main.py`).
+Ensure you have `get_db` and `get_current_user` dependencies available.
+----------------------------------------------------------------
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from typing import List
+# Import your dependencies and models
+# from . import models, schemas
+# from .database import get_db
+# from .auth import get_current_user
+
+router = APIRouter(
+    prefix="/announcements",
+    tags=["Announcements"]
+)
+
+# 1. Get all announcements (for History page)
+@router.get("/", response_model=List[schemas.Announcement])
+def get_announcements(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    # Optionally restrict to non-guest users if needed
+    return db.query(models.Announcement).order_by(models.Announcement.created_at.desc()).offset(skip).limit(limit).all()
+
+# 2. Get UNREAD announcements for the current user
+@router.get("/unread", response_model=List[schemas.Announcement])
+def get_unread_announcements(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    # Subquery or Outer Join to find announcements NOT in UserAnnouncementRead for this user
+    # Logic: Select A from Announcement A where A.id not in (Select R.announcement_id from UserAnnouncementRead R where R.user_id = current_user.id)
+
+    read_ids_query = db.query(models.UserAnnouncementRead.announcement_id).filter(
+        models.UserAnnouncementRead.user_id == current_user.id
+    )
+
+    unread = db.query(models.Announcement).filter(
+        models.Announcement.id.notin_(read_ids_query)
+    ).order_by(models.Announcement.created_at.desc()).all()
+
+    return unread
+
+# 3. Create a new announcement (Admin only)
+@router.post("/", response_model=schemas.Announcement)
+def create_announcement(
+    announcement: schemas.AnnouncementCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    if current_user.role != 3: # Assuming role 3 is Admin
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    db_announcement = models.Announcement(**announcement.dict())
+    db.add(db_announcement)
+    db.commit()
+    db.refresh(db_announcement)
+    return db_announcement
+
+# 4. Mark an announcement as read
+@router.post("/{id}/read", response_model=schemas.AnnouncementReadStatus)
+def mark_announcement_read(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    # Check if already read
+    existing = db.query(models.UserAnnouncementRead).filter(
+        models.UserAnnouncementRead.user_id == current_user.id,
+        models.UserAnnouncementRead.announcement_id == id
+    ).first()
+
+    if not existing:
+        new_read = models.UserAnnouncementRead(user_id=current_user.id, announcement_id=id)
+        db.add(new_read)
+        db.commit()
+
+    return {"success": True}
+
+# 5. Delete an announcement (Admin only)
+@router.delete("/{id}")
+def delete_announcement(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    if current_user.role != 3:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    announcement = db.query(models.Announcement).filter(models.Announcement.id == id).first()
+    if not announcement:
+        raise HTTPException(status_code=404, detail="Announcement not found")
+
+    db.delete(announcement)
+    db.commit()
+    return {"success": True}
