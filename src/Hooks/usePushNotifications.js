@@ -37,6 +37,16 @@ export default function usePushNotifications({ logout } = {}) {
     refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refresh();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [refresh]);
+
   const enable = useCallback(async () => {
     if (!supported) {
       throw new Error('Push notifications are not supported in this browser.');

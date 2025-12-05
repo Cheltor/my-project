@@ -98,7 +98,7 @@ export default function PushNotificationsCard({ compact = false }) {
                 disabled={actionDisabled}
                 className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60"
               >
-                {loading ? 'Disabling…' : 'Disable'}
+                {loading ? 'Disabling...' : 'Disable'}
               </button>
               <button
                 type="button"
@@ -106,7 +106,7 @@ export default function PushNotificationsCard({ compact = false }) {
                 disabled={actionDisabled}
                 className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-60"
               >
-                {testing ? 'Sending…' : 'Send test alert'}
+                {testing ? 'Sending...' : 'Send test alert'}
               </button>
             </>
           ) : (
@@ -116,7 +116,7 @@ export default function PushNotificationsCard({ compact = false }) {
               disabled={actionDisabled}
               className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-60"
             >
-              {loading ? 'Enabling…' : 'Enable desktop alerts'}
+              {loading ? 'Enabling...' : 'Enable desktop alerts'}
             </button>
           )}
         </div>

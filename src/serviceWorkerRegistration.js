@@ -9,6 +9,7 @@ const isLocalhost = Boolean(
 const supportsServiceWorkers = () => typeof window !== 'undefined' && 'serviceWorker' in navigator;
 const supportsNotifications = () => typeof window !== 'undefined' && 'Notification' in window;
 const supportsPush = () => supportsServiceWorkers() && typeof window !== 'undefined' && 'PushManager' in window;
+const SERVICE_WORKER_READY_TIMEOUT_MS = 10_000;
 
 const urlBase64ToUint8Array = (base64String) => {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -26,7 +27,27 @@ const getReadyRegistration = async () => {
   if (!supportsServiceWorkers()) {
     throw new Error('Service workers are not supported by this browser.');
   }
-  return navigator.serviceWorker.ready;
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(
+      () =>
+        reject(
+          new Error(
+            'Service worker not ready. Use the production HTTPS build and allow the page to finish loading before enabling push.'
+          )
+        ),
+      SERVICE_WORKER_READY_TIMEOUT_MS
+    );
+  });
+
+  try {
+    const registration = await Promise.race([navigator.serviceWorker.ready, timeout]);
+    clearTimeout(timer);
+    return registration;
+  } catch (error) {
+    clearTimeout(timer);
+    throw error;
+  }
 };
 
 const getExistingPushSubscription = async () => {
