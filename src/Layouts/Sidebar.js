@@ -27,6 +27,7 @@ import Logout from '../Components/Logout'; // Import the Logout component
 import { useAuth } from '../AuthContext'; // Import useAuth hook
 import { apiFetch } from '../api';
 import { toEasternLocaleString } from '../utils';
+import usePushNotifications from '../Hooks/usePushNotifications';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon, current: false },
@@ -82,6 +83,7 @@ export default function Sidebar({ children }) {
   const location = useLocation(); // Track current location to refresh notifications on navigation
   const { user, token, logout } = useAuth(); // Get user data, token and logout from context
   const hasFetchedNotificationsRef = useRef(false); // Track if we've already performed the initial fetch
+  const pushNotifications = usePushNotifications({ logout });
 
   const fetchNotifications = useCallback(
     async ({ showSpinner = false, signal } = {}) => {
@@ -555,6 +557,23 @@ export default function Sidebar({ children }) {
                     <div className="border-b border-gray-100 px-4 py-3">
                       <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
                     </div>
+                    {pushNotifications.supported && pushNotifications.permission !== 'denied' && !pushNotifications.hasSubscription && (
+                      <div className="border-b border-gray-100 bg-indigo-50/70 px-4 py-3 text-sm text-indigo-900">
+                        <p className="font-medium">Stay notified</p>
+                        <p className="mt-1 text-xs text-indigo-900/80">Enable desktop alerts to receive push notifications even when CodeSoft is minimized.</p>
+                        <button
+                          type="button"
+                          onClick={() => pushNotifications.enable().catch(() => {})}
+                          disabled={pushNotifications.loading}
+                          className="mt-2 inline-flex items-center rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-60"
+                        >
+                          {pushNotifications.loading ? 'Enabling…' : 'Enable desktop alerts'}
+                        </button>
+                        {pushNotifications.error && (
+                          <p className="mt-1 text-xs text-red-600">{pushNotifications.error}</p>
+                        )}
+                      </div>
+                    )}
                     {notificationsLoading ? (
                       <p className="p-4 text-sm text-gray-500">Loading notifications...</p>
                     ) : notificationsError ? (

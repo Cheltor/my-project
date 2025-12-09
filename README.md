@@ -52,7 +52,7 @@ Scripts exposed in `package.json`:
 - **Inspection Lifecycle** – `InspectionDetail`, `Inspection/Conduct`, `Inspection/Review`, `UnitDetail`, `AreaDetail`, `UnitAreaDetail`, and `Rooms` manage scheduling, conducting inspections, room/area observations, and converting findings into follow-up actions.
 - **Case & Compliance Modules** – Rich screens for Violations, Complaints, Citations, Codes (`Codes.js`, `CodeDetail.js`, `CodeEdit.js`), Permits, Licenses, Businesses, Users, Rooms, SIR, and Vacancy Statuses. Many modules include `Add*Modal` components so data can be created inline.
 - **Comments & Attachments** – Address/Contact/Unit comment threads (e.g., `ContactComments.js`, `UnitComments.js`) share upload widgets from `Components/Common/FileUploadInput.js` and rely on helper utilities in `src/utils.js` for consistent labeling.
-- **Notifications System** – `Sidebar.js` and `Components/NotificationsPage.js` fetch notification feeds via `apiFetch`, allow marking items read/unread, and deep link users back to the originating record (`origin_url_path` or inspection IDs).
+- **Notifications System** – `Sidebar.js` and `Components/NotificationsPage.js` fetch notification feeds via `apiFetch`, allow marking items read/unread, deep link users back to the originating record (`origin_url_path` or inspection IDs), and now expose desktop push controls (`PushNotificationsCard`, `usePushNotifications`, `/push-subscriptions`).
 - **AI Chat & Admin Controls** – `Components/ChatWidget.js` offers authenticated users a markdown-enabled assistant hit via `/chat`. Admins can toggle availability, inspect logs, and filter transcripts inside `Components/AdminChat.js`.
 - **Public Resident Portal** – `Components/LandingPage.js` funnels anonymous visitors to `Components/ResidentConcern.js`, a guided form that searches addresses/contacts (`react-select/async`), deduplicates contacts, uploads attachments, and submits concerns without login.
 - **Maps, Calendar & Helpful Links** – `ScheduleCalendar`, `MapPage`, and `Helpful` provide quick access to scheduling, GIS, DPIE searches, and municipal code PDFs.
@@ -89,7 +89,8 @@ my-project/
 2. **Authentication** – JWTs are stored in `localStorage` by `AuthContext`. On load, `${REACT_APP_API_URL}/user` must return the active staff member (including a numeric `role`).
 3. **Endpoints** – The UI expects REST resources for addresses, units, inspections, complaints, citations, violations, licenses, permits, businesses, contacts, notifications, chat, and resident concerns. Consult each component before changing backend routes.
 4. **Background polling** – `useVisibilityAwareInterval` powers periodic calls to `/settings/chat` and notification endpoints but pauses when the tab is hidden. `App.js` also subscribes to `${REACT_APP_API_URL}/settings/stream` via `EventSource` for push-style updates.
-5. **File uploads** – `FileUploadInput` emits `File` objects in arrays. Ensure the backend accepts `multipart/form-data` payloads with the field names used in each form (e.g., `attachments`, `photos`, etc.).
+5. **Desktop push** – Generate VAPID keys (`npx web-push generate-vapid-keys`) and expose the public key as `REACT_APP_WEB_PUSH_PUBLIC_KEY`. The matching private/public/contact values must be set on the FastAPI backend (`WEB_PUSH_VAPID_*`) so `/push-subscriptions` can send payloads.
+6. **File uploads** – `FileUploadInput` emits `File` objects in arrays. Ensure the backend accepts `multipart/form-data` payloads with the field names used in each form (e.g., `attachments`, `photos`, etc.).
 
 ## UI/UX Conventions
 
@@ -101,8 +102,9 @@ my-project/
 
 ## Progressive Web App Behavior
 
-- `service-worker.js` precaches build assets with Workbox, skips waiting, and broadcasts `SERVICE_WORKER_ACTIVATED`.
-- `serviceWorkerRegistration.js` registers the worker, forces reloads after updates (`onBeforeReload`, `onActivate`), and polls for updates hourly.
+- `service-worker.js` precaches build assets with Workbox, skips waiting, broadcasts `SERVICE_WORKER_ACTIVATED`, and displays desktop notifications when push payloads arrive (`push` + `notificationclick` handlers).
+- `serviceWorkerRegistration.js` registers the worker, forces reloads after updates (`onBeforeReload`, `onActivate`), polls for updates hourly, and exposes helpers to inspect/request push subscriptions.
+- `src/pushNotifications.js` + `Hooks/usePushNotifications.js` wrap permission prompts, VAPID subscriptions, and `/push-subscriptions` API calls. `PushNotificationsCard` provides the UI entry point.
 - `App.js` listens for SW events and surfaces update notices via a banner in the sidebar layout.
 
 ## Testing & Quality
@@ -128,6 +130,7 @@ my-project/
 | Redirects back to LandingPage after login | `/user` endpoint returned 401/500. Inspect network tab, verify JWT issuance, and confirm HTTPS/CORS settings. |
 | Chat widget missing | User is unauthenticated or `/settings/chat` returned `enabled: false`. Admins can toggle the setting in `AdminChat`. |
 | Notifications badge stuck | SSE endpoint `${REACT_APP_API_URL}/settings/stream` not emitting JSON or being blocked by the browser. Confirm server keeps the connection open and sends `{ key: 'chat_enabled', enabled: true }` payloads. |
+| Desktop push not arriving | Ensure `REACT_APP_WEB_PUSH_PUBLIC_KEY` (frontend) and `WEB_PUSH_VAPID_*` (backend) match, the user accepted permissions, and `/push-subscriptions` shows at least one entry. Use “Send test alert” in `PushNotificationsCard` to verify wiring. |
 | Uploads rejected | Backend must accept `multipart/form-data` with the exact field names used by `FileUploadInput`. Adjust max file size limits server-side if large photos fail. |
 
 ## Contributing Tips

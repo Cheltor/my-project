@@ -9,6 +9,7 @@ export default function Violations() {
   const [totalViolations, setTotalViolations] = useState(0);
   const [printViolations, setPrintViolations] = useState(null);
   const [isPrintLoading, setIsPrintLoading] = useState(false);
+  const [isCsvLoading, setIsCsvLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -178,6 +179,106 @@ export default function Violations() {
     printableResultsCount === 1 ? '1 result' : `${printableResultsCount} results`;
   const resolvedPrintTimestamp = printGeneratedAt || toEasternLocaleString(new Date(), 'en-US');
 
+  const buildCodeSummary = React.useCallback((violation) => {
+    if (!violation) return '';
+    if (Array.isArray(violation.codes) && violation.codes.length > 0) {
+      const parts = violation.codes
+        .map((code) => {
+          if (!code) return null;
+          const chapter = code.chapter || '';
+          const section = code.section || '';
+          const name = code.name || '';
+          const description = code.description || '';
+          const chapterSection = [chapter, section].filter(Boolean).join('-');
+          const label = [chapterSection, name].filter(Boolean).join(' ').trim();
+          if (description) {
+            return [label, description].filter(Boolean).join(': ');
+          }
+          return label || description || null;
+        })
+        .filter(Boolean);
+      if (parts.length > 0) {
+        return parts.join('; ');
+      }
+    }
+    if (violation.description) return violation.description;
+    if (violation.violation_type) return capitalize(violation.violation_type);
+    return '';
+  }, []);
+
+  const handleDownloadCsv = React.useCallback(async () => {
+    setIsCsvLoading(true);
+    try {
+      const params = buildQueryParams(false);
+      const query = params.toString();
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/violations/${query ? `?${query}` : ''}`
+      );
+      if (!response.ok) {
+        throw new Error('Failed to fetch violations for CSV');
+      }
+      const data = await response.json();
+      const formatter = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+      });
+      const header = [
+        'Property Address',
+        'Date Originated',
+        'Code Violations',
+        'Status',
+        'Outstanding Balance',
+        'Owner of Record',
+      ];
+      const rows = data.map((violation) => {
+        const addressValue = violation?.combadd || '—';
+        const createdValue = violation?.created_at
+          ? toEasternLocaleDateString(violation.created_at, 'en-US')
+          : '—';
+        const codesValue = buildCodeSummary(violation) || '—';
+        const statusValue = statusMapping[violation?.status]
+          ? capitalize(statusMapping[violation.status])
+          : 'Unknown';
+        const outstandingRaw = violation?.outstanding_fines_total ?? 0;
+        const outstandingValue = formatter.format(Number(outstandingRaw) || 0);
+        const ownerValue = violation?.ownername || '—';
+        return [
+          addressValue,
+          createdValue,
+          codesValue,
+          statusValue,
+          outstandingValue,
+          ownerValue,
+        ];
+      });
+      const csvLines = [header, ...rows]
+        .map((line) =>
+          line
+            .map((value) => {
+              const stringValue = value === null || value === undefined ? '' : String(value);
+              return `"${stringValue.replace(/"/g, '""')}"`;
+            })
+            .join(',')
+        )
+        .join('\r\n');
+      const blob = new Blob(['\ufeff', csvLines], {
+        type: 'text/csv;charset=utf-8;',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `violations_${new Date().toISOString()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Unable to download violations CSV:', err);
+    } finally {
+      setIsCsvLoading(false);
+    }
+  }, [buildQueryParams, buildCodeSummary]);
+
   const handlePrint = async () => {
     setIsPrintLoading(true);
     try {
@@ -231,6 +332,14 @@ export default function Violations() {
               disabled={isPrintLoading}
             >
               {isPrintLoading ? 'Preparing...' : 'Print Results'}
+            </button>
+            <button
+              type="button"
+              className="rounded bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 disabled:opacity-70"
+              onClick={handleDownloadCsv}
+              disabled={isCsvLoading}
+            >
+              {isCsvLoading ? 'Preparing CSV...' : 'Download CSV'}
             </button>
           </div>
         </div>

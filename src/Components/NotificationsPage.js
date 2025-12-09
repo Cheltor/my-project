@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { apiFetch } from '../api';
 import { toEasternLocaleString } from '../utils';
+import PushNotificationsCard from './PushNotificationsCard';
 
 function formatWhen(ts) {
   if (!ts) return '';
@@ -29,7 +30,7 @@ export default function NotificationsPage() {
     setError(null);
     try {
       const userIdParam = user?.id ? `?user_id=${encodeURIComponent(user.id)}` : '';
-  const resp = await apiFetch(`/notifications${userIdParam}`, {}, { onUnauthorized: logout });
+      const resp = await apiFetch(`/notifications${userIdParam}`, {}, { onUnauthorized: logout });
       if (!resp || !resp.ok) throw new Error('Failed to load notifications');
       const data = await resp.json();
       const arr = Array.isArray(data) ? data : [];
@@ -81,6 +82,8 @@ export default function NotificationsPage() {
           Mark all as read
         </button>
       </div>
+
+      <PushNotificationsCard />
 
       {loading && <div className="text-gray-500">Loading…</div>}
       {error && <div className="text-red-600">{error}</div>}
