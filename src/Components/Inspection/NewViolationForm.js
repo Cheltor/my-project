@@ -38,6 +38,7 @@ export default function NewViolationForm({
   const [photoCodeMap, setPhotoCodeMap] = useState({}); // key -> [codeIds]
   const [photoError, setPhotoError] = useState('');
   const [previews, setPreviews] = useState([]);
+  const [selectedCodes, setSelectedCodes] = useState([]); // internal when uncontrolled
   const STEPS = [
     { key: "photos", label: "Photos" },
     { key: "address", label: "Address" },
@@ -147,7 +148,6 @@ export default function NewViolationForm({
       next.forEach(p => p.url && URL.revokeObjectURL(p.url));
     };
   }, [files]);
-  const [selectedCodes, setSelectedCodes] = useState([]); // internal when uncontrolled
   const [addressLabel, setAddressLabel] = useState(initialAddressLabel || "");
   // Admin assignment state
   const [onsUsers, setOnsUsers] = useState([]);
