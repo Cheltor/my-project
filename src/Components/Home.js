@@ -16,6 +16,7 @@ import NewBuildingPermit from './Inspection/NewBuildingPermit';
 import NewBusinessLicense from './Inspection/NewBusinessLicense';
 import { useAuth } from '../AuthContext';
 import ReviewLaterComments from './Dashboard/ReviewLaterComments';
+import UserActivityTimeline from './Dashboard/UserActivityTimeline';
 import { toEasternLocaleString, describeDueStatus } from '../utils';
 
 export default function Example() {
@@ -743,6 +744,9 @@ export default function Example() {
                     <AdminRecentActivity limit={5} />
                   </div>
                 )}
+                <div className="mt-8">
+                  <UserActivityTimeline />
+                </div>
               </>
             )}
           </SectionState>
@@ -806,7 +810,7 @@ const MiniListCard = ({
   renderItem,
   collapsible = false,
   isOpen = true,
-  onToggle = () => {},
+  onToggle = () => { },
 }) => (
   <div className="flex h-full flex-col rounded-2xl border border-white/70 bg-white p-4 shadow-sm">
     {collapsible ? (
