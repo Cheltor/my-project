@@ -22,6 +22,7 @@ import NewBusinessLicense from './Inspection/NewBusinessLicense';
 import NewMFLicense from './Inspection/NewMFLicense';
 import NewSFLicense from './Inspection/NewSFLicense';
 import ContactLinkModal from './Contact/ContactLinkModal';
+import LeafletMap from './LeafletMap';
 
 // Debug: log imported component types to catch any undefined imports at runtime
 try {
@@ -521,7 +522,7 @@ const AddressDetails = () => {
     setShowAddContact(false);
     resetContactLinkState();
   }, [resetContactLinkState]);
-  
+
   // Open a modal tab if requested via query param (e.g. ?open=comments)
   useEffect(() => {
     try {
@@ -563,7 +564,7 @@ const AddressDetails = () => {
     setToast({ show: true, message: 'Inspection created successfully.', variant: 'success' });
     window.setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 3000);
   };
-  
+
   const handleAddSuggestedBusiness = async (businessMatch) => {
     if (!businessMatch || !businessMatch.id || !id) return;
 
@@ -740,7 +741,7 @@ const AddressDetails = () => {
       return;
     }
 
-  const requestId = ++businessDuplicateRequestRef.current;
+    const requestId = ++businessDuplicateRequestRef.current;
     const controller = new AbortController();
 
     const summaryPieces = [];
@@ -873,14 +874,14 @@ const AddressDetails = () => {
           )
         );
 
-  const nextCounts = {};
-  const nextHighlights = { comments: '', inspections: '', complaints: '', violations: '', citations: '' };
-  let violationList = [];
-  // numeric alert counters (computed from raw arrays)
-  let pendingInspections = 0;
-  let pendingComplaints = 0;
-  let openViolations = 0;
-  let unpaidCitations = 0;
+        const nextCounts = {};
+        const nextHighlights = { comments: '', inspections: '', complaints: '', violations: '', citations: '' };
+        let violationList = [];
+        // numeric alert counters (computed from raw arrays)
+        let pendingInspections = 0;
+        let pendingComplaints = 0;
+        let openViolations = 0;
+        let unpaidCitations = 0;
 
         for (const res of results) {
           if (res.status !== 'fulfilled') continue;
@@ -2003,9 +2004,9 @@ const AddressDetails = () => {
               </svg>
             )}
             <span className="text-sm font-medium">{toast.message}</span>
-          <button
-            type="button"
-            onClick={() => setToast((prev) => ({ ...prev, show: false }))}
+            <button
+              type="button"
+              onClick={() => setToast((prev) => ({ ...prev, show: false }))}
               className="ml-2 text-white/80 hover:text-white"
               aria-label="Close notification"
             >
@@ -2028,455 +2029,481 @@ const AddressDetails = () => {
         </h1>
 
         <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
-          {/* Actions */}
-          <div className="flex items-center justify-end mb-2">
-            {isEditing ? (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setIsEditing(false)}
-                  className="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 text-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={saveAddress}
-                  className="px-3 py-1 rounded-md bg-green-600 text-white text-sm"
-                >
-                  Save
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="px-3 py-1 rounded-md bg-blue-600 text-white text-sm"
-              >
-                Edit
-              </button>
-            )}
-          </div>
-
-          {isEditing ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-              <div>
-                <label htmlFor="property-name" className="block text-xs font-medium text-gray-600">Property Name</label>
-                <input
-                  id="property-name"
-                  type="text"
-                  className="mt-1 block w-full rounded-md border-gray-300 text-sm"
-                  value={address.property_name || ''}
-                  onChange={(e) => setAddress({ ...address, property_name: e.target.value })}
-                />
-              </div>
-              <div>
-                <label htmlFor="aka" className="block text-xs font-medium text-gray-600">AKA</label>
-                <input
-                  id="aka"
-                  type="text"
-                  className="mt-1 block w-full rounded-md border-gray-300 text-sm"
-                  value={address.aka || ''}
-                  onChange={(e) => setAddress({ ...address, aka: e.target.value })}
-                />
-              </div>
-              <div>
-                <label htmlFor="owner-name" className="block text-xs font-medium text-gray-600">Owner Name</label>
-                <input
-                  id="owner-name"
-                  type="text"
-                  className="mt-1 block w-full rounded-md border-gray-300 text-sm"
-                  value={address.ownername || ''}
-                  onChange={(e) => setAddress({ ...address, ownername: e.target.value })}
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label htmlFor="owner-address" className="block text-xs font-medium text-gray-600">Owner Address</label>
-                <input
-                  id="owner-address"
-                  type="text"
-                  className="mt-1 block w-full rounded-md border-gray-300 text-sm"
-                  value={address.owneraddress || ''}
-                  onChange={(e) => setAddress({ ...address, owneraddress: e.target.value })}
-                />
-              </div>
-              <div>
-                <label htmlFor="owner-zip" className="block text-xs font-medium text-gray-600">Owner ZIP Code</label>
-                <input
-                  id="owner-zip"
-                  type="text"
-                  className="mt-1 block w-full rounded-md border-gray-300 text-sm"
-                  value={address.ownerzip || ''}
-                  onChange={(e) => setAddress({ ...address, ownerzip: e.target.value })}
-                />
-              </div>
-              <div>
-                <label htmlFor="parcel-id" className="block text-xs font-medium text-gray-600">Parcel ID</label>
-                <input
-                  id="parcel-id"
-                  type="text"
-                  className="mt-1 block w-full rounded-md border-gray-300 text-sm"
-                  value={address.pid || ''}
-                  onChange={(e) => setAddress({ ...address, pid: e.target.value })}
-                />
-              </div>
-              <div>
-                <label htmlFor="vacancy-status" className="block text-xs font-medium text-gray-600">Vacancy Status</label>
-                <select
-                  id="vacancy-status"
-                  className="mt-1 block w-full rounded-md border-gray-300 text-sm"
-                  value={address.vacancy_status || ''}
-                  onChange={(e) => setAddress({ ...address, vacancy_status: e.target.value })}
-                >
-                  <option value="">Select status</option>
-                  <option value="occupied">Occupied</option>
-                  <option value="potentially vacant">Potentially Vacant</option>
-                  <option value="vacant">Vacant</option>
-                  <option value="registered">Registered</option>
-                </select>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <div>
-                <div className="text-xs text-gray-500">Owner</div>
-                <div className="text-gray-800">{address.ownername || 'N/A'}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500">Owner ZIP</div>
-                <div className="text-gray-800">{address.ownerzip || 'N/A'}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500">Owner Address</div>
-                <div className="text-gray-800">{address.owneraddress || 'N/A'}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500">Parcel ID</div>
-                <div className="text-gray-800">{address.pid || 'N/A'}</div>
-              </div>
-              {mostRecentHousingLicense && (
-                <div>
-                  <div className="text-xs text-gray-500">License</div>
-                  <div className="text-sm">
-                    <Link
-                      to={`/license/${mostRecentHousingLicense.id}`}
-                      className={`inline-flex items-center gap-2 px-2 py-1 rounded ${
-                        mostRecentHousingLicenseStatus?.state === 'expired'
-                          ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                          : 'bg-green-100 text-green-700 hover:bg-green-200'
-                      }`}
-                      title="View license details"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                        {mostRecentHousingLicenseStatus?.state === 'expired' ? (
-                          <>
-                            <circle cx="12" cy="12" r="10" />
-                            <line x1="15" y1="9" x2="9" y2="15" />
-                            <line x1="9" y1="9" x2="15" y2="15" />
-                          </>
-                        ) : (
-                          <>
-                            <circle cx="12" cy="12" r="10" />
-                            <path d="M8 12l2 2 4-4" />
-                          </>
-                        )}
-                      </svg>
-                      <span>
-                        {mostRecentHousingLicenseStatus?.state === 'expired'
-                          ? `Expired ${mostRecentHousingLicenseStatus?.date ? toEasternLocaleDateString(mostRecentHousingLicenseStatus.date) : ''}`
-                          : `Active${mostRecentHousingLicenseStatus?.date ? ` until ${toEasternLocaleDateString(mostRecentHousingLicenseStatus.date)}` : ''}`}
-                        {(() => {
-                          const t = mostRecentHousingLicense?.license_type;
-                          const label = LICENSE_TYPE_LABELS?.[t] || (t != null ? String(t) : '');
-                          return label ? ` • ${label}` : '';
-                        })()}
-                        {mostRecentHousingLicense.license_number ? ` • #${mostRecentHousingLicense.license_number}` : ''}
-                      </span>
-                    </Link>
-                  </div>
-                </div>
-              )}
-              <div>
-                <div className="text-xs text-gray-500">Vacancy Status</div>
-                {showVacancyPicker ? (
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={address.vacancy_status || ''}
-                      onChange={(e) => handleQuickVacancyChange(e.target.value)}
-                      className="mt-1 block rounded-md border-gray-300 text-sm"
-                      disabled={updatingVacancy}
-                    >
-                      {VACANCY_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Left side: Owner/Property Info */}
+            <div className="flex-1 min-w-0">
+              {/* Actions */}
+              <div className="flex items-center justify-end mb-2">
+                {isEditing ? (
+                  <div className="flex gap-2">
                     <button
-                      type="button"
-                      onClick={() => setShowVacancyPicker(false)}
-                      className="px-2 py-1 text-xs rounded-md border border-gray-300 text-gray-700"
+                      onClick={() => setIsEditing(false)}
+                      className="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 text-sm"
                     >
-                      Close
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveAddress}
+                      className="px-3 py-1 rounded-md bg-green-600 text-white text-sm"
+                    >
+                      Save
                     </button>
                   </div>
                 ) : (
                   <button
-                    type="button"
-                    onClick={() => setShowVacancyPicker(true)}
-                    className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm border ${
-                      address.vacancy_status && address.vacancy_status !== 'occupied'
-                        ? 'bg-orange-50 text-orange-800 border-orange-200 hover:border-orange-300 hover:bg-orange-100'
-                        : 'bg-white text-gray-800 border-gray-200 hover:border-gray-300'
-                    }`}
-                    title="Click to update vacancy status quickly"
+                    onClick={() => setIsEditing(true)}
+                    className="px-3 py-1 rounded-md bg-blue-600 text-white text-sm"
                   >
-                    <span>{address.vacancy_status ? titlize(address.vacancy_status) : 'Set status'}</span>
+                    Edit
                   </button>
                 )}
-                {vacancyError && <div className="text-xs text-red-600 mt-1">{vacancyError}</div>}
               </div>
-            </div>
-          )}
 
-          {address.aka && (
-            <p className="mt-2 text-xs text-gray-500 italic">AKA: {address.aka}</p>
-          )}
+              {isEditing ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                  <div>
+                    <label htmlFor="property-name" className="block text-xs font-medium text-gray-600">Property Name</label>
+                    <input
+                      id="property-name"
+                      type="text"
+                      className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                      value={address.property_name || ''}
+                      onChange={(e) => setAddress({ ...address, property_name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="aka" className="block text-xs font-medium text-gray-600">AKA</label>
+                    <input
+                      id="aka"
+                      type="text"
+                      className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                      value={address.aka || ''}
+                      onChange={(e) => setAddress({ ...address, aka: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="owner-name" className="block text-xs font-medium text-gray-600">Owner Name</label>
+                    <input
+                      id="owner-name"
+                      type="text"
+                      className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                      value={address.ownername || ''}
+                      onChange={(e) => setAddress({ ...address, ownername: e.target.value })}
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label htmlFor="owner-address" className="block text-xs font-medium text-gray-600">Owner Address</label>
+                    <input
+                      id="owner-address"
+                      type="text"
+                      className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                      value={address.owneraddress || ''}
+                      onChange={(e) => setAddress({ ...address, owneraddress: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="owner-zip" className="block text-xs font-medium text-gray-600">Owner ZIP Code</label>
+                    <input
+                      id="owner-zip"
+                      type="text"
+                      className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                      value={address.ownerzip || ''}
+                      onChange={(e) => setAddress({ ...address, ownerzip: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="parcel-id" className="block text-xs font-medium text-gray-600">Parcel ID</label>
+                    <input
+                      id="parcel-id"
+                      type="text"
+                      className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                      value={address.pid || ''}
+                      onChange={(e) => setAddress({ ...address, pid: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="vacancy-status" className="block text-xs font-medium text-gray-600">Vacancy Status</label>
+                    <select
+                      id="vacancy-status"
+                      className="mt-1 block w-full rounded-md border-gray-300 text-sm"
+                      value={address.vacancy_status || ''}
+                      onChange={(e) => setAddress({ ...address, vacancy_status: e.target.value })}
+                    >
+                      <option value="">Select status</option>
+                      <option value="occupied">Occupied</option>
+                      <option value="potentially vacant">Potentially Vacant</option>
+                      <option value="vacant">Vacant</option>
+                      <option value="registered">Registered</option>
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <div>
+                    <div className="text-xs text-gray-500">Owner</div>
+                    <div className="text-gray-800">{address.ownername || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Owner ZIP</div>
+                    <div className="text-gray-800">{address.ownerzip || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Owner Address</div>
+                    <div className="text-gray-800">{address.owneraddress || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Parcel ID</div>
+                    <div className="text-gray-800">{address.pid || 'N/A'}</div>
+                  </div>
+                  {mostRecentHousingLicense && (
+                    <div>
+                      <div className="text-xs text-gray-500">License</div>
+                      <div className="text-sm">
+                        <Link
+                          to={`/license/${mostRecentHousingLicense.id}`}
+                          className={`inline-flex items-center gap-2 px-2 py-1 rounded ${mostRecentHousingLicenseStatus?.state === 'expired'
+                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                            : 'bg-green-100 text-green-700 hover:bg-green-200'
+                            }`}
+                          title="View license details"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                            {mostRecentHousingLicenseStatus?.state === 'expired' ? (
+                              <>
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="15" y1="9" x2="9" y2="15" />
+                                <line x1="9" y1="9" x2="15" y2="15" />
+                              </>
+                            ) : (
+                              <>
+                                <circle cx="12" cy="12" r="10" />
+                                <path d="M8 12l2 2 4-4" />
+                              </>
+                            )}
+                          </svg>
+                          <span>
+                            {mostRecentHousingLicenseStatus?.state === 'expired'
+                              ? `Expired ${mostRecentHousingLicenseStatus?.date ? toEasternLocaleDateString(mostRecentHousingLicenseStatus.date) : ''}`
+                              : `Active${mostRecentHousingLicenseStatus?.date ? ` until ${toEasternLocaleDateString(mostRecentHousingLicenseStatus.date)}` : ''}`}
+                            {(() => {
+                              const t = mostRecentHousingLicense?.license_type;
+                              const label = LICENSE_TYPE_LABELS?.[t] || (t != null ? String(t) : '');
+                              return label ? ` • ${label}` : '';
+                            })()}
+                            {mostRecentHousingLicense.license_number ? ` • #${mostRecentHousingLicense.license_number}` : ''}
+                          </span>
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-xs text-gray-500">Vacancy Status</div>
+                    {showVacancyPicker ? (
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={address.vacancy_status || ''}
+                          onChange={(e) => handleQuickVacancyChange(e.target.value)}
+                          className="mt-1 block rounded-md border-gray-300 text-sm"
+                          disabled={updatingVacancy}
+                        >
+                          {VACANCY_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setShowVacancyPicker(false)}
+                          className="px-2 py-1 text-xs rounded-md border border-gray-300 text-gray-700"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowVacancyPicker(true)}
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm border ${address.vacancy_status && address.vacancy_status !== 'occupied'
+                          ? 'bg-orange-50 text-orange-800 border-orange-200 hover:border-orange-300 hover:bg-orange-100'
+                          : 'bg-white text-gray-800 border-gray-200 hover:border-gray-300'
+                          }`}
+                        title="Click to update vacancy status quickly"
+                      >
+                        <span>{address.vacancy_status ? titlize(address.vacancy_status) : 'Set status'}</span>
+                      </button>
+                    )}
+                    {vacancyError && <div className="text-xs text-red-600 mt-1">{vacancyError}</div>}
+                  </div>
+                </div>
+              )}
+
+              {address.aka && (
+                <p className="mt-2 text-xs text-gray-500 italic">AKA: {address.aka}</p>
+              )}
+            </div>
+
+            {/* Right side: Mini Map */}
+            {address.latitude && address.longitude && (
+              <div className="lg:w-48 lg:shrink-0">
+                <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                  <LeafletMap
+                    markers={[{
+                      id: `address-${address.id}`,
+                      entity_id: address.id,
+                      address_id: address.id,
+                      type: 'property',
+                      lat: address.latitude,
+                      lng: address.longitude,
+                      address: address.combadd,
+                    }]}
+                    center={[address.latitude, address.longitude]}
+                    zoom={17}
+                    height="160px"
+                    draggable={false}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       {/* Vacant property registration */}
       {showRegistrationCard && (
-      <div className="mt-4 rounded-md border border-gray-200 bg-white shadow-sm p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-800">Vacant property registration</h2>
-            <p className="text-xs text-gray-600">
-              Track annual registration status, fees, fire damage, and maintenance/security compliance.
-            </p>
-            {regError && <div className="mt-2 text-sm text-red-600">Error: {regError}</div>}
-            {regSuccess && <div className="mt-2 text-sm text-green-700">{regSuccess}</div>}
-          </div>
-          <div className="flex items-center gap-2">
-            {currentRegistration?.fire_damage && (
-              <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
-                Fire-damaged
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                if (showRegEditor) {
-                  setShowRegEditor(false);
-                  setRegDraft(null);
-                  setRegError(null);
-                  return;
-                }
-                openRegistrationEditor();
-              }}
-              className="px-3 py-1 rounded-md bg-emerald-600 text-white text-sm hover:bg-emerald-700"
-            >
-              {showRegEditor ? 'Close' : currentRegistration ? 'Update registration' : 'Start registration'}
-            </button>
-          </div>
-        </div>
-
-        {!showRegEditor && (
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-            <div className="rounded border border-gray-100 p-3">
-              <div className="text-xs text-gray-500">Status</div>
-              <div className="font-semibold text-gray-800">
-                {currentRegistration ? `${currentRegistration.registration_year || ''} • ${titlize(currentRegistration.status)}` : 'Not registered'}
-              </div>
+        <div className="mt-4 rounded-md border border-gray-200 bg-white shadow-sm p-4">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">Vacant property registration</h2>
+              <p className="text-xs text-gray-600">
+                Track annual registration status, fees, fire damage, and maintenance/security compliance.
+              </p>
+              {regError && <div className="mt-2 text-sm text-red-600">Error: {regError}</div>}
+              {regSuccess && <div className="mt-2 text-sm text-green-700">{regSuccess}</div>}
             </div>
-            <div className="rounded border border-gray-100 p-3">
-              <div className="text-xs text-gray-500">Dates</div>
-              <div className="text-gray-800">
-                {currentRegistration?.registered_on ? `Registered ${formatDateShort(currentRegistration.registered_on)}` : '—'}
-                {currentRegistration?.expires_on ? ` • Expires ${formatDateShort(currentRegistration.expires_on)}` : ''}
-              </div>
-            </div>
-            <div className="rounded border border-gray-100 p-3">
-              <div className="text-xs text-gray-500">Fees</div>
-              <div className="text-gray-800">
-                ${Number(currentRegistration?.fee_amount || 0).toFixed(2)} — {currentRegistration?.fee_paid ? 'Paid' : 'Unpaid'}
-              </div>
-            </div>
-            <div className="rounded border border-gray-100 p-3">
-              <div className="text-xs text-gray-500">Maintenance</div>
-              <div className="text-gray-800">{titlize(currentRegistration?.maintenance_status) || 'Not set'}</div>
-              {currentRegistration?.maintenance_notes && (
-                <div className="text-xs text-gray-600 mt-1 line-clamp-2">{currentRegistration.maintenance_notes}</div>
+            <div className="flex items-center gap-2">
+              {currentRegistration?.fire_damage && (
+                <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+                  Fire-damaged
+                </span>
               )}
-            </div>
-            <div className="rounded border border-gray-100 p-3">
-              <div className="text-xs text-gray-500">Security</div>
-              <div className="text-gray-800">{titlize(currentRegistration?.security_status) || 'Not set'}</div>
-              {currentRegistration?.security_notes && (
-                <div className="text-xs text-gray-600 mt-1 line-clamp-2">{currentRegistration.security_notes}</div>
-              )}
-            </div>
-            <div className="rounded border border-gray-100 p-3">
-              <div className="text-xs text-gray-500">Compliance check</div>
-              <div className="text-gray-800">
-                {currentRegistration?.compliance_checked_at ? formatDateShort(currentRegistration.compliance_checked_at) : 'Not recorded'}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showRegEditor && regDraft && (
-          <div className="mt-3 border border-gray-200 rounded-md p-3 space-y-3 bg-gray-50">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <label className="text-sm text-gray-700 space-y-1">
-                <span className="text-xs font-semibold text-gray-600">Registration status</span>
-                <select
-                  value={regDraft.status || ''}
-                  onChange={(e) => handleRegChange('status', e.target.value)}
-                  className="w-full border rounded p-2 text-sm"
-                >
-                  {REG_STATUS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-sm text-gray-700 space-y-1">
-                <span className="text-xs font-semibold text-gray-600">Registration year</span>
-                <input
-                  type="number"
-                  className="w-full border rounded p-2 text-sm"
-                  value={regDraft.registration_year || ''}
-                  onChange={(e) => handleRegChange('registration_year', Number(e.target.value) || '')}
-                />
-              </label>
-              <label className="text-sm text-gray-700 space-y-1">
-                <span className="text-xs font-semibold text-gray-600">Registered on</span>
-                <input
-                  type="date"
-                  className="w-full border rounded p-2 text-sm"
-                  value={regDraft.registered_on ? regDraft.registered_on.slice(0, 10) : ''}
-                  onChange={(e) => {
-                    const nextDate = e.target.value;
-                    handleRegChange('registered_on', nextDate);
-                    if (!regDraft.expires_on && nextDate) {
-                      handleRegChange('expires_on', computeExpiresOn(nextDate));
-                    }
-                  }}
-                />
-              </label>
-              <label className="text-sm text-gray-700 space-y-1">
-                <span className="text-xs font-semibold text-gray-600">Expires on</span>
-                <input
-                  type="date"
-                  className="w-full border rounded p-2 text-sm"
-                  value={regDraft.expires_on ? regDraft.expires_on.slice(0, 10) : ''}
-                  onChange={(e) => handleRegChange('expires_on', e.target.value)}
-                />
-              </label>
-              <label className="text-sm text-gray-700 space-y-1">
-                <span className="text-xs font-semibold text-gray-600">Fee amount</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="w-full border rounded p-2 text-sm"
-                  value={regDraft.fee_amount}
-                  onChange={(e) => handleRegChange('fee_amount', e.target.value)}
-                />
-              </label>
-              <div className="flex items-center gap-4">
-                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(regDraft.fee_paid)}
-                    onChange={(e) => handleRegChange('fee_paid', e.target.checked)}
-                    className="h-4 w-4"
-                  />
-                  <span>Fee paid</span>
-                </label>
-                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(regDraft.fire_damage)}
-                    onChange={(e) => handleRegChange('fire_damage', e.target.checked)}
-                    className="h-4 w-4"
-                  />
-                  <span>Fire-damaged</span>
-                </label>
-              </div>
-              <label className="text-sm text-gray-700 space-y-1">
-                <span className="text-xs font-semibold text-gray-600">Maintenance status</span>
-                <select
-                  value={regDraft.maintenance_status || ''}
-                  onChange={(e) => handleRegChange('maintenance_status', e.target.value)}
-                  className="w-full border rounded p-2 text-sm"
-                >
-                  {COMPLIANCE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-sm text-gray-700 space-y-1">
-                <span className="text-xs font-semibold text-gray-600">Security status</span>
-                <select
-                  value={regDraft.security_status || ''}
-                  onChange={(e) => handleRegChange('security_status', e.target.value)}
-                  className="w-full border rounded p-2 text-sm"
-                >
-                  {COMPLIANCE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-sm text-gray-700 space-y-1 md:col-span-2">
-                <span className="text-xs font-semibold text-gray-600">Maintenance notes</span>
-                <textarea
-                  rows="2"
-                  className="w-full border rounded p-2 text-sm"
-                  value={regDraft.maintenance_notes || ''}
-                  onChange={(e) => handleRegChange('maintenance_notes', e.target.value)}
-                />
-              </label>
-              <label className="text-sm text-gray-700 space-y-1 md:col-span-2">
-                <span className="text-xs font-semibold text-gray-600">Security notes</span>
-                <textarea
-                  rows="2"
-                  className="w-full border rounded p-2 text-sm"
-                  value={regDraft.security_notes || ''}
-                  onChange={(e) => handleRegChange('security_notes', e.target.value)}
-                />
-              </label>
-              <label className="text-sm text-gray-700 space-y-1 md:col-span-2">
-                <span className="text-xs font-semibold text-gray-600">Registration notes</span>
-                <textarea
-                  rows="2"
-                  className="w-full border rounded p-2 text-sm"
-                  value={regDraft.notes || ''}
-                  onChange={(e) => handleRegChange('notes', e.target.value)}
-                />
-              </label>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleSaveRegistration}
-                disabled={regSaving}
-                className="px-4 py-2 rounded-md bg-emerald-600 text-white text-sm hover:bg-emerald-700 disabled:opacity-60"
-              >
-                {regSaving ? 'Saving...' : 'Save registration'}
-              </button>
               <button
                 type="button"
                 onClick={() => {
-                  setShowRegEditor(false);
-                  setRegDraft(null);
+                  if (showRegEditor) {
+                    setShowRegEditor(false);
+                    setRegDraft(null);
+                    setRegError(null);
+                    return;
+                  }
+                  openRegistrationEditor();
                 }}
-                className="text-sm text-gray-700 hover:text-gray-900"
+                className="px-3 py-1 rounded-md bg-emerald-600 text-white text-sm hover:bg-emerald-700"
               >
-                Cancel
+                {showRegEditor ? 'Close' : currentRegistration ? 'Update registration' : 'Start registration'}
               </button>
             </div>
           </div>
-        )}
-      </div>
+
+          {!showRegEditor && (
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+              <div className="rounded border border-gray-100 p-3">
+                <div className="text-xs text-gray-500">Status</div>
+                <div className="font-semibold text-gray-800">
+                  {currentRegistration ? `${currentRegistration.registration_year || ''} • ${titlize(currentRegistration.status)}` : 'Not registered'}
+                </div>
+              </div>
+              <div className="rounded border border-gray-100 p-3">
+                <div className="text-xs text-gray-500">Dates</div>
+                <div className="text-gray-800">
+                  {currentRegistration?.registered_on ? `Registered ${formatDateShort(currentRegistration.registered_on)}` : '—'}
+                  {currentRegistration?.expires_on ? ` • Expires ${formatDateShort(currentRegistration.expires_on)}` : ''}
+                </div>
+              </div>
+              <div className="rounded border border-gray-100 p-3">
+                <div className="text-xs text-gray-500">Fees</div>
+                <div className="text-gray-800">
+                  ${Number(currentRegistration?.fee_amount || 0).toFixed(2)} — {currentRegistration?.fee_paid ? 'Paid' : 'Unpaid'}
+                </div>
+              </div>
+              <div className="rounded border border-gray-100 p-3">
+                <div className="text-xs text-gray-500">Maintenance</div>
+                <div className="text-gray-800">{titlize(currentRegistration?.maintenance_status) || 'Not set'}</div>
+                {currentRegistration?.maintenance_notes && (
+                  <div className="text-xs text-gray-600 mt-1 line-clamp-2">{currentRegistration.maintenance_notes}</div>
+                )}
+              </div>
+              <div className="rounded border border-gray-100 p-3">
+                <div className="text-xs text-gray-500">Security</div>
+                <div className="text-gray-800">{titlize(currentRegistration?.security_status) || 'Not set'}</div>
+                {currentRegistration?.security_notes && (
+                  <div className="text-xs text-gray-600 mt-1 line-clamp-2">{currentRegistration.security_notes}</div>
+                )}
+              </div>
+              <div className="rounded border border-gray-100 p-3">
+                <div className="text-xs text-gray-500">Compliance check</div>
+                <div className="text-gray-800">
+                  {currentRegistration?.compliance_checked_at ? formatDateShort(currentRegistration.compliance_checked_at) : 'Not recorded'}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showRegEditor && regDraft && (
+            <div className="mt-3 border border-gray-200 rounded-md p-3 space-y-3 bg-gray-50">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <label className="text-sm text-gray-700 space-y-1">
+                  <span className="text-xs font-semibold text-gray-600">Registration status</span>
+                  <select
+                    value={regDraft.status || ''}
+                    onChange={(e) => handleRegChange('status', e.target.value)}
+                    className="w-full border rounded p-2 text-sm"
+                  >
+                    {REG_STATUS_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-sm text-gray-700 space-y-1">
+                  <span className="text-xs font-semibold text-gray-600">Registration year</span>
+                  <input
+                    type="number"
+                    className="w-full border rounded p-2 text-sm"
+                    value={regDraft.registration_year || ''}
+                    onChange={(e) => handleRegChange('registration_year', Number(e.target.value) || '')}
+                  />
+                </label>
+                <label className="text-sm text-gray-700 space-y-1">
+                  <span className="text-xs font-semibold text-gray-600">Registered on</span>
+                  <input
+                    type="date"
+                    className="w-full border rounded p-2 text-sm"
+                    value={regDraft.registered_on ? regDraft.registered_on.slice(0, 10) : ''}
+                    onChange={(e) => {
+                      const nextDate = e.target.value;
+                      handleRegChange('registered_on', nextDate);
+                      if (!regDraft.expires_on && nextDate) {
+                        handleRegChange('expires_on', computeExpiresOn(nextDate));
+                      }
+                    }}
+                  />
+                </label>
+                <label className="text-sm text-gray-700 space-y-1">
+                  <span className="text-xs font-semibold text-gray-600">Expires on</span>
+                  <input
+                    type="date"
+                    className="w-full border rounded p-2 text-sm"
+                    value={regDraft.expires_on ? regDraft.expires_on.slice(0, 10) : ''}
+                    onChange={(e) => handleRegChange('expires_on', e.target.value)}
+                  />
+                </label>
+                <label className="text-sm text-gray-700 space-y-1">
+                  <span className="text-xs font-semibold text-gray-600">Fee amount</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="w-full border rounded p-2 text-sm"
+                    value={regDraft.fee_amount}
+                    onChange={(e) => handleRegChange('fee_amount', e.target.value)}
+                  />
+                </label>
+                <div className="flex items-center gap-4">
+                  <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(regDraft.fee_paid)}
+                      onChange={(e) => handleRegChange('fee_paid', e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    <span>Fee paid</span>
+                  </label>
+                  <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(regDraft.fire_damage)}
+                      onChange={(e) => handleRegChange('fire_damage', e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    <span>Fire-damaged</span>
+                  </label>
+                </div>
+                <label className="text-sm text-gray-700 space-y-1">
+                  <span className="text-xs font-semibold text-gray-600">Maintenance status</span>
+                  <select
+                    value={regDraft.maintenance_status || ''}
+                    onChange={(e) => handleRegChange('maintenance_status', e.target.value)}
+                    className="w-full border rounded p-2 text-sm"
+                  >
+                    {COMPLIANCE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-sm text-gray-700 space-y-1">
+                  <span className="text-xs font-semibold text-gray-600">Security status</span>
+                  <select
+                    value={regDraft.security_status || ''}
+                    onChange={(e) => handleRegChange('security_status', e.target.value)}
+                    className="w-full border rounded p-2 text-sm"
+                  >
+                    {COMPLIANCE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-sm text-gray-700 space-y-1 md:col-span-2">
+                  <span className="text-xs font-semibold text-gray-600">Maintenance notes</span>
+                  <textarea
+                    rows="2"
+                    className="w-full border rounded p-2 text-sm"
+                    value={regDraft.maintenance_notes || ''}
+                    onChange={(e) => handleRegChange('maintenance_notes', e.target.value)}
+                  />
+                </label>
+                <label className="text-sm text-gray-700 space-y-1 md:col-span-2">
+                  <span className="text-xs font-semibold text-gray-600">Security notes</span>
+                  <textarea
+                    rows="2"
+                    className="w-full border rounded p-2 text-sm"
+                    value={regDraft.security_notes || ''}
+                    onChange={(e) => handleRegChange('security_notes', e.target.value)}
+                  />
+                </label>
+                <label className="text-sm text-gray-700 space-y-1 md:col-span-2">
+                  <span className="text-xs font-semibold text-gray-600">Registration notes</span>
+                  <textarea
+                    rows="2"
+                    className="w-full border rounded p-2 text-sm"
+                    value={regDraft.notes || ''}
+                    onChange={(e) => handleRegChange('notes', e.target.value)}
+                  />
+                </label>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleSaveRegistration}
+                  disabled={regSaving}
+                  className="px-4 py-2 rounded-md bg-emerald-600 text-white text-sm hover:bg-emerald-700 disabled:opacity-60"
+                >
+                  {regSaving ? 'Saving...' : 'Save registration'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRegEditor(false);
+                    setRegDraft(null);
+                  }}
+                  className="text-sm text-gray-700 hover:text-gray-900"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
-  {/* External links and grouped navigation */}
-  <div className="mt-2 space-y-6">
+      {/* External links and grouped navigation */}
+      <div className="mt-2 space-y-6">
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
