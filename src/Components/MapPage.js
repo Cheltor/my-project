@@ -137,21 +137,14 @@ const MapPage = () => {
             isMobile 
               ? 'fixed top-4 left-4 right-4 z-[2000]' 
               : 'mb-4'
-          } p-3 rounded-lg shadow-lg ${
+          } p-2 rounded text-sm ${
             toast.type === 'success' 
-              ? 'bg-green-100 text-green-800 border border-green-200' 
-              : 'bg-red-100 text-red-800 border border-red-200'
+              ? 'bg-green-100 text-green-800' 
+              : 'bg-red-100 text-red-800'
           }`}
         >
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">{toast.message}</span>
-            <button 
-              className="ml-3 text-xs underline hover:no-underline font-semibold" 
-              onClick={() => setToast(null)}
-            >
-              Dismiss
-            </button>
-          </div>
+          {toast.message}
+          <button className="ml-3 text-xs underline" onClick={() => setToast(null)}>Dismiss</button>
         </div>
       )}
       
