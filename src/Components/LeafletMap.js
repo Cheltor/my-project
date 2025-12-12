@@ -150,7 +150,7 @@ const LeafletMap = ({ markers = [], center, zoom = DEFAULT_ZOOM, height = "600px
           }
 
           // Determine color based on mode
-          let colorClass = 'bg-blue-500'; // Default
+          let colorClass;
 
           if (colorMode === 'user') {
             colorClass = getUserColor(displayUser);
