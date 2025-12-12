@@ -21,6 +21,17 @@ const MapPage = () => {
   const [mapCenter, setMapCenter] = useState(null);
   const { location: userLocation, isMobile } = useGeolocation();
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  // Auto-dismiss toast after 5 seconds
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   // Center map on user location initially if available
   useEffect(() => {
@@ -102,7 +113,7 @@ const MapPage = () => {
     } catch (err) {
       console.error("Relocation failed:", err);
       // Revert on failure (could be improved by refetching)
-      alert("Failed to save new location.");
+      setToast({ type: 'error', message: 'Failed to save new location.' });
       fetchMarkers();
     }
   };
@@ -113,12 +124,37 @@ const MapPage = () => {
     if (userLocation) {
       setMapCenter(userLocation);
     } else {
-      alert("Location not available yet. Please wait for GPS signal.");
+      setToast({ type: 'error', message: 'Location not available yet. Please wait for GPS signal.' });
     }
   };
 
   return (
     <div className={`w-full ${!isMobile ? 'max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8' : 'h-[calc(100vh-64px)] flex flex-col overflow-hidden relative'}`}>
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          className={`${
+            isMobile 
+              ? 'fixed top-4 left-4 right-4 z-[2000]' 
+              : 'mb-4'
+          } p-3 rounded-lg shadow-lg ${
+            toast.type === 'success' 
+              ? 'bg-green-100 text-green-800 border border-green-200' 
+              : 'bg-red-100 text-red-800 border border-red-200'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button 
+              className="ml-3 text-xs underline hover:no-underline font-semibold" 
+              onClick={() => setToast(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Desktop Header */}
       {!isMobile && (
         <header className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
