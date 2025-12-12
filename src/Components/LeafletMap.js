@@ -34,6 +34,27 @@ const VIOLATION_STATUS_MAPPING = {
   3: 'dismissed',
 };
 
+const MARKER_TYPE_LABELS = {
+  violation: 'Violation',
+  inspection: 'Inspection',
+  property: 'Property',
+};
+
+// Escape HTML special characters to prevent XSS
+const escapeHtml = (text) => {
+  if (!text) return '';
+  return text.replace(/[&<>"']/g, (char) => {
+    const escapeMap = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return escapeMap[char];
+  });
+};
+
 const formatStatus = (status, type) => {
   if (type === 'violation' && status !== null) {
     const s = VIOLATION_STATUS_MAPPING[status];
@@ -162,10 +183,9 @@ const LeafletMap = ({ markers = [], center, zoom = DEFAULT_ZOOM, height = "600px
           }
 
           // Generate descriptive ARIA label for the marker
-          const typeLabel = displayType === 'violation' ? 'Violation' : 
-                           displayType === 'inspection' ? 'Inspection' : 'Property';
+          const typeLabel = MARKER_TYPE_LABELS[displayType] || 'Property';
           const countLabel = group.length > 1 ? ` (${group.length} items)` : '';
-          const ariaLabel = `${typeLabel} marker at ${marker.address}${countLabel}`;
+          const ariaLabel = escapeHtml(`${typeLabel} marker at ${marker.address}${countLabel}`);
 
           // Create custom icon
           const customIcon = L.divIcon({
