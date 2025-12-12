@@ -305,7 +305,7 @@ const LeafletMap = ({ markers = [], center, zoom = DEFAULT_ZOOM, height = "600px
           </div>
         )
       }
-    </div >
+    </div>
   );
 };
 
