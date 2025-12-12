@@ -34,6 +34,27 @@ const VIOLATION_STATUS_MAPPING = {
   3: 'dismissed',
 };
 
+const MARKER_TYPE_LABELS = {
+  violation: 'Violation',
+  inspection: 'Inspection',
+  property: 'Property',
+};
+
+// Escape HTML special characters to prevent XSS
+const escapeHtml = (text) => {
+  if (!text) return '';
+  return text.replace(/[&<>"']/g, (char) => {
+    const escapeMap = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return escapeMap[char];
+  });
+};
+
 const formatStatus = (status, type) => {
   if (type === 'violation' && status !== null) {
     const s = VIOLATION_STATUS_MAPPING[status];
@@ -70,7 +91,7 @@ const getUserColor = (userId) => {
 // User Location Pulse Icon
 const userIcon = L.divIcon({
   className: 'user-location-marker',
-  html: `<div class="relative flex items-center justify-center w-6 h-6">
+  html: `<div class="relative flex items-center justify-center w-6 h-6" role="img" aria-label="Your current location">
           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
           <span class="relative inline-flex rounded-full h-4 w-4 bg-blue-600 border-2 border-white shadow-sm"></span>
          </div>`,
@@ -161,11 +182,16 @@ const LeafletMap = ({ markers = [], center, zoom = DEFAULT_ZOOM, height = "600px
             else colorClass = 'bg-blue-600';
           }
 
+          // Generate descriptive ARIA label for the marker
+          const typeLabel = MARKER_TYPE_LABELS[displayType] || 'Property';
+          const countLabel = group.length > 1 ? ` (${group.length} items)` : '';
+          const ariaLabel = escapeHtml(`${typeLabel} marker at ${marker.address}${countLabel}`);
+
           // Create custom icon
           const customIcon = L.divIcon({
             className: 'custom-marker',
-            html: `<div class="${colorClass} w-5 h-5 rounded-full border-2 border-white shadow-md flex items-center justify-center">
-                    ${group.length > 1 ? '<span class="absolute -top-2 -right-2 bg-white text-black text-[9px] font-bold px-1.5 rounded-full shadow border border-gray-300">' + group.length + '</span>' : ''}
+            html: `<div class="${colorClass} w-5 h-5 rounded-full border-2 border-white shadow-md flex items-center justify-center" role="img" aria-label="${ariaLabel}">
+                    ${group.length > 1 ? '<span class="absolute -top-2 -right-2 bg-white text-black text-[9px] font-bold px-1.5 rounded-full shadow border border-gray-300" aria-hidden="true">' + group.length + '</span>' : ''}
                    </div>`,
             iconSize: [20, 20],
             iconAnchor: [10, 10], // Center it
