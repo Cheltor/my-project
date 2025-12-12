@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import LeafletMap from './LeafletMap';
 import apiFetch from '../api';
 import { useAuth } from '../AuthContext';
+import { useGeolocation } from '../GeolocationContext';
 
 const MapPage = () => {
   const { user } = useAuth();
@@ -16,6 +17,17 @@ const MapPage = () => {
   });
   const [colorMode, setColorMode] = useState('type'); // 'type' or 'user'
   const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [mapCenter, setMapCenter] = useState(null);
+  const { location: userLocation, isMobile } = useGeolocation();
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  // Center map on user location initially if available
+  useEffect(() => {
+    if (userLocation && !mapCenter) {
+      setMapCenter(userLocation);
+    }
+  }, [userLocation, mapCenter]);
 
   useEffect(() => {
     fetchMarkers();
@@ -97,28 +109,46 @@ const MapPage = () => {
 
   const activeCount = displayedMarkers.length;
 
+  const locateUser = () => {
+    if (userLocation) {
+      setMapCenter(userLocation);
+    } else {
+      alert("Location not available yet. Please wait for GPS signal.");
+    }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-      <header className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Town Map</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            View active inspections and violations across town.
-          </p>
-        </div>
-        <div className="mt-4 sm:mt-0 flex gap-2">
-          <span className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
-            {activeCount} Active Cases
-          </span>
-        </div>
-      </header>
+    <div className={`w-full ${!isMobile ? 'max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8' : 'h-[calc(100vh-64px)] flex flex-col overflow-hidden relative'}`}>
+      {/* Desktop Header */}
+      {!isMobile && (
+        <header className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Town Map</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              View active inspections and violations across town.
+            </p>
+          </div>
+          <div className="mt-4 sm:mt-0 flex gap-2">
+            <span className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
+              {activeCount} Active Cases
+            </span>
+          </div>
+        </header>
+      )}
 
-      {/* Controls */}
-      <div className="bg-white p-4 rounded-lg shadow mb-6 border border-gray-200">
-        <div className="flex flex-wrap gap-4 items-center">
-          <span className="text-sm font-medium text-gray-700">Filters:</span>
+      {/* Controls Container */}
+      <div className={`${!isMobile ? 'bg-white p-4 rounded-lg shadow mb-6 border border-gray-200' : `absolute top-0 left-0 right-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-lg transition-transform duration-300 ${showMobileFilters ? 'translate-y-0' : '-translate-y-full'}`}`}>
+        <div className={`flex flex-wrap gap-4 items-center ${isMobile ? 'p-4 gap-y-3' : ''}`}>
+          {!isMobile && <span className="text-sm font-medium text-gray-700">Filters:</span>}
 
-
+          {isMobile && (
+            <div className="flex w-full justify-between items-center mb-2">
+              <span className="font-semibold text-gray-800">Map Filters</span>
+              <button onClick={() => setShowMobileFilters(false)} className="text-gray-500">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+          )}
 
           <label className="inline-flex items-center space-x-2 cursor-pointer">
             <input
@@ -203,7 +233,7 @@ const MapPage = () => {
             </div>
           )}
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className={`flex items-center gap-2 ${isMobile ? 'w-full pt-2 border-t border-gray-100' : 'ml-auto'}`}>
             <label className="text-sm font-medium text-gray-700">Color By:</label>
             <select
               value={colorMode}
@@ -235,13 +265,59 @@ const MapPage = () => {
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white p-1 shadow-sm">
+        <div className={!isMobile && !isFullScreen ? "rounded-xl border border-gray-200 bg-white p-1 shadow-sm relative" : "flex-1 relative bg-white"}>
+          {isFullScreen && !isMobile && (
+            <button
+              onClick={() => setIsFullScreen(false)}
+              className="absolute top-4 right-4 z-[1000] bg-white text-gray-800 p-2 rounded-md shadow-md hover:bg-gray-100 font-bold flex items-center gap-2 border border-gray-300"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              Exit Full Screen
+            </button>
+          )}
+          {!isFullScreen && !isMobile && (
+            <button
+              onClick={() => setIsFullScreen(true)}
+              className="absolute top-2 right-2 z-[400] bg-white/90 text-gray-700 p-1.5 rounded shadow-sm hover:bg-white border border-gray-200"
+              title="Full Screen"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+            </button>
+          )}
+
+          {/* Mobile Filter Toggle Button */}
+          {isMobile && !showMobileFilters && (
+            <button
+              onClick={() => setShowMobileFilters(true)}
+              className="absolute top-4 right-4 z-[1000] bg-white text-gray-700 p-2.5 rounded-full shadow-lg font-medium border border-gray-200 flex items-center justify-center transition-transform active:scale-95"
+              title="Filters"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+            </button>
+          )}
+
+          {/* Locate Me Button (Mobile Only) */}
+          {isMobile && (
+            <button
+              onClick={locateUser}
+              className="absolute bottom-8 right-4 z-[1000] bg-white text-blue-600 p-2.5 rounded-full shadow-lg border border-gray-200 flex items-center justify-center transition-transform active:scale-95"
+              title="Locate Me"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+          )}
+
           <LeafletMap
             markers={displayedMarkers}
-            height="calc(100vh - 300px)"
+            height={isMobile || isFullScreen ? "100%" : "calc(100vh - 300px)"}
             draggable={true}
             onMarkerDrag={handleMarkerRelocate}
             colorMode={colorMode}
+            center={mapCenter}
+            userLocation={userLocation}
           />
         </div>
       )}

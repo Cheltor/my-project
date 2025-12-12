@@ -5,6 +5,7 @@ import React, { useEffect } from 'react';
 import { AuthProvider, useAuth } from './AuthContext';
 import { SettingsProvider, useSettings } from './SettingsContext';
 import { OfflineProvider } from './OfflineContext';
+import { GeolocationProvider } from './GeolocationContext';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react'; // added import
 import OfflineIndicator from './Components/OfflineIndicator';
@@ -73,7 +74,9 @@ function App() {
     <AuthProvider>
       <SettingsProvider>
         <OfflineProvider>
-          <MainApp />
+          <GeolocationProvider>
+            <MainApp />
+          </GeolocationProvider>
         </OfflineProvider>
       </SettingsProvider>
     </AuthProvider>

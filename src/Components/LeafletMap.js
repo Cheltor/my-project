@@ -67,7 +67,20 @@ const getUserColor = (userId) => {
   return colors[userId % colors.length];
 };
 
-const LeafletMap = ({ markers = [], center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM, height = "600px", onMarkerDrag, draggable = false, colorMode = 'type' }) => {
+// User Location Pulse Icon
+const userIcon = L.divIcon({
+  className: 'user-location-marker',
+  html: `<div class="relative flex items-center justify-center w-6 h-6">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-4 w-4 bg-blue-600 border-2 border-white shadow-sm"></span>
+         </div>`,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+  popupAnchor: [0, -12]
+});
+
+const LeafletMap = ({ markers = [], center, zoom = DEFAULT_ZOOM, height = "600px", onMarkerDrag, draggable = false, colorMode = 'type', userLocation }) => {
+  const effectiveCenter = center || DEFAULT_CENTER;
   const navigate = useNavigate();
   const [draggableAddressId, setDraggableAddressId] = useState(null);
 
@@ -110,12 +123,12 @@ const LeafletMap = ({ markers = [], center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM
     <div style={{ height: height, width: "100%", borderRadius: "0.75rem", overflow: "hidden", zIndex: 0, position: "relative" }}>
       {/* zIndex 0 is important so it doesn't cover dropdowns/modals */}
       <MapContainer
-        center={center}
+        center={effectiveCenter}
         zoom={zoom}
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={true}
       >
-        <ChangeView center={center} zoom={zoom} />
+        <ChangeView center={effectiveCenter} zoom={zoom} />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -262,23 +275,37 @@ const LeafletMap = ({ markers = [], center = DEFAULT_CENTER, zoom = DEFAULT_ZOOM
             </Marker>
           );
         })}
+
+
+        {/* User Location Marker */}
+        {userLocation && (
+          <Marker position={userLocation} icon={userIcon} zIndexOffset={1000}>
+            <Popup>
+              <div className="text-center">
+                <span className="font-bold text-gray-900">You are Here</span>
+              </div>
+            </Popup>
+          </Marker>
+        )}
       </MapContainer>
 
       {/* User Legend Overlay */}
-      {colorMode === 'user' && uniqueUsers.length > 0 && (
-        <div className="absolute bottom-6 right-6 bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-lg border border-gray-200 z-[1000] max-h-64 overflow-y-auto">
-          <h4 className="text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">Inspectors</h4>
-          <div className="flex flex-col gap-2">
-            {uniqueUsers.map(u => (
-              <div key={u.id} className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${getUserColor(u.id)} border border-gray-300 shadow-sm`}></div>
-                <span className="text-xs text-gray-800 font-medium">{u.name}</span>
-              </div>
-            ))}
+      {
+        colorMode === 'user' && uniqueUsers.length > 0 && (
+          <div className="absolute bottom-6 right-6 bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-lg border border-gray-200 z-[1000] max-h-64 overflow-y-auto">
+            <h4 className="text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">Inspectors</h4>
+            <div className="flex flex-col gap-2">
+              {uniqueUsers.map(u => (
+                <div key={u.id} className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${getUserColor(u.id)} border border-gray-300 shadow-sm`}></div>
+                  <span className="text-xs text-gray-800 font-medium">{u.name}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
 

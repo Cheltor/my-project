@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import LoadingSpinner from './Common/LoadingSpinner';
+import apiFetch from '../api';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
@@ -441,6 +442,7 @@ const AddressDetails = () => {
   const navigate = useNavigate();  // Initialize useNavigate
   const { user } = useAuth();
   const [address, setAddress] = useState(null);
+  const [showMapModal, setShowMapModal] = useState(false);
   const [units, setUnits] = useState([]);  // State to store units
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -1314,6 +1316,27 @@ const AddressDetails = () => {
 
   const closeModal = () => {
     setModalTab(null);
+  };
+
+  const handleMarkerRelocate = async (addressId, newLat, newLng) => {
+    // 1. Optimistic Update
+    setAddress(prev => ({ ...prev, latitude: newLat, longitude: newLng }));
+
+    // 2. API Call
+    try {
+      const res = await apiFetch(`/addresses/${addressId}/location`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude: newLat, longitude: newLng })
+      });
+      if (!res.ok) {
+        throw new Error("Failed to update location");
+      }
+    } catch (err) {
+      console.error("Relocation failed:", err);
+      // Revert optional?
+      alert("Failed to save new location.");
+    }
   };
 
   if (loading) return <div className="flex justify-center items-center h-screen">Loading...</div>;
@@ -2243,8 +2266,12 @@ const AddressDetails = () => {
 
             {/* Right side: Mini Map */}
             {address.latitude && address.longitude && (
-              <div className="lg:w-48 lg:shrink-0">
-                <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+              <div
+                className="lg:w-48 lg:shrink-0 cursor-pointer group/map relative"
+                onClick={() => setShowMapModal(true)}
+                title="Click to expand map"
+              >
+                <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm group-hover/map:ring-2 group-hover/map:ring-indigo-500 transition-all">
                   <LeafletMap
                     markers={[{
                       id: `address-${address.id}`,
@@ -2260,6 +2287,14 @@ const AddressDetails = () => {
                     height="160px"
                     draggable={false}
                   />
+                  {/* Expand Overlay Icon */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover/map:bg-black/10 transition-colors pointer-events-none">
+                    <span className="bg-white/90 p-1.5 rounded-full shadow-sm opacity-0 group-hover/map:opacity-100 transition-opacity">
+                      <svg className="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                      </svg>
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
@@ -2590,7 +2625,55 @@ const AddressDetails = () => {
           </button>
         </div>
 
-        <section aria-labelledby="address-navigation" className="rounded-xl border border-gray-200/80 bg-slate-50/60 p-4">
+
+        {/* Map Modal */}
+        {showMapModal && address.latitude && address.longitude && createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowMapModal(false)}>
+            <div
+              className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50/50">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    Property Location
+                    <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+                      {address.latitude.toFixed(5)}, {address.longitude.toFixed(5)}
+                    </span>
+                  </h3>
+                  <p className="text-sm text-gray-500">{address.combadd}</p>
+                </div>
+                <button
+                  onClick={() => setShowMapModal(false)}
+                  className="p-2 rounded-full hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="flex-1 relative bg-gray-100">
+                <LeafletMap
+                  markers={[{
+                    id: `address-modal-${address.id}`,
+                    entity_id: address.id,
+                    address_id: address.id,
+                    type: 'property',
+                    lat: address.latitude,
+                    lng: address.longitude,
+                    address: address.combadd,
+                  }]}
+                  center={[address.latitude, address.longitude]}
+                  zoom={18}
+                  height="100%"
+                  draggable={true}
+                  onMarkerDrag={handleMarkerRelocate}
+                />
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}    <section aria-labelledby="address-navigation" className="rounded-xl border border-gray-200/80 bg-slate-50/60 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600" id="address-navigation">
@@ -2714,7 +2797,8 @@ const AddressDetails = () => {
         </section>
       </div>
 
-      {modalTab && typeof document !== 'undefined' &&
+      {
+        modalTab && typeof document !== 'undefined' &&
         createPortal(
           <>
             <div
@@ -2769,7 +2853,8 @@ const AddressDetails = () => {
             </div>
           </>,
           document.body
-        )}
+        )
+      }
 
       {/* Sticky Quick Comment Bar (touch devices) */}
       <div className="fixed inset-x-0 bottom-0 z-40 quick-comment-bar">
@@ -2916,7 +3001,7 @@ const AddressDetails = () => {
           </form>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 
