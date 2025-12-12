@@ -100,13 +100,25 @@ const LeafletMap = ({ markers = [], center, zoom = DEFAULT_ZOOM, height = "600px
 
   // Group markers by address_id to handle multiple notices at the same location
   const groupedMarkers = React.useMemo(() => {
-    const groups = {};
-    markers.forEach(marker => {
+    // Early return for empty arrays to avoid unnecessary processing
+    if (!markers || markers.length === 0) return [];
+    
+    // Use Map for better performance with large datasets
+    const groups = new Map();
+    
+    for (let i = 0; i < markers.length; i++) {
+      const marker = markers[i];
       const key = marker.address_id || `${marker.lat},${marker.lng}`;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(marker);
-    });
-    return Object.values(groups);
+      
+      const existing = groups.get(key);
+      if (existing) {
+        existing.push(marker);
+      } else {
+        groups.set(key, [marker]);
+      }
+    }
+    
+    return Array.from(groups.values());
   }, [markers]);
 
   const formatDate = (dateString) => {
