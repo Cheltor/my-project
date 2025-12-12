@@ -15,6 +15,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require('leaflet/dist/images/marker-shadow.png')
 });
 
+// Default map center: Riverdale Park, Maryland, USA
 const DEFAULT_CENTER = [38.9618936, -76.9281597];
 const DEFAULT_ZOOM = 14;
 
