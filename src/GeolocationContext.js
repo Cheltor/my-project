@@ -4,6 +4,17 @@ const GeolocationContext = createContext();
 
 export const useGeolocation = () => useContext(GeolocationContext);
 
+/**
+ * GeolocationProvider supplies geolocation data and device type (mobile/desktop) to its children via context.
+ *
+ * Geolocation tracking is enabled only for "mobile" devices, defined as those with a screen width less than 1024px.
+ * The `isMobile` threshold (1024px) is used to distinguish mobile devices from desktops/laptops, and is checked on initial render and window resize.
+ * When `isMobile` is true and the browser supports geolocation, the component starts a background geolocation watch and updates the context with the user's current location.
+ * The context provides: `{ location, error, isMobile }`.
+ *
+ * @param {object} props
+ * @param {React.ReactNode} props.children - Child components that will have access to geolocation context.
+ */
 export const GeolocationProvider = ({ children }) => {
   const [location, setLocation] = useState(null);
   const [error, setError] = useState(null);
