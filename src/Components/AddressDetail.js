@@ -1319,6 +1319,10 @@ const AddressDetails = () => {
   };
 
   const handleMarkerRelocate = async (addressId, newLat, newLng) => {
+    // Store original coordinates for error recovery
+    const originalLat = address.latitude;
+    const originalLng = address.longitude;
+
     // 1. Optimistic Update
     setAddress(prev => ({ ...prev, latitude: newLat, longitude: newLng }));
 
@@ -1334,8 +1338,9 @@ const AddressDetails = () => {
       }
     } catch (err) {
       console.error("Relocation failed:", err);
-      // Revert optional?
-      alert("Failed to save new location.");
+      // Revert to original coordinates on failure
+      setAddress(prev => ({ ...prev, latitude: originalLat, longitude: originalLng }));
+      alert("Failed to save new location. The marker has been reverted to its original position.");
     }
   };
 
