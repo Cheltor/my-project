@@ -3,7 +3,7 @@ import React from "react";
 /**
  * Simple spinner icon that inherits the current text color unless overridden.
  */
-export default function LoadingSpinner({ className = "h-4 w-4 text-current" }) {
+const LoadingSpinner = React.memo(({ className = "h-4 w-4 text-current" }) => {
   const combined = ["animate-spin", className].filter(Boolean).join(" ");
 
   return (
@@ -29,4 +29,8 @@ export default function LoadingSpinner({ className = "h-4 w-4 text-current" }) {
       />
     </svg>
   );
-}
+});
+
+LoadingSpinner.displayName = 'LoadingSpinner';
+
+export default LoadingSpinner;

@@ -1,20 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 
 const buttonClasses =
   'px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-500 disabled:bg-gray-300 disabled:cursor-not-allowed';
 
-export default function PaginationControls({ currentPage, totalPages, onPageChange, className = '' }) {
+const PaginationControls = React.memo(({ currentPage, totalPages, onPageChange, className = '' }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [pageInput, setPageInput] = useState('');
   const [pageError, setPageError] = useState('');
 
-  const startEditing = () => {
+  const startEditing = useCallback(() => {
     setPageInput(String(currentPage));
     setPageError('');
     setIsEditing(true);
-  };
+  }, [currentPage]);
 
-  const applyInput = () => {
+  const applyInput = useCallback(() => {
     const parsed = parseInt(pageInput, 10);
     if (Number.isNaN(parsed) || parsed < 1 || parsed > totalPages) {
       setPageError(`Enter a number between 1 and ${totalPages}`);
@@ -22,9 +22,9 @@ export default function PaginationControls({ currentPage, totalPages, onPageChan
     }
     onPageChange(parsed);
     setIsEditing(false);
-  };
+  }, [pageInput, totalPages, onPageChange]);
 
-  const handleKeyDown = (event) => {
+  const handleKeyDown = useCallback((event) => {
     if (event.key === 'Enter') {
       event.preventDefault();
       applyInput();
@@ -33,10 +33,15 @@ export default function PaginationControls({ currentPage, totalPages, onPageChan
       event.preventDefault();
       setIsEditing(false);
     }
-  };
+  }, [applyInput]);
 
-  const handlePrevious = () => onPageChange(currentPage - 1);
-  const handleNext = () => onPageChange(currentPage + 1);
+  const handlePrevious = useCallback(() => onPageChange(currentPage - 1), [currentPage, onPageChange]);
+  const handleNext = useCallback(() => onPageChange(currentPage + 1), [currentPage, onPageChange]);
+
+  const handleInputChange = useCallback((event) => {
+    setPageInput(event.target.value);
+    setPageError('');
+  }, []);
 
   return (
     <div className={`flex justify-between items-center ${className}`}>
@@ -57,10 +62,7 @@ export default function PaginationControls({ currentPage, totalPages, onPageChan
               min={1}
               max={totalPages}
               value={pageInput}
-              onChange={(event) => {
-                setPageInput(event.target.value);
-                setPageError('');
-              }}
+              onChange={handleInputChange}
               onBlur={applyInput}
               onKeyDown={handleKeyDown}
               className={`w-20 px-2 py-1 border rounded ${pageError ? 'border-red-500' : 'border-gray-300'}`}
@@ -85,4 +87,8 @@ export default function PaginationControls({ currentPage, totalPages, onPageChan
       </button>
     </div>
   );
-}
+});
+
+PaginationControls.displayName = 'PaginationControls';
+
+export default PaginationControls;
