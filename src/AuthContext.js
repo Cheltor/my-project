@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import API from './Services/api';
 
 export const AuthContext = createContext();
@@ -7,7 +7,13 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null); // Store user data or null if not authenticated
   const [token, setToken] = useState(null); // Store token for API requests
 
-  const login = (token) => {
+  const logout = useCallback(() => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('token'); // Clear token from storage
+  }, []);
+
+  const login = useCallback((token) => {
     setToken(token);
     localStorage.setItem('token', token);
 
@@ -23,14 +29,7 @@ export const AuthProvider = ({ children }) => {
       .catch((error) => {
         console.error('Error fetching user data:', error);
       });
-  };
-  
-
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('token'); // Clear token from storage
-  };
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -51,7 +50,7 @@ export const AuthProvider = ({ children }) => {
           logout();
         });
     }
-  }, []);
+  }, [logout]);
   
 
   return (
