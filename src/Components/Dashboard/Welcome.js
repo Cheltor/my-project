@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { useAuth } from "../../AuthContext";
 
-export default function Welcome() {
+const Welcome = React.memo(() => {
   const { user } = useAuth();
 
   useEffect(() => {
@@ -21,4 +21,8 @@ export default function Welcome() {
       </div>
     </div>
   );
-}
+});
+
+Welcome.displayName = 'Welcome';
+
+export default Welcome;
