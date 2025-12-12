@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { ArrowDownIcon, ArrowUpIcon } from '@heroicons/react/20/solid';
 
 import { useAuth } from "../../AuthContext";
@@ -7,7 +7,7 @@ function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
 }
 
-export default function WeeklyStats() {
+const WeeklyStats = React.memo(() => {
   const [stats, setStats] = useState([
     { name: 'Comments', thisWeek: 0, lastWeek: 0, change: 'N/A', changeType: '' },
     { name: 'Inspections Completed', thisWeek: 0, lastWeek: 0, change: 'N/A', changeType: '' },
@@ -18,6 +18,16 @@ export default function WeeklyStats() {
   const isAdmin = user?.role === 3;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const calculateChange = useCallback((thisWeek, lastWeek) => {
+    if (lastWeek === 0) return 'N/A';
+    return Math.abs(((thisWeek - lastWeek) / lastWeek) * 100).toFixed(2) + '%';
+  }, []);
+
+  const getChangeType = useCallback((thisWeek, lastWeek) => {
+    if (lastWeek === 0) return '';
+    return thisWeek > lastWeek ? 'increase' : thisWeek < lastWeek ? 'decrease' : '';
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -70,27 +80,19 @@ export default function WeeklyStats() {
     };
 
     fetchData();
-  }, [user, isAdmin]);
+  }, [user, isAdmin, calculateChange, getChangeType]);
 
-  const calculateChange = (thisWeek, lastWeek) => {
-    if (lastWeek === 0) return 'N/A';
-    return Math.abs(((thisWeek - lastWeek) / lastWeek) * 100).toFixed(2) + '%';
-  };
-
-  const getChangeType = (thisWeek, lastWeek) => {
-    if (lastWeek === 0) return '';
-    return thisWeek > lastWeek ? 'increase' : thisWeek < lastWeek ? 'decrease' : '';
-  };
+  const labels = useMemo(() => ({
+    headingLabel: isAdmin ? 'This Week (ONS team totals)' : 'This Week',
+    comparisonLabel: isAdmin ? 'team last week' : 'last week'
+  }), [isAdmin]);
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div className="text-red-500">{error}</div>;
 
-  const headingLabel = isAdmin ? 'This Week (ONS team totals)' : 'This Week';
-  const comparisonLabel = isAdmin ? 'team last week' : 'last week';
-
   return (
     <div>
-      <h3 className="text-base font-semibold text-gray-900 mt-3">{headingLabel}</h3>
+      <h3 className="text-base font-semibold text-gray-900 mt-3">{labels.headingLabel}</h3>
       <dl className="grid grid-cols-1 divide-y divide-gray-200 overflow-hidden rounded-lg bg-white shadow md:grid-cols-3 md:divide-x md:divide-y-0">
         {stats.map((stat) => (
           <div key={stat.name} className="px-4 py-5 sm:p-6">
@@ -98,7 +100,7 @@ export default function WeeklyStats() {
             <dd className="mt-1 flex items-baseline justify-between md:block lg:flex">
               <div className="flex items-baseline text-2xl font-semibold text-indigo-600">
                 {stat.thisWeek}
-                <span className="ml-2 text-sm font-medium text-gray-500">from {stat.lastWeek} {comparisonLabel}</span>
+                <span className="ml-2 text-sm font-medium text-gray-500">from {stat.lastWeek} {labels.comparisonLabel}</span>
               </div>
 
               {stat.changeType && (
@@ -129,4 +131,8 @@ export default function WeeklyStats() {
       </dl>
     </div>
   );
-}
+});
+
+WeeklyStats.displayName = 'WeeklyStats';
+
+export default WeeklyStats;

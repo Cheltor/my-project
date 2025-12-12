@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars, react-hooks/exhaustive-deps */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDownIcon } from '@heroicons/react/20/solid';
 import Welcome from './Dashboard/Welcome';
@@ -44,86 +44,87 @@ export default function Example() {
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminError, setAdminError] = useState(null);
 
-  const closeAllForms = () => {
+  const closeAllForms = useCallback(() => {
     setShowNewComplaint(false);
     setShowNewMFLicense(false);
     setShowNewSFLicense(false);
     setShowNewBuildingPermit(false);
     setShowNewBusinessLicense(false);
     setShowNewViolationForm(false);
-  };
+  }, []);
 
-  const toggleNewComplaint = () => {
-    setShowNewComplaint(!showNewComplaint);
-    if (showNewMFLicense) setShowNewMFLicense(false);
-    if (showNewSFLicense) setShowNewSFLicense(false);
-    if (showNewBuildingPermit) setShowNewBuildingPermit(false);
-    if (showNewBusinessLicense) setShowNewBusinessLicense(false);
-    if (showNewViolationForm) setShowNewViolationForm(false);
-  };
+  const toggleNewComplaint = useCallback(() => {
+    setShowNewComplaint(prev => !prev);
+    setShowNewMFLicense(false);
+    setShowNewSFLicense(false);
+    setShowNewBuildingPermit(false);
+    setShowNewBusinessLicense(false);
+    setShowNewViolationForm(false);
+  }, []);
 
-  const toggleNewMFLicense = () => {
-    setShowNewMFLicense(!showNewMFLicense);
-    if (showNewComplaint) setShowNewComplaint(false);
-    if (showNewSFLicense) setShowNewSFLicense(false);
-    if (showNewBuildingPermit) setShowNewBuildingPermit(false);
-    if (showNewBusinessLicense) setShowNewBusinessLicense(false);
-    if (showNewViolationForm) setShowNewViolationForm(false);
-  };
+  const toggleNewMFLicense = useCallback(() => {
+    setShowNewMFLicense(prev => !prev);
+    setShowNewComplaint(false);
+    setShowNewSFLicense(false);
+    setShowNewBuildingPermit(false);
+    setShowNewBusinessLicense(false);
+    setShowNewViolationForm(false);
+  }, []);
 
-  const toggleNewSFLicense = () => {
-    setShowNewSFLicense(!showNewSFLicense);
-    if (showNewComplaint) setShowNewComplaint(false);
-    if (showNewMFLicense) setShowNewMFLicense(false);
-    if (showNewBuildingPermit) setShowNewBuildingPermit(false);
-    if (showNewBusinessLicense) setShowNewBusinessLicense(false);
-    if (showNewViolationForm) setShowNewViolationForm(false);
-  };
+  const toggleNewSFLicense = useCallback(() => {
+    setShowNewSFLicense(prev => !prev);
+    setShowNewComplaint(false);
+    setShowNewMFLicense(false);
+    setShowNewBuildingPermit(false);
+    setShowNewBusinessLicense(false);
+    setShowNewViolationForm(false);
+  }, []);
 
-  const toggleNewBuildingPermit = () => {
-    setShowNewBuildingPermit(!showNewBuildingPermit);
-    if (showNewComplaint) setShowNewComplaint(false);
-    if (showNewMFLicense) setShowNewMFLicense(false);
-    if (showNewSFLicense) setShowNewSFLicense(false);
-    if (showNewBusinessLicense) setShowNewBusinessLicense(false);
-    if (showNewViolationForm) setShowNewViolationForm(false);
-  };
+  const toggleNewBuildingPermit = useCallback(() => {
+    setShowNewBuildingPermit(prev => !prev);
+    setShowNewComplaint(false);
+    setShowNewMFLicense(false);
+    setShowNewSFLicense(false);
+    setShowNewBusinessLicense(false);
+    setShowNewViolationForm(false);
+  }, []);
 
-  const toggleNewBusinessLicense = () => {
-    setShowNewBusinessLicense(!showNewBusinessLicense);
-    if (showNewComplaint) setShowNewComplaint(false);
-    if (showNewMFLicense) setShowNewMFLicense(false);
-    if (showNewSFLicense) setShowNewSFLicense(false);
-    if (showNewBuildingPermit) setShowNewBuildingPermit(false);
-    if (showNewViolationForm) setShowNewViolationForm(false);
-  };
+  const toggleNewBusinessLicense = useCallback(() => {
+    setShowNewBusinessLicense(prev => !prev);
+    setShowNewComplaint(false);
+    setShowNewMFLicense(false);
+    setShowNewSFLicense(false);
+    setShowNewBuildingPermit(false);
+    setShowNewViolationForm(false);
+  }, []);
 
-  const toggleNewViolationForm = () => {
-    setShowNewViolationForm(!showNewViolationForm);
-    if (showNewComplaint) setShowNewComplaint(false);
-    if (showNewMFLicense) setShowNewMFLicense(false);
-    if (showNewSFLicense) setShowNewSFLicense(false);
-    if (showNewBuildingPermit) setShowNewBuildingPermit(false);
-    if (showNewBusinessLicense) setShowNewBusinessLicense(false);
-  };
+  const toggleNewViolationForm = useCallback(() => {
+    setShowNewViolationForm(prev => !prev);
+    setShowNewComplaint(false);
+    setShowNewMFLicense(false);
+    setShowNewSFLicense(false);
+    setShowNewBuildingPermit(false);
+    setShowNewBusinessLicense(false);
+  }, []);
 
-  const toggleAdminWidgets = () => {
+  const toggleAdminWidgets = useCallback(() => {
     setShowAdminWidgets((prev) => !prev);
-  };
+  }, []);
 
-  const toggleQuickActions = () => {
+  const toggleQuickActions = useCallback(() => {
     setShowQuickActions((prev) => {
       if (prev) {
         closeAllForms();
       }
       return !prev;
     });
-  };
-  const toggleOnsCards = () => {
+  }, [closeAllForms]);
+  
+  const toggleOnsCards = useCallback(() => {
     setOnsCardsExpanded((prev) => !prev);
-  };
+  }, []);
 
-  const sendTestEmail = async () => {
+  const sendTestEmail = useCallback(async () => {
     setEmailTestLoading(true);
     setEmailTestStatus(null);
     try {
@@ -146,7 +147,7 @@ export default function Example() {
     } finally {
       setEmailTestLoading(false);
     }
-  };
+  }, [apiBase]);
 
   const isOns = user?.role === 1;
   const isOas = user?.role === 2;
@@ -154,21 +155,21 @@ export default function Example() {
   const showOnsSection = isOns;
   const showOasSection = isOas;
 
-  const normalizeComplaintStatus = (status) => {
+  const normalizeComplaintStatus = useCallback((status) => {
     if (!status) return 'Pending';
     const value = String(status).toLowerCase();
     if (value === 'unsatisfactory' || value === 'violation found' || value === 'violation') return 'Violation Found';
     if (value === 'satisfactory' || value === 'no violation found' || value === 'no violation') return 'No Violation Found';
     if (value === 'pending' || value === 'unknown' || value === 'open') return 'Pending';
     return status;
-  };
+  }, []);
 
-  const isToday = (iso) => {
+  const isToday = useCallback((iso) => {
     if (!iso) return false;
     const d = new Date(iso);
     const now = new Date();
     return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
-  };
+  }, []);
 
   useEffect(() => {
     if (!user || !isOns) return;

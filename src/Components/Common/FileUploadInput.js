@@ -1,11 +1,11 @@
-import React, { useMemo, useRef, useEffect } from "react";
+import React, { useMemo, useRef, useEffect, useCallback } from "react";
 
 /**
  * Reusable file picker that supports multi-selection, per-file removal,
  * and inline image previews. Pass the current array of `File` objects and
  * get updates through `onChange`.
  */
-export default function FileUploadInput({
+const FileUploadInput = React.memo(({
   id,
   label = "Attachments",
   description,
@@ -18,16 +18,16 @@ export default function FileUploadInput({
   addFilesLabel,
   emptyStateLabel = "No files selected",
   badgeVariant = "indigo",
-}) {
+}) => {
   const inputRef = useRef(null);
-  const controlId = id || `${name || "file-upload"}-${Math.random().toString(36).slice(2)}`;
+  const controlId = useMemo(() => id || `${name || "file-upload"}-${Math.random().toString(36).slice(2)}`, [id, name]);
 
-  const openPicker = () => {
+  const openPicker = useCallback(() => {
     if (disabled) return;
     inputRef.current?.click();
-  };
+  }, [disabled]);
 
-  const handleFileSelection = (event) => {
+  const handleFileSelection = useCallback((event) => {
     const selected = Array.from(event.target.files || []);
     if (selected.length === 0) return;
 
@@ -47,17 +47,17 @@ export default function FileUploadInput({
 
     // Reset so the same file can be re-selected immediately if removed.
     event.target.value = "";
-  };
+  }, [files, onChange]);
 
-  const removeAtIndex = (index) => {
+  const removeAtIndex = useCallback((index) => {
     if (!onChange) return;
     onChange(files.filter((_, idx) => idx !== index));
-  };
+  }, [files, onChange]);
 
-  const clearAll = () => {
+  const clearAll = useCallback(() => {
     if (!onChange || files.length === 0) return;
     onChange([]);
-  };
+  }, [files.length, onChange]);
 
   const previews = useMemo(
     () =>
@@ -78,10 +78,12 @@ export default function FileUploadInput({
     [previews]
   );
 
-  const badgeClasses =
+  const badgeClasses = useMemo(() =>
     badgeVariant === "gray"
       ? "bg-gray-100 text-gray-700 border border-gray-200"
-      : "bg-indigo-50 text-indigo-700 border border-indigo-200";
+      : "bg-indigo-50 text-indigo-700 border border-indigo-200",
+    [badgeVariant]
+  );
 
   return (
     <div className="space-y-2">
@@ -206,4 +208,8 @@ export default function FileUploadInput({
       )}
     </div>
   );
-}
+});
+
+FileUploadInput.displayName = 'FileUploadInput';
+
+export default FileUploadInput;
