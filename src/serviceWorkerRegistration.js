@@ -100,7 +100,7 @@ const unsubscribeFromPush = async () => {
 
 const registerValidSW = (swUrl, config) => {
   navigator.serviceWorker
-    .register(swUrl)
+    .register(swUrl, { updateViaCache: 'none' })
     .then((registration) => {
       const hadExistingController = Boolean(navigator.serviceWorker.controller);
       let hasController = hadExistingController;
@@ -179,8 +179,17 @@ const registerValidSW = (swUrl, config) => {
         registration.waiting.postMessage({ type: 'SKIP_WAITING' });
       }
 
+      const forceUpdate = () => registration.update();
+      const updateWhenVisible = () => {
+        if (document.visibilityState === 'visible') {
+          forceUpdate();
+        }
+      };
+
       registration.update();
-      setInterval(() => registration.update(), 60 * 60 * 1000);
+      setInterval(forceUpdate, 60 * 60 * 1000);
+      document.addEventListener('visibilitychange', updateWhenVisible);
+      window.addEventListener('online', forceUpdate);
     })
     .catch((error) => {
       console.error('Service worker registration failed:', error);
