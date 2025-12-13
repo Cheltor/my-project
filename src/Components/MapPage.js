@@ -118,9 +118,14 @@ const MapPage = () => {
   };
 
   return (
-    <div className={`w-full ${!isMobile ? 'max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8' : 'h-[calc(100vh-64px)] flex flex-col overflow-hidden relative'}`}>
+    <div className={`w-full ${isFullScreen
+        ? 'fixed inset-0 z-50 flex flex-col bg-gray-50'
+        : isMobile
+          ? 'h-[calc(100vh-64px)] flex flex-col overflow-hidden relative'
+          : 'max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8'
+      }`}>
       {/* Desktop Header */}
-      {!isMobile && (
+      {!isMobile && !isFullScreen && (
         <header className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Town Map</h1>
@@ -137,7 +142,12 @@ const MapPage = () => {
       )}
 
       {/* Controls Container */}
-      <div className={`${!isMobile ? 'bg-white p-4 rounded-lg shadow mb-6 border border-gray-200' : `absolute top-0 left-0 right-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-lg transition-transform duration-300 ${showMobileFilters ? 'translate-y-0' : '-translate-y-full'}`}`}>
+      <div className={`${!isMobile && !isFullScreen
+          ? 'bg-white p-4 rounded-lg shadow mb-6 border border-gray-200'
+          : isFullScreen && !isMobile
+            ? 'bg-white p-4 shadow-sm border-b border-gray-200 z-10'
+            : `absolute top-0 left-0 right-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-lg transition-transform duration-300 ${showMobileFilters ? 'translate-y-0' : '-translate-y-full'}`
+        }`}>
         <div className={`flex flex-wrap gap-4 items-center ${isMobile ? 'p-4 gap-y-3' : ''}`}>
           {!isMobile && <span className="text-sm font-medium text-gray-700">Filters:</span>}
 

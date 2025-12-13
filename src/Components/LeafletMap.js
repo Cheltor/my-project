@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { Switch } from '@headlessui/react';
 import 'leaflet/dist/leaflet.css';
@@ -24,6 +24,19 @@ function ChangeView({ center, zoom }) {
   React.useEffect(() => {
     map.setView(center, zoom);
   }, [center, zoom, map]);
+
+  return null;
+}
+
+function ResizeHandler({ height }) {
+  const map = useMap();
+  useEffect(() => {
+    // Invalidate size after a short delay to ensure DOM update
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [height, map]);
   return null;
 }
 
@@ -129,6 +142,7 @@ const LeafletMap = ({ markers = [], center, zoom = DEFAULT_ZOOM, height = "600px
         scrollWheelZoom={true}
       >
         <ChangeView center={effectiveCenter} zoom={zoom} />
+        <ResizeHandler height={height} />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -239,7 +253,7 @@ const LeafletMap = ({ markers = [], center, zoom = DEFAULT_ZOOM, height = "600px
 
                         {/* Action Button */}
                         <button
-                          onClick={() => navigate(`/${item.type}/${item.entity_id}`)}
+                          onClick={() => navigate(item.type === 'property' ? `/address/${item.entity_id}` : `/${item.type}/${item.entity_id}`)}
                           className="w-full text-center text-indigo-600 hover:text-white hover:bg-indigo-600 text-xs font-semibold border border-indigo-300 bg-indigo-50 px-3 py-1.5 rounded-md transition-colors"
                         >
                           {item.type === 'violation'
