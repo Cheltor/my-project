@@ -7,6 +7,10 @@ import { StaleWhileRevalidate, NetworkFirst } from 'workbox-strategies';
 clientsClaim();
 self.skipWaiting();
 
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting());
+});
+
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
 
