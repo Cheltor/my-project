@@ -13,7 +13,7 @@ const MapPage = () => {
     includeClosed: false,
     showInspections: false,
     showViolations: true,
-    showAllProperties: false
+    showAllProperties: window.innerWidth < 1024 // Default to true on mobile
   });
   const [colorMode, setColorMode] = useState('type'); // 'type' or 'user'
   const [selectedUserIds, setSelectedUserIds] = useState([]);
@@ -119,10 +119,10 @@ const MapPage = () => {
 
   return (
     <div className={`w-full ${isFullScreen
-        ? 'fixed inset-0 z-50 flex flex-col bg-gray-50'
-        : isMobile
-          ? 'h-[calc(100vh-64px)] flex flex-col overflow-hidden relative'
-          : 'max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8'
+      ? 'fixed inset-0 z-50 flex flex-col bg-gray-50'
+      : isMobile
+        ? 'h-[calc(100vh-64px)] flex flex-col overflow-hidden relative'
+        : 'max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8'
       }`}>
       {/* Desktop Header */}
       {!isMobile && !isFullScreen && (
@@ -143,10 +143,10 @@ const MapPage = () => {
 
       {/* Controls Container */}
       <div className={`${!isMobile && !isFullScreen
-          ? 'bg-white p-4 rounded-lg shadow mb-6 border border-gray-200'
-          : isFullScreen && !isMobile
-            ? 'bg-white p-4 shadow-sm border-b border-gray-200 z-10'
-            : `absolute top-0 left-0 right-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-lg transition-transform duration-300 ${showMobileFilters ? 'translate-y-0' : '-translate-y-full'}`
+        ? 'bg-white p-4 rounded-lg shadow mb-6 border border-gray-200'
+        : isFullScreen && !isMobile
+          ? 'bg-white p-4 shadow-sm border-b border-gray-200 z-10'
+          : `absolute top-0 left-0 right-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-lg transition-transform duration-300 ${showMobileFilters ? 'translate-y-0' : '-translate-y-full'}`
         }`}>
         <div className={`flex flex-wrap gap-4 items-center ${isMobile ? 'p-4 gap-y-3' : ''}`}>
           {!isMobile && <span className="text-sm font-medium text-gray-700">Filters:</span>}
@@ -182,20 +182,16 @@ const MapPage = () => {
             <span className="text-sm text-gray-700">Include Closed Cases</span>
           </label>
 
-          {user?.role === 3 && (
-            <>
-              <div className="h-6 w-px bg-gray-300 mx-2 hidden sm:block"></div>
-              <label className="inline-flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="form-checkbox h-4 w-4 text-gray-600 rounded border-gray-300 focus:ring-gray-500"
-                  checked={filters.showAllProperties}
-                  onChange={() => toggleFilter('showAllProperties')}
-                />
-                <span className="text-sm text-gray-700">Show All Properties</span>
-              </label>
-            </>
-          )}
+          <div className="h-6 w-px bg-gray-300 mx-2 hidden sm:block"></div>
+          <label className="inline-flex items-center space-x-2 cursor-pointer">
+            <input
+              type="checkbox"
+              className="form-checkbox h-4 w-4 text-gray-600 rounded border-gray-300 focus:ring-gray-500"
+              checked={filters.showAllProperties}
+              onChange={() => toggleFilter('showAllProperties')}
+            />
+            <span className="text-sm text-gray-700">Show All Properties</span>
+          </label>
 
           <div className="h-6 w-px bg-gray-300 mx-2 hidden sm:block"></div>
 
@@ -322,6 +318,7 @@ const MapPage = () => {
 
           <LeafletMap
             markers={displayedMarkers}
+            zoom={isMobile ? 18 : 14}
             height={isMobile || isFullScreen ? "100%" : "calc(100vh - 300px)"}
             draggable={true}
             onMarkerDrag={handleMarkerRelocate}

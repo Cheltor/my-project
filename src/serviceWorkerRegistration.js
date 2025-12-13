@@ -1,9 +1,9 @@
 const isLocalhost = Boolean(
   window.location.hostname === 'localhost' ||
-    window.location.hostname === '[::1]' ||
-    window.location.hostname.match(
-      /^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/
-    )
+  window.location.hostname === '[::1]' ||
+  window.location.hostname.match(
+    /^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/
+  )
 );
 
 const supportsServiceWorkers = () => typeof window !== 'undefined' && 'serviceWorker' in navigator;
@@ -181,6 +181,13 @@ const registerValidSW = (swUrl, config) => {
 
       registration.update();
       setInterval(() => registration.update(), 60 * 60 * 1000);
+
+      // Check for updates when the user returns to the app
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          registration.update();
+        }
+      });
     })
     .catch((error) => {
       console.error('Service worker registration failed:', error);
